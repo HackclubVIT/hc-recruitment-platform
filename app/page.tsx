@@ -47,8 +47,15 @@ const LAST_NAMES = ['Sharma', 'Verma', 'Patel', 'Gupta', 'Singh', 'Kumar', 'Josh
     'Menon', 'Reddy', 'Rao', 'Iyer', 'Pillai', 'Das', 'Roy', 'Bhat', 'Hegde', 'Shetty',
     'Kapoor', 'Khanna', 'Malhotra', 'Bose', 'Chatterjee', 'Mukherjee', 'Banerjee', 'Sen', 'Dutta', 'Ghosh'];
 
-const DOMAINS = ['web', 'ml', 'app', 'hardware', 'systems'];
-const DOMAIN_LABELS: Record<string, string> = { web: 'Web Development', ml: 'Machine Learning', app: 'App Development', hardware: 'Hardware / IoT', systems: 'Systems / DevOps', operations: 'Operations', design: 'Design & Social Media', finance: 'Finance' };
+const DOMAINS = ['Technical', 'Projects', 'Operations', 'Design & Social Media', 'Research & Development', 'Finance'];
+const DOMAIN_LABELS: Record<string, string> = { 
+  Technical: 'Technical', 
+  Projects: 'Projects', 
+  Operations: 'Operations', 
+  'Design & Social Media': 'Design & Social Media', 
+  'Research & Development': 'Research & Development', 
+  Finance: 'Finance' 
+};
 const STATUS_LABELS: Record<string, string> = { screening: 'SCREENING', technical: 'TECHNICAL', interview: 'INTERVIEW', selected: 'SELECTED', rejected: 'REJECTED' };
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
@@ -63,40 +70,46 @@ function mapBackendStatus(raw: string): Applicant['status'] {
 
 function mapDomainKey(raw: string): string {
   const d = (raw || '').toLowerCase();
-  if (d.includes('ml') || d.includes('machine') || d.includes('ai') || d.includes('research')) return 'ml';
-  if (d.includes('app') || d.includes('android') || d.includes('ios') || d.includes('flutter')) return 'app';
-  if (d.includes('hard') || d.includes('iot') || d.includes('embed')) return 'hardware';
-  if (d.includes('system') || d.includes('devops') || d.includes('cloud')) return 'systems';
-  return 'web';
+  if (d.includes('proj')) return 'Projects';
+  if (d.includes('oper')) return 'Operations';
+  if (d.includes('design') || d.includes('social') || d.includes('media')) return 'Design & Social Media';
+  if (d.includes('research') || d.includes('ml') || d.includes('ai')) return 'Research & Development';
+  if (d.includes('finan')) return 'Finance';
+  return 'Technical';
 }
 
 function generateInitialApplicants(): Applicant[] {
   const applicants: Applicant[] = [];
-  for (let i = 0; i < 348; i++) {
-    const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
-    const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
-    const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
+  for (let i = 0; i < 32; i++) {
+    const first = FIRST_NAMES[i % FIRST_NAMES.length];
+    const last = LAST_NAMES[(i * 3) % LAST_NAMES.length];
+    const domain = DOMAINS[i % DOMAINS.length];
+    const secondDomain = DOMAINS[(i + 2) % DOMAINS.length];
     const statuses: Array<Applicant['status']> = ['screening', 'technical', 'interview', 'selected', 'rejected'];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const year = YEARS[Math.floor(Math.random() * YEARS.length)];
-    const score = Math.floor(Math.random() * 60) + 40;
-    const dayOffset = Math.floor(Math.random() * 25);
-    const date = new Date(2026, 7, 1 + dayOffset);
+    const status = statuses[i % statuses.length];
+    const year = YEARS[i % YEARS.length];
+    const score = Math.floor(Math.random() * 25) + 75;
+    const date = new Date(2026, 7, 10 + (i % 15));
 
     applicants.push({
-      id: i + 1,
+      id: 1787760000000 + i,
       name: `${first} ${last}`,
       initials: `${first[0]}${last[0]}`,
       email: `${first.toLowerCase()}.${last.toLowerCase()}@vitstudent.ac.in`,
-      registerNumber: `24BCE${1000 + i}`,
+      registerNumber: `24BCE${1000 + i * 11}`,
       domain,
-      firstPreference: DOMAIN_LABELS[domain] || domain,
-      firstPrefReason: 'Passionate builder eager to learn and contribute to team projects.',
+      firstPreference: domain,
+      secondPreference: secondDomain,
+      firstPrefReason: `Strong background and passion for ${domain}. Built multiple hackathon projects.`,
+      secondPrefReason: `Interested in contributing to ${secondDomain} and collaborating across teams.`,
       status,
       year,
       score,
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      avatarBg: `hsl(${Math.floor(Math.random() * 20)}, ${60 + Math.floor(Math.random() * 20)}%, ${20 + Math.floor(Math.random() * 15)}%)`
+      avatarBg: `hsl(${Math.floor(Math.random() * 360)}, 65%, 25%)`,
+      sevenDaysBuild: 'Real-time collaborative campus tool for student makers.',
+      whyHackclub: 'Want to build open-source products with passionate makers at HackClub.',
+      skillToLearn: 'Distributed Systems & Advanced System Design'
     });
   }
   return applicants;
@@ -385,8 +398,15 @@ export default function Home() {
 
   // Filter and paginated list mapping
   const filteredList = applicants.filter(a => {
-    const matchesSearch = !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDomain = domainFilter === 'all' || a.domain === domainFilter;
+    const term = searchTerm.toLowerCase().trim();
+    const matchesSearch = !term || 
+      a.name.toLowerCase().includes(term) || 
+      a.email.toLowerCase().includes(term) || 
+      (a.registerNumber && a.registerNumber.toLowerCase().includes(term));
+    const matchesDomain = domainFilter === 'all' || 
+      a.domain === domainFilter || 
+      a.firstPreference === domainFilter || 
+      a.secondPreference === domainFilter;
     const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
     return matchesSearch && matchesDomain && matchesStatus;
   });
@@ -796,15 +816,16 @@ export default function Home() {
                       setCurrentPage(1);
                     }}
                   >
-                    <option value="all">All Domains</option>
-                    <option value="web">Web Development</option>
-                    <option value="ml">Machine Learning</option>
-                    <option value="app">App Development</option>
-                    <option value="hardware">Hardware / IoT</option>
-                    <option value="systems">Systems / DevOps</option>
+                    <option value="all">All Departments</option>
+                    <option value="Technical">Technical</option>
+                    <option value="Projects">Projects</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Design & Social Media">Design & Social Media</option>
+                    <option value="Research & Development">Research & Development</option>
+                    <option value="Finance">Finance</option>
                   </select>
                   <select 
-                    className="filter-select"
+                    className="filter-select" 
                     value={statusFilter}
                     onChange={(e) => {
                       setStatusFilter(e.target.value);
@@ -828,7 +849,7 @@ export default function Home() {
                   <thead>
                     <tr>
                       <th>APPLICANT</th>
-                      <th>DOMAIN</th>
+                      <th>DEPARTMENT PREFERENCES</th>
                       <th>YEAR</th>
                       <th>STATUS</th>
                       <th>SCORE</th>
@@ -848,7 +869,14 @@ export default function Home() {
                             </div>
                           </div>
                         </td>
-                        <td>{DOMAIN_LABELS[a.domain]}</td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red-400)' }}>1st: {a.firstPreference || a.domain}</span>
+                            {a.secondPreference && a.secondPreference !== 'None' && (
+                              <span style={{ fontSize: 11, color: 'var(--neutral-400)' }}>2nd: {a.secondPreference}</span>
+                            )}
+                          </div>
+                        </td>
                         <td>{a.year}</td>
                         <td><span className={`status-badge status-${a.status}`}>{STATUS_LABELS[a.status]}</span></td>
                         <td>
@@ -1221,6 +1249,20 @@ export default function Home() {
                   <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                     <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red-400)', marginBottom: 4 }}>// WHY HACKCLUB VIT CHENNAI</div>
                     <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{selectedApplicant.whyHackclub}</div>
+                  </div>
+                )}
+
+                {selectedApplicant.skillToLearn && (
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red-400)', marginBottom: 4 }}>// SKILL TO LEARN THROUGH HACKCLUB</div>
+                    <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{selectedApplicant.skillToLearn}</div>
+                  </div>
+                )}
+
+                {selectedApplicant.productiveWebsiteQuestions && (
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red-400)', marginBottom: 4 }}>// PRODUCTIVE WEBSITE ARCHITECTURE & QUESTIONS</div>
+                    <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{selectedApplicant.productiveWebsiteQuestions}</div>
                   </div>
                 )}
 
