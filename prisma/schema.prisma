@@ -1,0 +1,175 @@
+// HackClub VIT Chennai — Recruitment & Interview Management Platform
+// Prisma schema for Recruiter & Lead modules
+// Provider: SQLite (dev) → swap to PostgreSQL/Neon for prod via DATABASE_URL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 BigInt  @id
+  name               String
+  email              String? @unique
+  password           String?
+  role               String  @default("Member")
+  department         String?
+  isReviewer         Boolean @default(false)
+  avatar             String?
+  
+  assignedApps     Application[]           @relation("AssignedRecruiter")
+  notes            ApplicationNote[]
+  statusChanges    StatusHistory[]         @relation("StatusChangedBy")
+  createdInterviews Interview[]            @relation("InterviewCreatedBy")
+  panelistAssignments InterviewPanelist[]
+  feedbacks        Feedback[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model Department {
+  id          Int    @id @default(autoincrement())
+  name        String @unique
+  slug        String @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications Application[]
+
+  @@map("departments")
+}
+
+// Removed UserDepartment since department is a string in main site User model
+
+model Application {
+  id                  Int                @id @default(autoincrement())
+  departmentId        Int
+  name                String
+  email               String
+  registerNumber      String
+  phoneNumber         String?
+  yearOfStudy         String
+  roleAppliedFor      String
+  resumeUrl           String?
+  technicalSkills     String             @default("[]")
+  answers             String             @default("{}")
+  status              String             @default("APPLIED") // APPLIED, UNDER_REVIEW, ON_HOLD, SHORTLISTED, INTERVIEW_SCHEDULED, INTERVIEWED, SELECTED, WAITLISTED, REJECTED
+  assignedRecruiterId BigInt?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  department          Department         @relation(fields: [departmentId],        references: [id], onDelete: Cascade)
+  assignedRecruiter   User?              @relation("AssignedRecruiter", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
+  notes               ApplicationNote[]
+  history             StatusHistory[]
+  interviews          Interview[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@index([assignedRecruiterId])
+  @@map("applications")
+}
+
+model ApplicationNote {
+  id            Int      @id @default(autoincrement())
+  applicationId Int
+  authorId      BigInt
+  body          String
+  createdAt     DateTime @default(now())
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author        User        @relation(fields: [authorId],      references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("application_notes")
+}
+
+model StatusHistory {
+  id            Int                @id @default(autoincrement())
+  applicationId Int
+  fromStatus    String?            // APPLIED, UNDER_REVIEW, ON_HOLD, SHORTLISTED, INTERVIEW_SCHEDULED, INTERVIEWED, SELECTED, WAITLISTED, REJECTED
+  toStatus      String             // APPLIED, UNDER_REVIEW, ON_HOLD, SHORTLISTED, INTERVIEW_SCHEDULED, INTERVIEWED, SELECTED, WAITLISTED, REJECTED
+  changedByUserId BigInt
+  changedAt     DateTime           @default(now())
+  reason        String?
+
+  application   Application @relation(fields: [applicationId],      references: [id], onDelete: Cascade)
+  changedBy     User        @relation("StatusChangedBy", fields: [changedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("status_history")
+}
+
+model Interview {
+  id                Int            @id @default(autoincrement())
+  applicationId     Int
+  startTime         DateTime
+  endTime           DateTime
+  mode              String         // ONLINE, OFFLINE
+  locationOrLink    String
+  status            String         @default("SCHEDULED") // SCHEDULED, RESCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+  createdByUserId   BigInt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  application       Application     @relation(fields: [applicationId],     references: [id], onDelete: Cascade)
+  createdBy         User            @relation("InterviewCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  panelists         InterviewPanelist[]
+  feedbacks         Feedback[]
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([startTime])
+  @@map("interviews")
+}
+
+model InterviewPanelist {
+  interviewId     Int
+  panelistUserId  BigInt
+
+  interview       Interview @relation(fields: [interviewId],     references: [id], onDelete: Cascade)
+  panelist        User      @relation(fields: [panelistUserId],  references: [id], onDelete: Cascade)
+
+  @@id([interviewId, panelistUserId])
+  @@map("interview_panelists")
+}
+
+model Feedback {
+  id                Int                   @id @default(autoincrement())
+  interviewId       Int
+  panelistUserId    BigInt
+  ratings           String                @default("{}")
+  overall           Int
+  recommendation    String                // STRONG_HIRE, HIRE, MAYBE, NO_HIRE
+  comments          String?
+  submittedAt       DateTime              @default(now())
+
+  interview         Interview @relation(fields: [interviewId],       references: [id], onDelete: Cascade)
+  panelist          User      @relation(fields: [panelistUserId],    references: [id], onDelete: Cascade)
+
+  @@unique([interviewId, panelistUserId])
+  @@map("feedbacks")
+}
+
+model Notification {
+  id                 Int      @id @default(autoincrement())
+  userId             BigInt
+  type               String
+  message            String
+  relatedEntityType  String?
+  relatedEntityId    Int?
+  isRead             Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}

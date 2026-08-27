@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, Space_Mono } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/lib/client/auth";
 
 const inter = Inter({
   variable: "--font-body",
@@ -20,19 +18,19 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HackClub Recruitment Dashboard",
-  description: "Recruitment management system for HackClub VITC",
+  title: "Apply to HackClub VIT Chennai",
+  description: "Join HackClub VIT Chennai - Recruitment 2026",
 };
 
-export default function RootLayout({
+export default function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${spaceMono.variable}`}>
-      <body>
-        <AuthProvider>{children}</AuthProvider>
+      <body className="bg-gray-950 text-white antialiased">
+        {children}
       </body>
     </html>
   );
