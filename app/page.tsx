@@ -1,19 +1,34 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { api, getToken, clearToken, BackendApplication } from "./api";
 
 // ── Types ────────────────────────────────────────────────────
 interface Applicant {
-  id: number;
+  id: number | string;
   name: string;
   initials: string;
   email: string;
+  registerNumber?: string;
   domain: string;
+  firstPreference?: string;
+  secondPreference?: string;
+  firstPrefReason?: string;
+  secondPrefReason?: string;
   status: 'screening' | 'technical' | 'interview' | 'selected' | 'rejected';
   year: string;
   score: number;
   date: string;
   avatarBg: string;
+  phoneNumber?: string;
+  github?: string;
+  linkedin?: string;
+  portfolio?: string;
+  sevenDaysBuild?: string;
+  skillToLearn?: string;
+  whyHackclub?: string;
+  expectations?: string;
+  productiveWebsiteQuestions?: string;
 }
 
 interface Toast {
@@ -33,9 +48,27 @@ const LAST_NAMES = ['Sharma', 'Verma', 'Patel', 'Gupta', 'Singh', 'Kumar', 'Josh
     'Kapoor', 'Khanna', 'Malhotra', 'Bose', 'Chatterjee', 'Mukherjee', 'Banerjee', 'Sen', 'Dutta', 'Ghosh'];
 
 const DOMAINS = ['web', 'ml', 'app', 'hardware', 'systems'];
-const DOMAIN_LABELS: Record<string, string> = { web: 'Web Development', ml: 'Machine Learning', app: 'App Development', hardware: 'Hardware / IoT', systems: 'Systems / DevOps' };
+const DOMAIN_LABELS: Record<string, string> = { web: 'Web Development', ml: 'Machine Learning', app: 'App Development', hardware: 'Hardware / IoT', systems: 'Systems / DevOps', operations: 'Operations', design: 'Design & Social Media', finance: 'Finance' };
 const STATUS_LABELS: Record<string, string> = { screening: 'SCREENING', technical: 'TECHNICAL', interview: 'INTERVIEW', selected: 'SELECTED', rejected: 'REJECTED' };
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+function mapBackendStatus(raw: string): Applicant['status'] {
+  const s = (raw || '').toLowerCase();
+  if (s === 'selected' || s === 'accepted') return 'selected';
+  if (s === 'interview' || s === 'shortlisted') return 'interview';
+  if (s === 'technical' || s === 'under review') return 'technical';
+  if (s === 'rejected') return 'rejected';
+  return 'screening';
+}
+
+function mapDomainKey(raw: string): string {
+  const d = (raw || '').toLowerCase();
+  if (d.includes('ml') || d.includes('machine') || d.includes('ai') || d.includes('research')) return 'ml';
+  if (d.includes('app') || d.includes('android') || d.includes('ios') || d.includes('flutter')) return 'app';
+  if (d.includes('hard') || d.includes('iot') || d.includes('embed')) return 'hardware';
+  if (d.includes('system') || d.includes('devops') || d.includes('cloud')) return 'systems';
+  return 'web';
+}
 
 function generateInitialApplicants(): Applicant[] {
   const applicants: Applicant[] = [];
@@ -54,8 +87,11 @@ function generateInitialApplicants(): Applicant[] {
       id: i + 1,
       name: `${first} ${last}`,
       initials: `${first[0]}${last[0]}`,
-      email: `${first.toLowerCase()}.${last.toLowerCase()}@vitc.ac.in`,
+      email: `${first.toLowerCase()}.${last.toLowerCase()}@vitstudent.ac.in`,
+      registerNumber: `24BCE${1000 + i}`,
       domain,
+      firstPreference: DOMAIN_LABELS[domain] || domain,
+      firstPrefReason: 'Passionate builder eager to learn and contribute to team projects.',
       status,
       year,
       score,
@@ -97,9 +133,77 @@ export default function Home() {
     selected: 0
   });
 
-  // Init applicants
-  useEffect(() => {
+  // Load applicants from API with fallback
+  const loadApplicants = async () => {
+    try {
+      const rawApps = await api.getRecruitmentApplications();
+      if (Array.isArray(rawApps) && rawApps.length > 0) {
+        const mapped: Applicant[] = rawApps.map((a, idx) => {
+          const initials = a.name ? a.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AP';
+          const domainKey = mapDomainKey(a.firstPreference || a.domain || 'web');
+          const status = mapBackendStatus(a.status);
+          return {
+            id: a.id,
+            name: a.name,
+            initials,
+            email: a.email,
+            registerNumber: a.registerNumber,
+            domain: domainKey,
+            firstPreference: a.firstPreference || a.domain,
+            secondPreference: a.secondPreference,
+            firstPrefReason: a.firstPrefReason || a.whyJoin,
+            secondPrefReason: a.secondPrefReason,
+            status,
+            year: a.yearOfStudy || '1st Year',
+            score: Math.floor(Math.random() * 25) + 75,
+            date: a.appliedDate || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            avatarBg: `hsl(${Math.floor(Math.random() * 360)}, 65%, 25%)`,
+            phoneNumber: a.phoneNumber,
+            github: a.github,
+            linkedin: a.linkedin,
+            portfolio: a.portfolio,
+            sevenDaysBuild: a.sevenDaysBuild || a.projectDetails,
+            skillToLearn: a.skillToLearn,
+            whyHackclub: a.whyHackclub,
+            expectations: a.expectations,
+            productiveWebsiteQuestions: a.productiveWebsiteQuestions
+          };
+        });
+        setApplicants(mapped);
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Recruitment API notice:', err.message);
+    }
     setApplicants(generateInitialApplicants());
+  };
+
+  // Restore session from token on mount
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      api.getMe()
+        .then(res => {
+          const role = (res.user?.role || '').toLowerCase();
+          const isOverallAdmin = role === 'admin' || ['vice chairperson', 'secretary', 'co secretary'].includes(role);
+          const hasRecruitmentPermission = isOverallAdmin || res.user?.isRecruitmentAdmin === true || (Array.isArray(res.user?.permissions) && res.user.permissions.includes('recruitment-admin'));
+          
+          if (hasRecruitmentPermission) {
+            setIsLoggedIn(true);
+            loadApplicants();
+          } else {
+            clearToken();
+            setIsLoggedIn(false);
+          }
+        })
+        .catch(() => {
+          clearToken();
+          setIsLoggedIn(false);
+          loadApplicants();
+        });
+    } else {
+      loadApplicants();
+    }
   }, []);
 
   // Animate stats
@@ -235,29 +339,48 @@ export default function Home() {
     interview: 'selected' 
   };
 
-  const handleApprove = (id: number) => {
-    setApplicants(prev => prev.map(a => {
-      if (a.id === id) {
-        const next = STATUS_NEXT[a.status];
-        if (next) {
-          triggerToast(`${a.name} advanced to ${STATUS_LABELS[next]}`, 'success');
-          return { ...a, status: next };
-        } else {
-          triggerToast(`${a.name} is already at final stage`, 'error');
-        }
+  const handleApprove = async (id: number | string) => {
+    const applicant = applicants.find(a => String(a.id) === String(id));
+    if (!applicant) return;
+    const next = STATUS_NEXT[applicant.status];
+    if (!next) {
+      triggerToast(`${applicant.name} is already at final stage (${STATUS_LABELS[applicant.status]})`, 'error');
+      return;
+    }
+
+    try {
+      await api.updateRecruitmentStatus(id, next);
+      setApplicants(prev => prev.map(a => String(a.id) === String(id) ? { ...a, status: next } : a));
+
+      if (next === 'selected') {
+        triggerToast(`🎉 ${applicant.name} officially SELECTED! Auto-added to Allowlist & Members roster.`, 'success');
+      } else {
+        triggerToast(`${applicant.name} advanced to ${STATUS_LABELS[next]}`, 'success');
       }
-      return a;
-    }));
+
+      if (selectedApplicant && String(selectedApplicant.id) === String(id)) {
+        setSelectedApplicant(prev => prev ? { ...prev, status: next } : null);
+      }
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to update status on server.', 'error');
+    }
   };
 
-  const handleReject = (id: number) => {
-    setApplicants(prev => prev.map(a => {
-      if (a.id === id) {
-        triggerToast(`${a.name} has been rejected`, 'error');
-        return { ...a, status: 'rejected' };
+  const handleReject = async (id: number | string) => {
+    const applicant = applicants.find(a => String(a.id) === String(id));
+    if (!applicant) return;
+
+    try {
+      await api.updateRecruitmentStatus(id, 'rejected');
+      setApplicants(prev => prev.map(a => String(a.id) === String(id) ? { ...a, status: 'rejected' } : a));
+      triggerToast(`${applicant.name} marked as REJECTED`, 'error');
+
+      if (selectedApplicant && String(selectedApplicant.id) === String(id)) {
+        setSelectedApplicant(prev => prev ? { ...prev, status: 'rejected' } : null);
       }
-      return a;
-    }));
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to update status on server.', 'error');
+    }
   };
 
   // Filter and paginated list mapping
@@ -279,20 +402,31 @@ export default function Home() {
   };
 
   // Handle Auth submission
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail || !authPassword) {
-      triggerToast("Please fill in all fields", "error");
-      return;
-    }
-    if (authMode === "signup" && !authName) {
-      triggerToast("Please enter your name", "error");
+      triggerToast("Please fill in both email and password", "error");
       return;
     }
     
-    // Simulate login success
-    setIsLoggedIn(true);
-    triggerToast(authMode === "login" ? "Welcome back!" : "Account created successfully!", "success");
+    try {
+      const res = await api.login(authEmail.trim(), authPassword.trim());
+      const role = (res.role || '').toLowerCase();
+      const isOverallAdmin = role === 'admin' || ['vice chairperson', 'secretary', 'co secretary'].includes(role);
+      const hasRecruitmentPermission = isOverallAdmin || res.user?.isRecruitmentAdmin === true || (Array.isArray(res.user?.permissions) && res.user.permissions.includes('recruitment-admin'));
+
+      if (!hasRecruitmentPermission) {
+        triggerToast("Permission Denied: Recruitment monitoring requires overall admin or recruitment-admin privileges.", "error");
+        clearToken();
+        return;
+      }
+
+      setIsLoggedIn(true);
+      triggerToast(`Welcome back, ${res.user?.name || 'Admin'}!`, "success");
+      loadApplicants();
+    } catch (err: any) {
+      triggerToast(err.message || "Invalid credentials. Please verify your student email and password.", "error");
+    }
   };
 
   return (
@@ -1025,50 +1159,124 @@ export default function Home() {
             <div className="modal-body">
               <div className="modal-grid">
                 <div className="modal-info-group">
-                  <span className="meta-label">// domain</span>
-                  <span className="meta-value">{DOMAIN_LABELS[selectedApplicant.domain]}</span>
+                  <span className="meta-label">// 1st Preference Domain</span>
+                  <span className="meta-value">{selectedApplicant.firstPreference || DOMAIN_LABELS[selectedApplicant.domain]}</span>
                 </div>
                 <div className="modal-info-group">
-                  <span className="meta-label">// year</span>
+                  <span className="meta-label">// Register Number</span>
+                  <span className="meta-value">{selectedApplicant.registerNumber || 'N/A'}</span>
+                </div>
+                <div className="modal-info-group">
+                  <span className="meta-label">// Year of Study</span>
                   <span className="meta-value">{selectedApplicant.year}</span>
                 </div>
                 <div className="modal-info-group">
-                  <span className="meta-label">// status</span>
+                  <span className="meta-label">// Status</span>
                   <span className="meta-value">
                     <span className={`status-badge status-${selectedApplicant.status}`}>{STATUS_LABELS[selectedApplicant.status]}</span>
                   </span>
                 </div>
                 <div className="modal-info-group">
-                  <span className="meta-label">// score</span>
-                  <span className="meta-value">{selectedApplicant.score}/100</span>
-                </div>
-                <div className="modal-info-group">
-                  <span className="meta-label">// email</span>
+                  <span className="meta-label">// Student Email</span>
                   <span className="meta-value">{selectedApplicant.email}</span>
                 </div>
                 <div className="modal-info-group">
-                  <span className="meta-label">// applied</span>
+                  <span className="meta-label">// Phone Number</span>
+                  <span className="meta-value">{selectedApplicant.phoneNumber || 'N/A'}</span>
+                </div>
+                <div className="modal-info-group">
+                  <span className="meta-label">// Applied Date</span>
                   <span className="meta-value">{selectedApplicant.date}</span>
                 </div>
+                <div className="modal-info-group">
+                  <span className="meta-label">// Evaluation Score</span>
+                  <span className="meta-value">{selectedApplicant.score}/100</span>
+                </div>
               </div>
-              <div className="modal-actions">
+
+              {/* Questionnaire Details */}
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {selectedApplicant.firstPrefReason && (
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red-400)', marginBottom: 4 }}>// WHY THIS FIRST PREFERENCE</div>
+                    <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{selectedApplicant.firstPrefReason}</div>
+                  </div>
+                )}
+
+                {selectedApplicant.secondPreference && (
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red-400)', marginBottom: 4 }}>// 2ND PREFERENCE ({selectedApplicant.secondPreference})</div>
+                    <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{selectedApplicant.secondPrefReason || 'No reason provided'}</div>
+                  </div>
+                )}
+
+                {selectedApplicant.sevenDaysBuild && (
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red-400)', marginBottom: 4 }}>// 7-DAY BUILD IDEA & TRADEOFFS</div>
+                    <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{selectedApplicant.sevenDaysBuild}</div>
+                  </div>
+                )}
+
+                {selectedApplicant.whyHackclub && (
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red-400)', marginBottom: 4 }}>// WHY HACKCLUB VIT CHENNAI</div>
+                    <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{selectedApplicant.whyHackclub}</div>
+                  </div>
+                )}
+
+                {/* Candidate Links */}
+                {(selectedApplicant.github || selectedApplicant.linkedin || selectedApplicant.portfolio) && (
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+                    {selectedApplicant.github && (
+                      <a 
+                        href={selectedApplicant.github.startsWith('http') ? selectedApplicant.github : `https://${selectedApplicant.github}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        style={{ fontSize: 12, padding: '6px 12px', background: 'rgba(255,255,255,0.08)', borderRadius: 4, color: '#fff', textDecoration: 'none' }}
+                      >
+                        GitHub ↗
+                      </a>
+                    )}
+                    {selectedApplicant.linkedin && (
+                      <a 
+                        href={selectedApplicant.linkedin.startsWith('http') ? selectedApplicant.linkedin : `https://${selectedApplicant.linkedin}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        style={{ fontSize: 12, padding: '6px 12px', background: 'rgba(0,119,181,0.2)', border: '1px solid rgba(0,119,181,0.4)', borderRadius: 4, color: '#60a5fa', textDecoration: 'none' }}
+                      >
+                        LinkedIn ↗
+                      </a>
+                    )}
+                    {selectedApplicant.portfolio && (
+                      <a 
+                        href={selectedApplicant.portfolio.startsWith('http') ? selectedApplicant.portfolio : `https://${selectedApplicant.portfolio}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        style={{ fontSize: 12, padding: '6px 12px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, color: '#f87171', textDecoration: 'none' }}
+                      >
+                        Portfolio ↗
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: 24 }}>
                 <button 
                   className="btn-primary btn-approve"
                   onClick={() => {
                     handleApprove(selectedApplicant.id);
-                    setSelectedApplicant(null);
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                  Advance to Next Round
+                  {selectedApplicant.status === 'interview' ? 'Accept / Select Candidate' : 'Advance to Next Round'}
                 </button>
                 <button 
                   className="btn-danger"
                   onClick={() => {
                     handleReject(selectedApplicant.id);
-                    setSelectedApplicant(null);
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
