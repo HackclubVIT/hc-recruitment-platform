@@ -143,7 +143,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const updateData: any = { status }
 
-    const anyFinal = ["SELECTED", "REJECTED", "WAITLISTED", "FURTHER_ROUND"].includes(status)
+    const anyFinal = ["SELECTED", "REJECTED", "WAITLISTED"].includes(status)
     if (anyFinal) {
       updateData.decided_by = session.id
       updateData.decided_at = new Date()

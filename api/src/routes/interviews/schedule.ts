@@ -21,8 +21,8 @@ const scheduleSchema = z.object({
   candidate_id: z.number().int().positive(),
   application_id: z.number().int().positive(),
   panel_id: z.number().int().positive(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  start_time: z.string().regex(/^\d{2}:\d{2}$/),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Invalid date format, use YYYY-MM-DD" }),
+  start_time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { message: "Invalid time format, use HH:MM (00:00 - 23:59)" }),
   meeting_link: z.string().url().optional().or(z.literal(''))
 })
 

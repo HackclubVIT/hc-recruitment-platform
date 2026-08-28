@@ -72,6 +72,10 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Both date and start_time must be provided together when rescheduling." })
     }
 
+    if (start_time && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(start_time)) {
+      return res.status(400).json({ error: "Invalid time format, use HH:MM (00:00 - 23:59)" })
+    }
+
     const existingInterview = await prisma.interview.findUnique({
       where: { id },
       include: { candidate: true, panel: { include: { members: true } } }
