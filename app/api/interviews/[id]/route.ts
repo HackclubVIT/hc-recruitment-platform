@@ -2,6 +2,17 @@ import { NextResponse } from "next/server"
 import prisma from "@/lib/db"
 import { getSession } from "@/lib/auth"
 
+const VALID_INTERVIEW_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FEEDBACK_PENDING", "FEEDBACK_SUBMITTED"]
+
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  "SCHEDULED": ["IN_PROGRESS", "CANCELLED"],
+  "IN_PROGRESS": ["COMPLETED", "CANCELLED"],
+  "COMPLETED": ["FEEDBACK_PENDING"],
+  "FEEDBACK_PENDING": ["FEEDBACK_SUBMITTED"],
+  "CANCELLED": [],
+  "FEEDBACK_SUBMITTED": []
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -71,6 +82,19 @@ export async function PUT(
 
     if (session.role === "RECRUITER" && !session.departments.includes(existingInterview.candidate.department)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    // TASK 7: Validate interview status enum
+    if (status) {
+      if (!VALID_INTERVIEW_STATUSES.includes(status)) {
+        return NextResponse.json({ error: `Invalid interview status. Must be one of: ${VALID_INTERVIEW_STATUSES.join(", ")}` }, { status: 400 })
+      }
+
+      // Validate status transition
+      const allowed = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
+      if (!allowed.includes(status) && session.role !== "ADMIN") {
+        return NextResponse.json({ error: `Invalid status transition from ${existingInterview.status} to ${status}` }, { status: 400 })
+      }
     }
 
     const updateData: any = {}
@@ -171,4 +195,3 @@ export async function PUT(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
-
