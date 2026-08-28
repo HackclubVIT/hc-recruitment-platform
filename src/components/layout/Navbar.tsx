@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { DiamondIcon, BellIcon } from "@/components/ui/Icons"
+import { fetchApi } from "@/api-client"
 
 export const Navbar = () => {
   const [notifications, setNotifications] = useState<any[]>([])
@@ -17,7 +18,7 @@ export const Navbar = () => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/notifications`)
+      const res = await fetchApi("/api/notifications")
       if (res.ok) {
         const data = await res.json()
         setNotifications(data.notifications || [])
@@ -28,7 +29,7 @@ export const Navbar = () => {
 
   const markAllRead = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/notifications/read`, { method: "PUT" })
+      await fetchApi("/api/notifications/read", { method: "PUT" })
       setUnreadCount(0)
       setNotifications(notifications.map(n => ({ ...n, read: true })))
     } catch (err) {}
@@ -36,9 +37,8 @@ export const Navbar = () => {
 
   const markAsRead = async (id: number) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/notifications/read`, {
+      await fetchApi("/api/notifications/read", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
       })
       setUnreadCount(prev => Math.max(0, prev - 1))

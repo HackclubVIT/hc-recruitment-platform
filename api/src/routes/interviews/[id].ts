@@ -89,7 +89,7 @@ export const PUT = async (req: Request, res: Response) => {
 
       // Validate status transition
       const allowed = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
-      if (!allowed.includes(status) && session.role !== "ADMIN") {
+      if (!allowed.includes(status)) {
         return res.status(400).json({ error: `Invalid status transition from ${existingInterview.status} to ${status}` })
       }
     }
