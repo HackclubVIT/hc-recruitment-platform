@@ -57,13 +57,16 @@ export const POST = async (req: Request, res: Response) => {
       }
     }
 
-    const appStatus = candidate.applications[0]?.status
+    const appStatus = candidate.applications[candidate.applications.length - 1]?.status
     if (appStatus !== "SHORTLISTED" && appStatus !== "FURTHER_ROUND") {
       return res.status(400).json({ error: `Candidate is not eligible for scheduling (Current status: ${appStatus})` })
     }
 
     // Validate panel exists and is active
-    const panel = await prisma.panel.findUnique({ where: { id: panel_id } })
+    const panel = await prisma.panel.findUnique({ 
+      where: { id: panel_id },
+      include: { members: true }
+    })
     if (!panel) {
       return res.status(404).json({ error: "Panel not found" })
     }
@@ -82,12 +85,12 @@ export const POST = async (req: Request, res: Response) => {
     const nextRound = lastInterview ? lastInterview.round + 1 : 1
 
     // Prevent scheduling conflicts with a transaction
-    const application_id = candidate.applications[0].id;
+    const application_id = candidate.applications[candidate.applications.length - 1].id;
     const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. Conflict Detection for Panel
+      // 1. Conflict Detection for Panel Members (Covers entire Panel too)
+      const memberUserIds = panel.members.map((m: any) => m.user_id)
       const conflict = await tx.interview.findFirst({
         where: {
-          panel_id,
           date: new Date(date),
           status: { not: "CANCELLED" },
           OR: [
@@ -95,12 +98,23 @@ export const POST = async (req: Request, res: Response) => {
               start_time: { lt: endObj },
               end_time: { gt: startObj }
             }
-          ]
+          ],
+          panel: {
+            members: {
+              some: {
+                user_id: { in: memberUserIds }
+              }
+            }
+          }
         }
       })
 
       if (conflict) {
-        throw new Error("SLOT_UNAVAILABLE")
+        if (conflict.panel_id === panel_id) {
+          throw new Error("SLOT_UNAVAILABLE")
+        } else {
+          throw new Error("MEMBER_CONFLICT")
+        }
       }
 
       // 2. Conflict Detection for Candidate
@@ -161,6 +175,9 @@ export const POST = async (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.message === "SLOT_UNAVAILABLE") {
       return res.status(409).json({ error: "Slot unavailable. The panel is already booked for this time." })
+    }
+    if (error.message === "MEMBER_CONFLICT") {
+      return res.status(409).json({ error: "Slot unavailable. One or more panel members are already booked in another panel for this time." })
     }
     if (error.message === "CANDIDATE_CONFLICT") {
       return res.status(409).json({ error: "Candidate is already scheduled for an interview during this time." })

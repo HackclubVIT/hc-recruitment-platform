@@ -115,11 +115,11 @@ export const PUT = async (req: Request, res: Response) => {
     // Transactional logic to prevent race conditions during rescheduling
     const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (date && start_time) {
-        // 1. Conflict Detection for Panel (excluding self)
+        // 1. Conflict Detection for Panel Members (excluding self)
+        const memberUserIds = existingInterview.panel.members.map((m: any) => m.user_id)
         const conflict = await tx.interview.findFirst({
           where: {
             id: { not: id },
-            panel_id: existingInterview.panel_id,
             date: targetDate,
             status: { not: "CANCELLED" },
             OR: [
@@ -127,12 +127,23 @@ export const PUT = async (req: Request, res: Response) => {
                 start_time: { lt: endObj },
                 end_time: { gt: startObj }
               }
-            ]
+            ],
+            panel: {
+              members: {
+                some: {
+                  user_id: { in: memberUserIds }
+                }
+              }
+            }
           }
         })
 
         if (conflict) {
-          throw new Error("SLOT_UNAVAILABLE")
+          if (conflict.panel_id === existingInterview.panel_id) {
+            throw new Error("SLOT_UNAVAILABLE")
+          } else {
+            throw new Error("MEMBER_CONFLICT")
+          }
         }
 
         // 2. Conflict Detection for Candidate (excluding self)
@@ -184,6 +195,9 @@ export const PUT = async (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.message === "SLOT_UNAVAILABLE") {
       return res.status(409).json({ error: "Slot unavailable. The panel is already booked for this time." })
+    }
+    if (error.message === "MEMBER_CONFLICT") {
+      return res.status(409).json({ error: "Slot unavailable. One or more panel members are already booked in another panel for this time." })
     }
     if (error.message === "CANDIDATE_CONFLICT") {
       return res.status(409).json({ error: "Candidate is already scheduled for an interview during this time." })
