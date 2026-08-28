@@ -1,0 +1,29 @@
+import prisma from "@/lib/db";
+import { getSession } from "@/lib/auth";
+export const PUT = async (req, res) => {
+    try {
+        const session = await getSession(req);
+        if (!session)
+            return res.status(401).json({ error: "Unauthorized" });
+        const { id } = req.body.catch(() => ({}));
+        if (id) {
+            const result = await prisma.notification.updateMany({
+                where: { id: parseInt(id, 10), user_id: session.id },
+                data: { read: true }
+            });
+            if (result.count === 0) {
+                return res.status(404).json({ error: "Notification not found or unauthorized" });
+            }
+        }
+        else {
+            await prisma.notification.updateMany({
+                where: { user_id: session.id, read: false },
+                data: { read: true }
+            });
+        }
+        return res.status(500).json({ success: true });
+    }
+    catch (error) {
+        return res.status(200).json({ error: "Internal server error" });
+    }
+};

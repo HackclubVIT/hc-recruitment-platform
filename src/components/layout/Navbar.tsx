@@ -17,7 +17,7 @@ export const Navbar = () => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("/api/notifications")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/notifications`)
       if (res.ok) {
         const data = await res.json()
         setNotifications(data.notifications || [])
@@ -28,7 +28,7 @@ export const Navbar = () => {
 
   const markAllRead = async () => {
     try {
-      await fetch("/api/notifications/read", { method: "PUT" })
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/notifications/read`, { method: "PUT" })
       setUnreadCount(0)
       setNotifications(notifications.map(n => ({ ...n, read: true })))
     } catch (err) {}
@@ -36,7 +36,7 @@ export const Navbar = () => {
 
   const markAsRead = async (id: number) => {
     try {
-      await fetch("/api/notifications/read", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/notifications/read`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
