@@ -70,9 +70,23 @@ export async function PUT(
       }
     }
 
+    const finalDecisions = ["SELECTED", "REJECTED", "WAITLISTED", "FURTHER_ROUND"]
+    const isFinalDecision = finalDecisions.includes(status)
+
+    const updateData: any = { status }
+
+    if (isFinalDecision) {
+      updateData.decided_by = session.id
+      updateData.decided_at = new Date()
+      // If the frontend sent a reason, capture it.
+      if (body.reason) {
+        updateData.decision_reason = body.reason
+      }
+    }
+
     const application = await prisma.application.update({
       where: { id },
-      data: { status },
+      data: updateData,
       include: { candidate: true }
     })
 

@@ -26,23 +26,72 @@ export async function POST(req: Request) {
 
     const data = parsed.data
 
-    // Check if form is published
-    const form = await prisma.form.findUnique({ where: { id: data.form_id } })
+    // Check if form is published and load questions
+    const form = await prisma.form.findUnique({ 
+      where: { id: data.form_id },
+      include: { questions: true }
+    })
+    
     if (!form || form.status !== "PUBLISHED") {
       return NextResponse.json({ error: "Form is not active or does not exist." }, { status: 400 })
     }
 
-    // 1. Create candidate
-    const candidate = await prisma.candidate.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        department: data.department,
-        registration_number: data.registration_number,
-        resume_url: data.resume_url || null,
-      },
+    // Dynamic Answer Validation
+    const submittedAnswers: Record<string, any> = data.answers || {}
+    for (const q of form.questions) {
+      const answer = submittedAnswers[q.id.toString()]
+      
+      // 1. Required check
+      if (q.required && (answer === undefined || answer === null || answer === "" || (Array.isArray(answer) && answer.length === 0))) {
+        return NextResponse.json({ error: `Question '${q.question}' is required.` }, { status: 400 })
+      }
+
+      if (answer) {
+        // 2. Options validation for RADIO and DROPDOWN
+        if ((q.type === 'RADIO' || q.type === 'DROPDOWN') && q.options.length > 0) {
+          if (!q.options.includes(String(answer))) {
+            return NextResponse.json({ error: `Invalid option selected for '${q.question}'.` }, { status: 400 })
+          }
+        }
+        
+        // 3. Options validation for CHECKBOX (answers could be array or comma-separated string)
+        if (q.type === 'CHECKBOX' && q.options.length > 0) {
+          let selected = []
+          if (Array.isArray(answer)) selected = answer
+          else if (typeof answer === 'string') selected = answer.split(',').map(s => s.trim())
+          else selected = [String(answer)]
+          
+          for (const s of selected) {
+            if (!q.options.includes(s)) {
+              return NextResponse.json({ error: `Invalid option '${s}' selected for '${q.question}'.` }, { status: 400 })
+            }
+          }
+        }
+      }
+    }
+
+    // 1. Check duplicate candidate globally or just use unique constraint
+    let candidate = await prisma.candidate.findFirst({
+      where: {
+        OR: [
+          { email: data.email },
+          { registration_number: data.registration_number }
+        ]
+      }
     })
+
+    if (!candidate) {
+      candidate = await prisma.candidate.create({
+        data: {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          department: data.department,
+          registration_number: data.registration_number,
+          resume_url: data.resume_url || null,
+        },
+      })
+    }
 
     // 2. Create Application
     const application = await prisma.application.create({

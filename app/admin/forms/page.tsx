@@ -109,11 +109,12 @@ export default function FormsPage() {
                       {f.questions?.length || 0} Questions
                     </td>
                     <td className="p-4 flex gap-2">
+                      <Button variant="ghost" className="py-2 px-4 text-xs" onClick={() => window.location.href=`/admin/forms/${f.id}`}>MANAGE</Button>
                       {f.status === "DRAFT" && (
-                        <Button variant="ghost" className="py-2 px-4 text-xs" onClick={() => handleStatusChange(f.id, "PUBLISHED")}>PUBLISH</Button>
+                        <Button variant="ghost" className="py-2 px-4 text-xs text-[#2e7d32]" onClick={() => handleStatusChange(f.id, "PUBLISHED")}>PUBLISH</Button>
                       )}
                       {f.status === "PUBLISHED" && (
-                        <Button variant="ghost" className="py-2 px-4 text-xs" onClick={() => handleStatusChange(f.id, "CLOSED")}>CLOSE</Button>
+                        <Button variant="ghost" className="py-2 px-4 text-xs text-[#ac120c]" onClick={() => handleStatusChange(f.id, "CLOSED")}>CLOSE</Button>
                       )}
                     </td>
                   </tr>

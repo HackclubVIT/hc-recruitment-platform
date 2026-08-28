@@ -56,8 +56,17 @@ export default function DynamicRecruitmentPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleDynamicChange = (questionId: string, value: string) => {
-    setDynamicAnswers({ ...dynamicAnswers, [questionId]: value })
+  const handleDynamicChange = (questionId: string, value: string | string[]) => {
+    setDynamicAnswers({ ...dynamicAnswers, [questionId]: value as string })
+  }
+
+  const handleCheckboxChange = (questionId: string, option: string, checked: boolean) => {
+    const current = (dynamicAnswers[questionId] as unknown as string[]) || []
+    if (checked) {
+      handleDynamicChange(questionId, [...current, option] as unknown as string)
+    } else {
+      handleDynamicChange(questionId, current.filter(o => o !== option) as unknown as string)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -211,12 +220,47 @@ export default function DynamicRecruitmentPage() {
                               value={opt}
                               checked={dynamicAnswers[q.id] === opt}
                               onChange={() => handleDynamicChange(q.id.toString(), opt)}
-                              required={q.required}
+                              required={q.required && !dynamicAnswers[q.id]}
                               className="appearance-none w-4 h-4 rounded-full border border-[#d07d22] checked:bg-[#ac120c] transition-all"
                             />
                             <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
                           </label>
                         ))}
+                      </div>
+                    )}
+
+                    {q.type === "DROPDOWN" && q.options && (
+                      <select
+                        value={dynamicAnswers[q.id] || ""}
+                        onChange={(e) => handleDynamicChange(q.id.toString(), e.target.value)}
+                        required={q.required}
+                        className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
+                      >
+                        <option value="" disabled>Select an option...</option>
+                        {q.options.map((opt: string, idx: number) => (
+                          <option key={idx} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {q.type === "CHECKBOX" && q.options && (
+                      <div className="flex flex-col gap-2 mt-2">
+                        {q.options.map((opt: string, idx: number) => {
+                          const currentAnswers = (dynamicAnswers[q.id] as unknown as string[]) || [];
+                          return (
+                            <label key={idx} className="flex items-center gap-3 cursor-pointer group">
+                              <input 
+                                type="checkbox" 
+                                name={`question_${q.id}`} 
+                                value={opt}
+                                checked={currentAnswers.includes(opt)}
+                                onChange={(e) => handleCheckboxChange(q.id.toString(), opt, e.target.checked)}
+                                className="appearance-none w-4 h-4 border border-[#d07d22] checked:bg-[#ac120c] transition-all rounded-sm"
+                              />
+                              <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
+                            </label>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
