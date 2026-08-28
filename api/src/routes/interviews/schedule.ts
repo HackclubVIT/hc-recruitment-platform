@@ -78,7 +78,7 @@ export const POST = async (req: Request, res: Response) => {
     // Validate panel exists and is active
     const panel = await prisma.panel.findUnique({ 
       where: { id: panel_id },
-      include: { members: { where: { active: true } } }
+      include: { members: { where: { active: true, user: { active: true } }, include: { user: true } } }
     })
     if (!panel) {
       return res.status(404).json({ error: "Panel not found" })
@@ -179,8 +179,7 @@ export const POST = async (req: Request, res: Response) => {
 
     await logAudit(session.id, "SCHEDULED_INTERVIEW", "Interview", interview.id)
 
-    const panelMembers = await prisma.panelMember.findMany({ where: { panel_id, active: true } })
-    for (const pm of panelMembers) {
+    for (const pm of panel.members) {
       await createNotification(
         pm.user_id,
         "New Interview Scheduled",

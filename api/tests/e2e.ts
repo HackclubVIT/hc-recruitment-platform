@@ -480,6 +480,67 @@ async function runTests() {
   })
   if (jwtTestAfter.status !== 401 && jwtTestAfter.status !== 403) throw new Error("C accessed interview with a revoked explicit JWT! Status: " + jwtTestAfter.status)
 
+  // FINAL SMALL SECURITY FIX (Req 7)
+  // pmB is still an active PanelMember on Panel A.
+  // We globally deactivate User B.
+  await prisma.user.update({ where: { id: panelMemberB.id }, data: { active: false } })
+  
+  // Schedule a new interview (use candE2 since they are available again if we use a different date or they don't have overlapping times)
+  // Actually let's create a new candidate I to be safe.
+  const applyResI = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Candidate I', email: 'candI@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG011',
+      answers: { [q1.id.toString()]: "I text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  const appI = (await applyResI.json()).applicationId
+  const candI = await prisma.candidate.findFirst({ where: { email: 'candI@test.com' } })
+  await makeRequest(`/applications/${appI}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appI}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+
+  const schedIRes = await makeRequest('/interviews/schedule', 'POST', {
+    candidate_id: candI!.id, application_id: appI, panel_id: panelA.id,
+    date: '2026-11-05', start_time: '10:00'
+  }, 'ADMIN', admin.id)
+  if (schedIRes.status !== 201) throw new Error("Scheduling I failed: " + JSON.stringify(schedIRes.data))
+  const intI = schedIRes.data.interview
+
+  // Verify B is NOT in assigned_members
+  const verifyI = await prisma.interview.findUnique({ where: { id: intI.id }, include: { assigned_members: true } })
+  if (verifyI!.assigned_members.some((m: any) => m.user_id === panelMemberB.id)) {
+    throw new Error("Globally deactivated User B was improperly assigned to new interview!")
+  }
+
+  // Reactivate User B
+  await prisma.user.update({ where: { id: panelMemberB.id }, data: { active: true } })
+
+  // Schedule another
+  const applyResJ = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Candidate J', email: 'candJ@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG012',
+      answers: { [q1.id.toString()]: "J text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  const appJ = (await applyResJ.json()).applicationId
+  const candJ = await prisma.candidate.findFirst({ where: { email: 'candJ@test.com' } })
+  await makeRequest(`/applications/${appJ}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appJ}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+
+  const schedJRes = await makeRequest('/interviews/schedule', 'POST', {
+    candidate_id: candJ!.id, application_id: appJ, panel_id: panelA.id,
+    date: '2026-11-06', start_time: '10:00'
+  }, 'ADMIN', admin.id)
+  if (schedJRes.status !== 201) throw new Error("Scheduling J failed: " + JSON.stringify(schedJRes.data))
+  const intJ = schedJRes.data.interview
+
+  // Verify B IS in assigned_members
+  const verifyJ = await prisma.interview.findUnique({ where: { id: intJ.id }, include: { assigned_members: true } })
+  if (!verifyJ!.assigned_members.some((m: any) => m.user_id === panelMemberB.id)) {
+    throw new Error("Reactivated User B was improperly excluded from new interview!")
+  }
+
   console.log("All Security and E2E Tests Passed Successfully!")
 }
 
