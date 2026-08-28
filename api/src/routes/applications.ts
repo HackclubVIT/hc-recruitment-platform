@@ -13,7 +13,7 @@ const applicationSchema = z.object({
   registration_number: z.string().min(4),
   resume_url: z.string().url().refine(val => val.startsWith('https://'), { message: "resume_url must use HTTPS protocol" }).optional().or(z.literal('')),
   form_id: z.number().int().positive(),
-  answers: z.record(z.string(), z.string()).optional()
+  answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional()
 })
 
 export const POST = async (req: Request, res: Response) => {
@@ -39,6 +39,14 @@ export const POST = async (req: Request, res: Response) => {
 
     // Dynamic Answer Validation
     const submittedAnswers: Record<string, any> = data.answers || {}
+    
+    const validQuestionIds = new Set(form.questions.map((q: any) => q.id.toString()))
+    for (const key in submittedAnswers) {
+      if (!validQuestionIds.has(key)) {
+        return res.status(400).json({ error: `Unknown question ID submitted: ${key}` })
+      }
+    }
+
     for (const q of form.questions) {
       const answer = submittedAnswers[q.id.toString()]
       
@@ -47,7 +55,7 @@ export const POST = async (req: Request, res: Response) => {
         return res.status(400).json({ error: `Question '${q.question}' is required.` })
       }
 
-      if (answer) {
+      if (answer !== undefined && answer !== null && answer !== "") {
         // 2. Options validation for RADIO and DROPDOWN
         if ((q.type === 'RADIO' || q.type === 'DROPDOWN') && q.options.length > 0) {
           if (!q.options.includes(String(answer))) {
@@ -80,6 +88,12 @@ export const POST = async (req: Request, res: Response) => {
         ]
       }
     })
+
+    if (candidate) {
+      if (candidate.email !== data.email || candidate.registration_number !== data.registration_number) {
+        return res.status(400).json({ error: "Identity mismatch. Please use the exact email and registration number you previously used." })
+      }
+    }
 
     if (!candidate) {
       candidate = await prisma.candidate.create({
@@ -130,7 +144,7 @@ export const POST = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Application submission error:", error)
     if (error.code === 'P2002') {
-      return res.status(400).json({ error: "Candidate with this Registration number or email already exists." })
+      return res.status(409).json({ error: "An application for this form already exists." })
     }
     return res.status(500).json(
       { error: "Internal server error" })

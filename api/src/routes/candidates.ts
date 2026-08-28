@@ -35,7 +35,16 @@ export const GET = async (req: Request, res: Response) => {
             members: {
               some: { user_id: session.id }
             }
-          }
+          },
+          ...(status !== "ALL" ? { application: { status: status } } : {})
+        }
+      }
+    } 
+    
+    if (status !== "ALL" && session.role !== "PANEL_MEMBER") {
+      whereClause.applications = {
+        some: {
+          status: status
         }
       }
     }
@@ -46,14 +55,6 @@ export const GET = async (req: Request, res: Response) => {
         { email: { contains: q, mode: 'insensitive' } },
         { registration_number: { contains: q, mode: 'insensitive' } },
       ]
-    }
-
-    if (status !== "ALL") {
-      whereClause.applications = {
-        some: {
-          status: status
-        }
-      }
     }
 
     const page = parseInt(searchParams.get("page") || "1")

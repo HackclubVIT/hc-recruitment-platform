@@ -14,6 +14,7 @@ export default function DynamicRecruitmentPage() {
   const params = useParams()
   const [formId, setFormId] = useState<number>(1)
   const [questions, setQuestions] = useState<any[]>([])
+  const [formInfo, setFormInfo] = useState<any>(null)
   
   const [formData, setFormData] = useState<Record<string, string>>({
     name: "",
@@ -46,7 +47,13 @@ export default function DynamicRecruitmentPage() {
       const res = await fetchApi(`/api/forms/${formId}`)
       if (!res.ok) throw new Error("Form not found")
       const data = await res.json()
-      setQuestions(data.questions || [])
+      
+      if (data.form?.status !== "PUBLISHED") {
+        throw new Error("This recruitment form is not currently open for applications.")
+      }
+
+      setFormInfo(data.form)
+      setQuestions(data.form?.questions || [])
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -125,10 +132,10 @@ export default function DynamicRecruitmentPage() {
           </div>
           <div className="text-center">
             <h1 className="font-display font-black text-[24px] sm:text-[32px] text-[#f4ede4] tracking-wide uppercase">
-              Recruitment Form #{formId}
+              {formInfo?.title || `Recruitment Form #${formId}`}
             </h1>
             <p className="font-mono text-[#bfa8a2] text-[12px] uppercase tracking-[0.1em] mt-2">
-              System Initiation
+              {formInfo?.description || "System Initiation"}
             </p>
           </div>
         </div>
