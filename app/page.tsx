@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { api, getToken, clearToken, BackendApplication } from "./api";
+import { api, getToken, clearToken, BackendApplication } from "./api-client";
 
 // ── Types ────────────────────────────────────────────────────
 interface Applicant {
@@ -152,7 +152,7 @@ export default function Home() {
       const rawApps = await api.getRecruitmentApplications();
       if (Array.isArray(rawApps) && rawApps.length > 0) {
         const mapped: Applicant[] = rawApps.map((a, idx) => {
-          const initials = a.name ? a.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AP';
+          const initials = a.name ? a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'AP';
           const domainKey = mapDomainKey(a.firstPreference || a.domain || 'web');
           const status = mapBackendStatus(a.status);
           return {
