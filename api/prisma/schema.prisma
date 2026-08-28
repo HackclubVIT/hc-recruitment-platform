@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       String   @default("PANEL_MEMBER") // ADMIN, RECRUITER, PANEL_MEMBER
+  departments String[] // For RECRUITER role
+  active     Boolean  @default(true) // For disabling user access
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  panel_members PanelMember[]
+  interviews    Interview[]
+  notifications Notification[]
+  audit_logs    AuditLog[]
+
+  @@map("users")
+}
+
+model Form {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?
+  status       String   @default("DRAFT") // DRAFT, PUBLISHED, CLOSED
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  published_at DateTime?
+  closed_at    DateTime?
+
+  questions    FormQuestion[]
+  applications Application[]
+
+  @@map("forms")
+}
+
+model FormQuestion {
+  id       Int      @id @default(autoincrement())
+  form_id  Int
+  question String
+  type     String
+  required Boolean  @default(true)
+  options  String[] // Using String[] for options
+
+  form     Form     @relation(fields: [form_id], references: [id])
+
+  @@map("form_questions")
+}
+
+model Candidate {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  email               String   @unique
+  phone               String
+  department          String
+  registration_number String   @unique
+  resume_url          String?
+  created_at          DateTime @default(now())
+
+  applications        Application[]
+  interviews          Interview[]
+
+  @@map("candidates")
+}
+
+model Application {
+  id              Int      @id @default(autoincrement())
+  candidate_id    Int
+  form_id         Int
+  status          String   @default("APPLIED")
+  submitted_at    DateTime @default(now())
+  answers         Json?
+  
+  decided_by      String?
+  decided_at      DateTime?
+  decision_reason String?
+
+  candidate       Candidate @relation(fields: [candidate_id], references: [id])
+  form            Form      @relation(fields: [form_id], references: [id])
+  interviews      Interview[]
+
+  @@unique([candidate_id, form_id])
+  @@map("applications")
+}
+
+model Panel {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+
+  members     PanelMember[]
+  interviews  Interview[]
+
+  @@map("panels")
+}
+
+model PanelMember {
+  id       Int    @id @default(autoincrement())
+  panel_id Int
+  user_id  String
+  active   Boolean @default(true)
+
+  panel    Panel  @relation(fields: [panel_id], references: [id])
+  user     User   @relation(fields: [user_id], references: [id])
+  feedback Feedback[]
+  assigned_interviews Interview[] @relation("InterviewAssignments")
+
+  @@map("panel_members")
+}
+
+model Interview {
+  id             Int      @id @default(autoincrement())
+  candidate_id   Int
+  application_id Int
+  panel_id       Int
+  recruiter_id   String
+  round          Int      @default(1)
+  date           DateTime
+  start_time     DateTime
+  end_time       DateTime
+  meeting_link   String?
+  status         String   @default("SCHEDULED")
+
+  candidate      Candidate   @relation(fields: [candidate_id], references: [id])
+  application    Application @relation(fields: [application_id], references: [id])
+  panel          Panel       @relation(fields: [panel_id], references: [id])
+  recruiter      User        @relation(fields: [recruiter_id], references: [id])
+  feedback       Feedback[]
+  assigned_members PanelMember[] @relation("InterviewAssignments")
+
+  @@map("interviews")
+}
+
+model Feedback {
+  id                   Int      @id @default(autoincrement())
+  interview_id         Int
+  panel_member_id      Int
+  technical_score      Int
+  communication_score  Int
+  problem_solving_score Int
+  confidence_score     Int
+  teamwork_score       Int
+  comments             String?
+  decision             String
+
+  interview            Interview   @relation(fields: [interview_id], references: [id])
+  panel_member         PanelMember @relation(fields: [panel_member_id], references: [id])
+
+  @@unique([interview_id, panel_member_id])
+  @@map("feedback")
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  user_id    String
+  title      String
+  message    String
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id])
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  user_id    String?
+  action     String
+  entity     String
+  entity_id  String?
+  timestamp  DateTime @default(now())
+
+  user       User?     @relation(fields: [user_id], references: [id])
+
+  @@map("audit_logs")
+}
+
