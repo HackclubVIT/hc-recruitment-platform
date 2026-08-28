@@ -9,15 +9,31 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const logs = await prisma.auditLog.findMany({
-      include: {
-        user: { select: { name: true, email: true, role: true } }
-      },
-      orderBy: { timestamp: 'desc' },
-      take: 100 // Limit for performance
-    })
+    // TASK 9: Proper pagination
+    const { searchParams } = new URL(req.url)
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "20")
+    const skip = (page - 1) * limit
 
-    return NextResponse.json({ logs }, { status: 200 })
+    const [items, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        include: {
+          user: { select: { name: true, email: true, role: true } }
+        },
+        orderBy: { timestamp: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.auditLog.count()
+    ])
+
+    return NextResponse.json({
+      items,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }, { status: 200 })
   } catch (error) {
     console.error("Fetch audit logs error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
