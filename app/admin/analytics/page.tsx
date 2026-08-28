@@ -14,7 +14,7 @@ export default function AnalyticsPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch("/api/analytics")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/analytics`)
       const result = await res.json()
       setData(result)
     } catch (err) {

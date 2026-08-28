@@ -20,7 +20,7 @@ export default function ShortlistedCandidatesPage() {
   const fetchCandidates = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/candidates?q=${search}&status=SHORTLISTED`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates?q=${search}&status=SHORTLISTED`)
       const data = await res.json()
       setCandidates(data.candidates || [])
     } catch (err) {

@@ -15,7 +15,7 @@ export default function RecruiterApplicationsPage() {
 
   const fetchApplications = async () => {
     try {
-      const res = await fetch(`/api/candidates`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates`)
       const data = await res.json()
       setCandidates(data.candidates || [])
     } catch (err) {

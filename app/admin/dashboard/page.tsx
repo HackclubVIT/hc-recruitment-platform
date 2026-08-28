@@ -11,8 +11,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/analytics").then(res => res.json()),
-      fetch("/api/audit-logs").then(res => res.json())
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/analytics`).then(res => res.json()),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/audit-logs`).then(res => res.json())
     ]).then(([analyticsData, logsData]) => {
       setMetrics(analyticsData.metrics || {})
       setRecentLogs((logsData.logs || []).slice(0, 10)) // Get top 10 recent

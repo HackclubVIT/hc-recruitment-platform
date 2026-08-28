@@ -19,7 +19,7 @@ export default function SingleInterviewPage({ params }: { params: Promise<{ id: 
 
   const fetchInterview = async () => {
     try {
-      const res = await fetch(`/api/interviews/${resolvedParams.id}`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/interviews/${resolvedParams.id}`)
       const data = await res.json()
       setInterview(data.interview)
     } catch (err) {

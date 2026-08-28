@@ -27,7 +27,7 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/users")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users`)
       const data = await res.json()
       setUsers(data.users || [])
     } catch (err) {
@@ -45,7 +45,7 @@ export default function UsersPage() {
         departments: formData.departments.split(',').map(d => d.trim())
       }
       const method = formData.id ? "PUT" : "POST"
-      await fetch("/api/users", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users`, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -128,7 +128,7 @@ export default function UsersPage() {
                       <button 
                         onClick={async () => {
                           if (confirm("Are you sure you want to delete this user?")) {
-                            await fetch("/api/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: user.id }) })
+                            await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: user.id }) })
                             fetchUsers()
                           }
                         }}

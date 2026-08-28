@@ -23,7 +23,7 @@ export default function AdminCandidatesPage() {
     setLoading(true)
     try {
       const deptQuery = departmentFilter !== "ALL" ? `&department=${departmentFilter}` : ""
-      const res = await fetch(`/api/candidates?q=${search}&status=${statusFilter}${deptQuery}`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates?q=${search}&status=${statusFilter}${deptQuery}`)
       const data = await res.json()
       setCandidates(data.candidates || [])
     } catch (err) {

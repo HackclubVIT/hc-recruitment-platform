@@ -14,7 +14,7 @@ export default function AuditLogsPage() {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch("/api/audit-logs")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/audit-logs`)
       const data = await res.json()
       setLogs(data.logs || [])
     } catch (err) {

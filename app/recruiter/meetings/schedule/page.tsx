@@ -28,8 +28,8 @@ function ScheduleForm() {
   useEffect(() => {
     // Fetch dependencies
     Promise.all([
-      fetch("/api/panels").then(r => r.json()),
-      fetch("/api/candidates?status=SHORTLISTED").then(r => r.json())
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`).then(r => r.json()),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates?status=SHORTLISTED`).then(r => r.json())
     ]).then(([panelData, candidateData]) => {
       setPanels(panelData.panels || [])
       setCandidates(candidateData.candidates || [])
@@ -42,7 +42,7 @@ function ScheduleForm() {
     setError("")
 
     try {
-      const res = await fetch("/api/interviews/schedule", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/interviews/schedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

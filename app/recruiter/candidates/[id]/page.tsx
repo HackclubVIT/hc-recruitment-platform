@@ -19,7 +19,7 @@ export default function CandidateProfile({ params }: { params: Promise<{ id: str
 
   const fetchCandidate = async () => {
     try {
-      const res = await fetch(`/api/candidates/${resolvedParams.id}`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates/${resolvedParams.id}`)
       const data = await res.json()
       setCandidate(data.candidate)
     } catch (err) {
@@ -32,7 +32,7 @@ export default function CandidateProfile({ params }: { params: Promise<{ id: str
   const handleAction = async (status: string) => {
     try {
       const appId = candidate.applications[0].id
-      await fetch(`/api/applications/${appId}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications/${appId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
