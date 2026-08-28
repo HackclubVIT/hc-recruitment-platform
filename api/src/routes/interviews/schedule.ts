@@ -19,6 +19,7 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
 
 const scheduleSchema = z.object({
   candidate_id: z.number().int().positive(),
+  application_id: z.number().int().positive(),
   panel_id: z.number().int().positive(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time: z.string().regex(/^\d{2}:\d{2}$/),
@@ -39,15 +40,19 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid payload data", details: parsed.error.format() })
     }
 
-    const { candidate_id, panel_id, date, start_time, meeting_link } = parsed.data
+    const { candidate_id, application_id, panel_id, date, start_time, meeting_link } = parsed.data
 
     const candidate = await prisma.candidate.findUnique({
       where: { id: candidate_id },
-      include: { applications: { orderBy: { submitted_at: 'desc' }, take: 1 } }
+      include: { applications: { where: { id: application_id } } }
     })
 
     if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" })
+    }
+
+    if (candidate.applications.length === 0) {
+      return res.status(404).json({ error: "Application not found or does not belong to candidate" })
     }
 
     if (session.role === "RECRUITER") {
@@ -57,9 +62,9 @@ export const POST = async (req: Request, res: Response) => {
       }
     }
 
-    const appStatus = candidate.applications[candidate.applications.length - 1]?.status
+    const appStatus = candidate.applications[0].status
     if (appStatus !== "SHORTLISTED" && appStatus !== "FURTHER_ROUND") {
-      return res.status(400).json({ error: `Candidate is not eligible for scheduling (Current status: ${appStatus})` })
+      return res.status(400).json({ error: `Application is not eligible for scheduling (Current status: ${appStatus})` })
     }
 
     // Validate panel exists and is active
@@ -77,15 +82,14 @@ export const POST = async (req: Request, res: Response) => {
     const startObj = new Date(`${date}T${start_time}:00Z`)
     const endObj = new Date(startObj.getTime() + 10 * 60000) // 10 minutes default
 
-    // Calculate next round number
+    // Calculate next round number based on existing interviews for THIS application
     const lastInterview = await prisma.interview.findFirst({
-      where: { candidate_id, status: { not: "CANCELLED" } },
+      where: { candidate_id, application_id, status: { not: "CANCELLED" } },
       orderBy: { round: 'desc' }
     })
     const nextRound = lastInterview ? lastInterview.round + 1 : 1
 
     // Prevent scheduling conflicts with a transaction
-    const application_id = candidate.applications[candidate.applications.length - 1].id;
     const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Conflict Detection for Panel Members (Covers entire Panel too)
       const memberUserIds = panel.members.map((m: any) => m.user_id)
