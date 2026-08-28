@@ -32,13 +32,13 @@ export default function SingleInterviewPage({ params }: { params: Promise<{ id: 
   }
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString("en-US", {
+    return new Date(dateStr).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", 
       hour: "2-digit", minute: "2-digit"
     })
   }
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", 
       weekday: "long", month: "long", day: "numeric", year: "numeric"
     })
   }

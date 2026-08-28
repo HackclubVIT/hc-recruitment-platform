@@ -111,7 +111,7 @@ export const PUT = async (req: Request, res: Response) => {
     let targetDate = existingInterview.date
 
     if (date && start_time) {
-      startObj = new Date(`${date}T${start_time}:00Z`)
+      startObj = new Date(`${date}T${start_time}:00+05:30`)
       endObj = new Date(startObj.getTime() + 10 * 60000)
       targetDate = new Date(date)
       

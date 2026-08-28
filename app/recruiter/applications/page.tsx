@@ -28,7 +28,7 @@ export default function RecruiterApplicationsPage() {
   }
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", 
       month: "short", day: "numeric", year: "numeric"
     })
   }

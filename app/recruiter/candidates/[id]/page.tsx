@@ -143,12 +143,12 @@ export default function RecruiterCandidateProfile() {
             {candidate.interviews?.map((interview: any, i: number) => (
               <div key={interview.id} className="bg-[#1a0606] p-4 rounded border border-[#2a0d0d] flex flex-col gap-4">
                 <div className="flex justify-between border-b border-[#2a0d0d] pb-2">
-                  <h3 className="text-[#f4ede4] font-medium">Round {i + 1} - {new Date(interview.date).toLocaleDateString()}</h3>
+                  <h3 className="text-[#f4ede4] font-medium">Round {i + 1} - {new Date(interview.date).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })}</h3>
                   <StatusPill status={interview.status === 'COMPLETED' ? 'selected' : 'pending'}>{interview.status}</StatusPill>
                 </div>
                 
                 <div className="flex flex-col gap-2">
-                  <p className="text-[#bfa8a2] text-sm">Time: {new Date(interview.start_time).toLocaleTimeString()} - {new Date(interview.end_time).toLocaleTimeString()}</p>
+                  <p className="text-[#bfa8a2] text-sm">Time: {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - {new Date(interview.end_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}</p>
                   {interview.meeting_link && (
                     <a href={interview.meeting_link} target="_blank" rel="noreferrer" className="text-[#d07d22] text-sm underline">Join Meeting</a>
                   )}

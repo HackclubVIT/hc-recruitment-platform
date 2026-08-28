@@ -92,6 +92,14 @@ export const DELETE = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
 
+    const applicationCount = await prisma.application.count({
+      where: { form_id: id }
+    })
+
+    if (applicationCount > 0) {
+      return res.status(409).json({ error: "This form cannot be deleted because applications already exist. Close the form instead." })
+    }
+
     // Ensure we delete form questions first
     await prisma.$transaction([
       prisma.formQuestion.deleteMany({ where: { form_id: id } }),

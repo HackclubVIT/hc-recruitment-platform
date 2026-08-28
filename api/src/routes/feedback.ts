@@ -97,12 +97,16 @@ export const POST = async (req: Request, res: Response) => {
       })
 
       // Check if ALL panel members have submitted feedback
-      const totalMembers = interview.panel.members.length
-      const feedbackCount = await tx.feedback.count({
-        where: { interview_id }
+      const expectedMemberIds = interview.panel.members.map((m: any) => m.id).sort()
+      const submittedFeedbacks = await tx.feedback.findMany({
+        where: { interview_id },
+        select: { panel_member_id: true }
       })
+      const submittedMemberIds = submittedFeedbacks.map((f: any) => f.panel_member_id).sort()
 
-      const allSubmitted = feedbackCount >= totalMembers
+      const allSubmitted = expectedMemberIds.length > 0 && 
+                           expectedMemberIds.length === submittedMemberIds.length && 
+                           expectedMemberIds.every((id: number, index: number) => id === submittedMemberIds[index])
 
       await tx.interview.update({
         where: { id: interview_id },

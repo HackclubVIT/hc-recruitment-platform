@@ -132,7 +132,7 @@ export default function AnalyticsPage() {
                     <div key={day.date} className="relative flex flex-col justify-end items-center group h-full flex-1">
                       <div className="w-full bg-[#ac120c]/80 hover:bg-[#ac120c] transition-all" style={{ height: `${heightPercentage}%`, minHeight: '4px' }} />
                       <div className="absolute -bottom-6 font-mono text-[8px] text-[#bfa8a2] whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">
-                        {new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric'})}
+                        {new Date(day.date).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata',  month: 'short', day: 'numeric'})}
                       </div>
                       <div className="absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity font-mono text-[10px] text-[#f4ede4]">
                         {day.count}

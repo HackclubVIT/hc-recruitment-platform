@@ -39,7 +39,7 @@ export default function AdminDashboard() {
 
   const formatTimestamp = (dateStr: string) => {
     const d = new Date(dateStr)
-    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`
+    return `${d.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })} ${d.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit'})}`
   }
 
   return (

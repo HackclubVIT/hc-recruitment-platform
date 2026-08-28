@@ -4,3 +4,24 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+export function formatTime(dateStr: string | Date): string {
+  return new Date(dateStr).toLocaleTimeString("en-US", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit"
+  })
+}
+
+export function formatDate(dateStr: string | Date): string {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    timeZone: "Asia/Kolkata",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  })
+}
+
+export function formatDateTime(dateStr: string | Date): string {
+  return `${formatDate(dateStr)} ${formatTime(dateStr)}`
+}

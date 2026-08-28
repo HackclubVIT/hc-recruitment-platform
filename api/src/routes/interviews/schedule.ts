@@ -79,7 +79,7 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Panel is not active" })
     }
 
-    const startObj = new Date(`${date}T${start_time}:00Z`)
+    const startObj = new Date(`${date}T${start_time}:00+05:30`)
     const endObj = new Date(startObj.getTime() + 10 * 60000) // 10 minutes default
 
     // Calculate next round number based on existing interviews for THIS application

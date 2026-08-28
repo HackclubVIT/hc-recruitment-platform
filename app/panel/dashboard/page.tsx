@@ -97,7 +97,7 @@ export default function PanelDashboard() {
                   todaySchedule.map((interview: any) => (
                     <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">
-                        {new Date(interview.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata',  hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="p-4 text-[#f4ede4] font-medium">{interview.candidate.name}</td>
                       <td className="p-4">

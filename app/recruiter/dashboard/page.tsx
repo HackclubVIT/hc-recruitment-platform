@@ -106,7 +106,7 @@ export default function RecruiterDashboard() {
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{app.candidate.email}</p>
                       </td>
                       <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">
-                        {new Date(app.submitted_at).toLocaleDateString()}
+                        {new Date(app.submitted_at).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })}
                       </td>
                       <td className="p-4">
                         <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : app.status.toLowerCase().includes('select') ? 'active' : 'pending'}>
