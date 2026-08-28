@@ -68,6 +68,15 @@ export async function GET(req: Request) {
       .sort()
       .map(date => ({ date, count: interviewsByDayRaw[date] }))
 
+    // TASK 8: Recent activity from audit logs
+    const recentActivity = await prisma.auditLog.findMany({
+      include: {
+        user: { select: { name: true, email: true, role: true } }
+      },
+      orderBy: { timestamp: 'desc' },
+      take: 10
+    })
+
     return NextResponse.json({
       metrics: {
         totalApplications,
@@ -85,7 +94,8 @@ export async function GET(req: Request) {
       applicationsByStatus,
       applicationsByDepartment,
       selectedVsRejected,
-      interviewsByDay
+      interviewsByDay,
+      recentActivity
     }, { status: 200 })
   } catch (error) {
     console.error("Fetch analytics error:", error)
