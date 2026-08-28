@@ -107,9 +107,15 @@ export default function AdminCandidatesPage() {
                   const appStatus = candidate.applications?.[0]?.status || "APPLIED"
                   return (
                     <tr key={candidate.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                      <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">{candidate.registration_number}</td>
                       <td className="p-4">
-                        <p className="text-[#f4ede4] font-medium">{candidate.name}</p>
+                        <Link href={`/admin/candidates/${candidate.id}`} className="text-[#d07d22] font-mono text-[13px] font-bold hover:underline">
+                          {candidate.registration_number}
+                        </Link>
+                      </td>
+                      <td className="p-4">
+                        <Link href={`/admin/candidates/${candidate.id}`} className="text-[#f4ede4] font-medium hover:underline">
+                          {candidate.name}
+                        </Link>
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{candidate.email}</p>
                       </td>
                       <td className="p-4 text-[#bfa8a2]">{candidate.department}</td>

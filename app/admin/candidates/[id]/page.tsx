@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card"
 import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 
-export default function RecruiterCandidateProfile() {
+export default function AdminCandidateProfile() {
   const { id } = useParams()
   const router = useRouter()
   const [candidate, setCandidate] = useState<any>(null)
