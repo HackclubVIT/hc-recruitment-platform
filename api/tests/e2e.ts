@@ -37,13 +37,14 @@ async function runTests() {
   await prisma.candidate.deleteMany({})
   await prisma.formQuestion.deleteMany({})
   await prisma.form.deleteMany({})
+  await prisma.notification.deleteMany({})
   await prisma.user.deleteMany({})
   
   // Seed basic users
-  const admin = await prisma.user.create({ data: { name: 'Admin', email: 'admin@test.com', role: 'ADMIN', active: true } })
-  const recruiter = await prisma.user.create({ data: { name: 'Recruiter', email: 'recruiter@test.com', role: 'RECRUITER', departments: ['Engineering'], active: true } })
-  const panelMemberA = await prisma.user.create({ data: { name: 'PM_A', email: 'a@test.com', role: 'PANEL_MEMBER', active: true } })
-  const panelMemberB = await prisma.user.create({ data: { name: 'PM_B', email: 'b@test.com', role: 'PANEL_MEMBER', active: true } })
+  const admin = await prisma.user.create({ data: { name: 'Admin', email: 'admin@test.com', role: 'ADMIN', active: true, password: 'pw' } })
+  const recruiter = await prisma.user.create({ data: { name: 'Recruiter', email: 'recruiter@test.com', role: 'RECRUITER', departments: ['Engineering'], active: true, password: 'pw' } })
+  const panelMemberA = await prisma.user.create({ data: { name: 'PM_A', email: 'a@test.com', role: 'PANEL_MEMBER', active: true, password: 'pw' } })
+  const panelMemberB = await prisma.user.create({ data: { name: 'PM_B', email: 'b@test.com', role: 'PANEL_MEMBER', active: true, password: 'pw' } })
   
   // Create Panel A and Panel B
   const panelA = await prisma.panel.create({ data: { name: 'Panel A', status: 'ACTIVE' } })
@@ -55,11 +56,19 @@ async function runTests() {
   
   // 2. FORM TEST (Req 43)
   const formRes = await makeRequest('/forms', 'POST', { title: 'Test Form', description: 'desc', status: 'PUBLISHED' }, 'ADMIN', admin.id)
+  if (formRes.status !== 201) throw new Error("Form creation failed: " + JSON.stringify(formRes.data))
   const form = formRes.data.form
   
-  await makeRequest(`/forms/${form.id}/questions`, 'POST', { form_id: form.id, type: 'TEXT', question: 'Q1', required: true }, 'ADMIN', admin.id)
+  const q1Res = await makeRequest(`/forms/${form.id}/questions`, 'POST', { form_id: form.id, type: 'TEXT', question: 'Q1', required: true }, 'ADMIN', admin.id)
+  if (q1Res.status !== 201) throw new Error("Question 1 creation failed: " + JSON.stringify(q1Res.data))
+  const q1 = q1Res.data.question
+
   const q2Res = await makeRequest(`/forms/${form.id}/questions`, 'POST', { form_id: form.id, type: 'CHECKBOX', question: 'Q2', required: true, options: ['A','B','C'] }, 'ADMIN', admin.id)
+  if (q2Res.status !== 201) throw new Error("Question 2 creation failed: " + JSON.stringify(q2Res.data))
   const q2 = q2Res.data.question
+  
+  const pubRes = await makeRequest(`/forms/${form.id}`, 'PUT', { status: 'PUBLISHED' }, 'ADMIN', admin.id)
+  if (pubRes.status !== 200) throw new Error("Form publish failed: " + JSON.stringify(pubRes.data))
   
   // Public Apply (Candidate A)
   const applyResA = await fetch(`${API_URL}/applications`, {
@@ -73,6 +82,7 @@ async function runTests() {
       department: 'Engineering',
       registration_number: 'REG001',
       answers: {
+        [q1.id.toString()]: "My text answer",
         [q2.id.toString()]: ['A', 'B'] // Correct checkbox format
       }
     })
@@ -91,7 +101,10 @@ async function runTests() {
       phone: '1234567890',
       department: 'Engineering',
       registration_number: 'REG001',
-      answers: {}
+      answers: {
+        [q1.id.toString()]: "My text answer",
+        [q2.id.toString()]: ['A', 'B'] // Correct checkbox format
+      }
     })
   })
   if (dupApply.status !== 409) throw new Error("Duplicate rejection failed. Status: " + dupApply.status)
@@ -107,18 +120,25 @@ async function runTests() {
       phone: '1234567890',
       department: 'Sales',
       registration_number: 'REG002',
-      answers: {}
+      answers: {
+        [q1.id.toString()]: "Another answer",
+        [q2.id.toString()]: ['A']
+      }
     })
   })
+  if (applyResB.status !== 201) throw new Error("Application B failed: " + await applyResB.text())
   const appB = (await applyResB.json()).applicationId
   
   // Get Candidates directly
   const candA = await prisma.candidate.findFirst({ where: { email: 'candA@test.com' } })
   const candB = await prisma.candidate.findFirst({ where: { email: 'candB@test.com' } })
 
-  // Recruiter sets SHORTLISTED
-  await makeRequest(`/applications/${appA}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
-  
+  const urResA = await makeRequest(`/applications/${appA}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  if (urResA.status !== 200) throw new Error("Recruiter UNDER_REVIEW failed: " + JSON.stringify(urResA.data))
+
+  const slResA = await makeRequest(`/applications/${appA}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  if (slResA.status !== 200) throw new Error("Recruiter shortlisting failed: " + JSON.stringify(slResA.data))
+
   // SCHEDULE INTERVIEW A
   const schedARes = await makeRequest('/interviews/schedule', 'POST', {
     candidate_id: candA!.id,
@@ -127,41 +147,58 @@ async function runTests() {
     date: '2026-10-15',
     start_time: '10:00'
   }, 'RECRUITER', recruiter.id, ['Engineering'])
-  
   if (schedARes.status !== 201) throw new Error("Scheduling failed: " + JSON.stringify(schedARes.data))
   const intA = schedARes.data.interview
   
   // Double Booking Test (Req 42)
+  // Create Cand C to book the same slot for Panel A
+  const applyResC = await fetch(`${API_URL}/applications`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Candidate C', email: 'candC@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG003',
+      answers: { [q1.id.toString()]: "C text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  const appC = (await applyResC.json()).applicationId
+  const candC = await prisma.candidate.findFirst({ where: { email: 'candC@test.com' } })
+  await makeRequest(`/applications/${appC}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appC}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+
   const doubleSched = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candA!.id,
-    application_id: appA,
+    candidate_id: candC!.id,
+    application_id: appC,
     panel_id: panelA.id,
     date: '2026-10-15',
     start_time: '10:00'
   }, 'RECRUITER', recruiter.id, ['Engineering'])
-  if (doubleSched.status !== 409) throw new Error("Double booking not blocked: " + JSON.stringify(doubleSched.data))
+  if (doubleSched.status !== 409) throw new Error("Double booking not blocked. Status: " + doubleSched.status + " Data: " + JSON.stringify(doubleSched.data))
   
   // SECURITY TEST (Req 38)
   // Panel Member A CAN access Interview A
   const intAGet = await makeRequest(`/interviews/${intA.id}`, 'GET', null, 'PANEL_MEMBER', panelMemberA.id)
-  if (intAGet.status !== 200) throw new Error("Panel A access Interview A failed")
+  if (intAGet.status !== 200) throw new Error("Panel A access Interview A failed. Status: " + intAGet.status)
   
   // Panel Member A CANNOT access Application B
   const appBGet = await makeRequest(`/applications/${appB}`, 'GET', null, 'PANEL_MEMBER', panelMemberA.id)
   if (appBGet.status !== 403 && appBGet.status !== 404) throw new Error("Panel A accessed Application B incorrectly: " + appBGet.status)
 
   // Start Interview A
-  await makeRequest(`/interviews/${intA.id}`, 'PUT', { status: 'IN_PROGRESS' }, 'PANEL_MEMBER', panelMemberA.id)
-  await makeRequest(`/interviews/${intA.id}`, 'PUT', { status: 'COMPLETED' }, 'PANEL_MEMBER', panelMemberA.id)
+  const startIntRes = await makeRequest(`/interviews/${intA.id}`, 'PUT', { status: 'IN_PROGRESS' }, 'PANEL_MEMBER', panelMemberA.id)
+  if (startIntRes.status !== 200) throw new Error("Failed to start interview: " + JSON.stringify(startIntRes.data))
+  
+  const compIntRes = await makeRequest(`/interviews/${intA.id}`, 'PUT', { status: 'COMPLETED' }, 'PANEL_MEMBER', panelMemberA.id)
+  if (compIntRes.status !== 200) throw new Error("Failed to complete interview: " + JSON.stringify(compIntRes.data))
   
   // FEEDBACK TEST (Req 39, Req 23)
   // A submits feedback
   const f1 = await makeRequest('/feedback', 'POST', {
     interview_id: intA.id,
     technical_score: 5, communication_score: 5, problem_solving_score: 5,
-    confidence_score: 5, teamwork_score: 5, decision: 'SELECTED', comments: 'good'
+    confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'good'
   }, 'PANEL_MEMBER', panelMemberA.id)
-  
+  if (f1.status !== 201) throw new Error("Feedback submission A failed: " + JSON.stringify(f1.data))
+
   // Check interview status -> should still be FEEDBACK_PENDING since B hasn't submitted
   const intACheck = await prisma.interview.findUnique({ where: { id: intA.id } })
   if (intACheck!.status !== 'FEEDBACK_PENDING') throw new Error("Interview prematurely submitted: " + intACheck!.status)
@@ -170,8 +207,9 @@ async function runTests() {
   const f2 = await makeRequest('/feedback', 'POST', {
     interview_id: intA.id,
     technical_score: 5, communication_score: 5, problem_solving_score: 5,
-    confidence_score: 5, teamwork_score: 5, decision: 'SELECTED', comments: 'good'
+    confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'good'
   }, 'PANEL_MEMBER', panelMemberB.id)
+  if (f2.status !== 201) throw new Error("Feedback submission B failed: " + JSON.stringify(f2.data))
 
   // Check interview status -> should be FEEDBACK_SUBMITTED
   const intAFin = await prisma.interview.findUnique({ where: { id: intA.id } })
@@ -190,26 +228,38 @@ async function runTests() {
   if (decApp!.decided_by !== recruiter.id) throw new Error("decided_by not set")
   
   // FURTHER ROUND TEST (Req 41)
-  // We need an application in INTERVIEW_COMPLETED. Let's make candidate B ready for further round.
-  await makeRequest(`/applications/${appB}`, 'PUT', { status: 'SHORTLISTED' }, 'ADMIN', admin.id)
+  const urResB = await makeRequest(`/applications/${appB}`, 'PUT', { status: 'UNDER_REVIEW' }, 'ADMIN', admin.id)
+  if (urResB.status !== 200) throw new Error("Admin UNDER_REVIEW B failed: " + JSON.stringify(urResB.data))
+
+  const slResB = await makeRequest(`/applications/${appB}`, 'PUT', { status: 'SHORTLISTED' }, 'ADMIN', admin.id)
+  if (slResB.status !== 200) throw new Error("Admin shortlisting B failed: " + JSON.stringify(slResB.data))
+
   const schedBRes = await makeRequest('/interviews/schedule', 'POST', {
     candidate_id: candB!.id, application_id: appB, panel_id: panelA.id,
     date: '2026-10-16', start_time: '10:00'
   }, 'ADMIN', admin.id)
+  if (schedBRes.status !== 201) throw new Error("Admin scheduling B failed: " + JSON.stringify(schedBRes.data))
   const intB = schedBRes.data.interview
-  await makeRequest(`/interviews/${intB.id}`, 'PUT', { status: 'COMPLETED' }, 'ADMIN', admin.id)
   
-  await makeRequest('/feedback', 'POST', {
+  const startIntB = await makeRequest(`/interviews/${intB.id}`, 'PUT', { status: 'IN_PROGRESS' }, 'ADMIN', admin.id)
+  if (startIntB.status !== 200) throw new Error("Admin starting B failed: " + JSON.stringify(startIntB.data))
+
+  const compIntB = await makeRequest(`/interviews/${intB.id}`, 'PUT', { status: 'COMPLETED' }, 'ADMIN', admin.id)
+  if (compIntB.status !== 200) throw new Error("Admin completing B failed: " + JSON.stringify(compIntB.data))
+  
+  const fb1 = await makeRequest('/feedback', 'POST', {
     interview_id: intB.id,
     technical_score: 5, communication_score: 5, problem_solving_score: 5,
-    confidence_score: 5, teamwork_score: 5, decision: 'SELECTED', comments: 'good'
+    confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'good'
   }, 'PANEL_MEMBER', panelMemberA.id)
+  if (fb1.status !== 201) throw new Error("Feedback B1 failed: " + JSON.stringify(fb1.data))
   
-  await makeRequest('/feedback', 'POST', {
+  const fb2 = await makeRequest('/feedback', 'POST', {
     interview_id: intB.id,
     technical_score: 5, communication_score: 5, problem_solving_score: 5,
-    confidence_score: 5, teamwork_score: 5, decision: 'SELECTED', comments: 'good'
+    confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'good'
   }, 'PANEL_MEMBER', panelMemberB.id)
+  if (fb2.status !== 201) throw new Error("Feedback B2 failed: " + JSON.stringify(fb2.data))
 
   const intBFin = await prisma.interview.findUnique({ where: { id: intB.id } })
   if (intBFin!.status !== 'FEEDBACK_SUBMITTED') throw new Error("Interview B not marked FEEDBACK_SUBMITTED")
@@ -228,8 +278,27 @@ async function runTests() {
     candidate_id: candB!.id, application_id: appB, panel_id: panelB.id,
     date: '2026-10-17', start_time: '10:00'
   }, 'ADMIN', admin.id)
+  if (schedB2Res.status !== 201) throw new Error("Admin scheduling B round 2 failed: " + JSON.stringify(schedB2Res.data))
   if (schedB2Res.data.interview.round !== 2) throw new Error("Further round did not increment round number")
   
+  // Req 6: Active Membership Security
+  await prisma.panelMember.updateMany({
+    where: { user_id: panelMemberA.id },
+    data: { active: false }
+  })
+
+  // Panel Member A CANNOT access newly assigned interviews
+  const schedCRes = await makeRequest('/interviews/schedule', 'POST', {
+    candidate_id: candC!.id, application_id: appC, panel_id: panelA.id,
+    date: '2026-10-18', start_time: '10:00'
+  }, 'ADMIN', admin.id)
+  if (schedCRes.status !== 201) throw new Error("Scheduling C failed: " + JSON.stringify(schedCRes.data))
+  const intC = schedCRes.data.interview
+
+  // A cannot access intC
+  const intCGet = await makeRequest(`/interviews/${intC.id}`, 'GET', null, 'PANEL_MEMBER', panelMemberA.id)
+  if (intCGet.status !== 403 && intCGet.status !== 404) throw new Error("Inactive Member A accessed new interview incorrectly: " + intCGet.status)
+
   console.log("All Security and E2E Tests Passed Successfully!")
 }
 
