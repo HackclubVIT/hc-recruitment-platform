@@ -337,21 +337,21 @@ async function runTests() {
 
   // Schedule Int E for Panel B at same time as Int D
   // Create Cand E
-  const applyResE = await fetch(`${API_URL}/applications`, {
+  const applyResG = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      form_id: form.id, name: 'Candidate E', email: 'candE@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG005',
+      form_id: form.id, name: 'Candidate G', email: 'candG@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG007',
       answers: { [q1.id.toString()]: "E text", [q2.id.toString()]: ['A'] }
     })
   })
-  const appE = (await applyResE.json()).applicationId
-  const candE = await prisma.candidate.findFirst({ where: { email: 'candE@test.com' } })
-  await makeRequest(`/applications/${appE}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
-  await makeRequest(`/applications/${appE}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  const appG = (await applyResG.json()).applicationId
+  const candG = await prisma.candidate.findFirst({ where: { email: 'candG@test.com' } })
+  await makeRequest(`/applications/${appG}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appG}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
 
   const schedERes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candE!.id, application_id: appE, panel_id: panelB.id,
+    candidate_id: candG!.id, application_id: appG, panel_id: panelB.id,
     date: '2026-10-20', start_time: '10:00' // SAME TIME AS INT D
   }, 'ADMIN', admin.id)
   
@@ -407,17 +407,78 @@ async function runTests() {
   const appDGetByD = await makeRequest(`/applications/${appD}`, 'GET', null, 'PANEL_MEMBER', pmD.id)
   if (appDGetByD.status !== 403 && appDGetByD.status !== 404) throw new Error("Unassigned Member D improperly accessed appD: " + appDGetByD.status)
   
-  // JWT REVOCATION TEST
-  // C is active and has access to intD.
-  const validGet = await makeRequest(`/interviews/${intD.id}`, 'GET', null, 'PANEL_MEMBER', pmC.id)
-  if (validGet.status !== 200) throw new Error("C could not access interview initially: " + validGet.status)
+  // E2E CANDIDATE AUTHORIZATION TEST (Req 18)
+  const candDGetByC = await makeRequest(`/candidates/${candD!.id}`, 'GET', null, 'PANEL_MEMBER', pmC.id)
+  if (candDGetByC.status !== 200) throw new Error("Historical Member C could not access candD: " + candDGetByC.status)
+
+  const candDGetByD = await makeRequest(`/candidates/${candD!.id}`, 'GET', null, 'PANEL_MEMBER', pmD.id)
+  if (candDGetByD.status !== 403 && candDGetByD.status !== 404) throw new Error("Unassigned Member D improperly accessed candD: " + candDGetByD.status)
   
-  // Revoke C globally
+  // SAME PANEL CONFLICT TEST (Req 9)
+  const emptyPanel = await prisma.panel.create({ data: { name: 'Empty Panel', status: 'ACTIVE' } })
+  
+  // Create fresh candidate E2 for conflict test
+  const applyResE2 = await fetch(`${API_URL}/applications`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Candidate E2', email: 'candE2@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG010',
+      answers: { [q1.id.toString()]: "E text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  const appE2 = (await applyResE2.json()).applicationId
+  const candE2 = await prisma.candidate.findFirst({ where: { email: 'candE2@test.com' } })
+  
+  // Transition E2 to SHORTLISTED so it can be scheduled
+  await makeRequest(`/applications/${appE2}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appE2}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+
+  const emptyInt1 = await makeRequest('/interviews/schedule', 'POST', {
+    candidate_id: candE2!.id, application_id: appE2, panel_id: emptyPanel.id,
+    date: '2026-11-01', start_time: '12:00'
+  }, 'ADMIN', admin.id)
+  if (emptyInt1.status !== 201) throw new Error("Could not schedule on empty panel: " + JSON.stringify(emptyInt1.data))
+  
+  // Create fresh Candidate H for the second conflict
+  const applyResH = await fetch(`${API_URL}/applications`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Candidate H', email: 'candH@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG008',
+      answers: { [q1.id.toString()]: "F text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  const appH = (await applyResH.json()).applicationId
+  const candH = await prisma.candidate.findFirst({ where: { email: 'candH@test.com' } })
+  await makeRequest(`/applications/${appH}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appH}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+
+  const emptyInt2 = await makeRequest('/interviews/schedule', 'POST', {
+    candidate_id: candH!.id, application_id: appH, panel_id: emptyPanel.id,
+    date: '2026-11-01', start_time: '12:00'
+  }, 'ADMIN', admin.id)
+  
+  if (emptyInt2.status !== 409) throw new Error("Failed to detect exact same panel conflict! Status: " + emptyInt2.status)
+
+  // TRUE JWT REVOCATION TEST (Req 13)
+  // We need to use the EXACT same token before and after deactivation
+  const cToken = await signToken({ id: pmC.id, role: 'PANEL_MEMBER', departments: [], active: true })
+  
+  // Ensure C is active
+  await prisma.user.update({ where: { id: pmC.id }, data: { active: true } })
+  
+  const jwtTestBefore = await fetch(`${API_URL}/interviews/${intD.id}`, {
+    headers: { 'Cookie': `session=${cToken}` }
+  })
+  if (jwtTestBefore.status !== 200) throw new Error("C could not access interview initially with explicit JWT")
+
+  // Deactivate C
   await prisma.user.update({ where: { id: pmC.id }, data: { active: false } })
   
-  // Try exactly the same again (makeRequest will generate a JWT with active: true payload, but the DB will reject it)
-  const revokedGet = await makeRequest(`/interviews/${intD.id}`, 'GET', null, 'PANEL_MEMBER', pmC.id)
-  if (revokedGet.status !== 401 && revokedGet.status !== 403) throw new Error("C accessed interview with a revoked JWT! Status: " + revokedGet.status)
+  const jwtTestAfter = await fetch(`${API_URL}/interviews/${intD.id}`, {
+    headers: { 'Cookie': `session=${cToken}` }
+  })
+  if (jwtTestAfter.status !== 401 && jwtTestAfter.status !== 403) throw new Error("C accessed interview with a revoked explicit JWT! Status: " + jwtTestAfter.status)
 
   console.log("All Security and E2E Tests Passed Successfully!")
 }

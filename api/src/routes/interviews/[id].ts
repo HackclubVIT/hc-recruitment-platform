@@ -113,7 +113,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const existingInterview = await prisma.interview.findUnique({
       where: { id },
-      include: { candidate: true, panel: { include: { members: true } }, assigned_members: true } as any
+      include: { candidate: true, panel: { include: { members: true } }, assigned_members: true }
     })
 
     if (!existingInterview) {
@@ -125,7 +125,7 @@ export const PUT = async (req: Request, res: Response) => {
     }
 
     if (session.role === "PANEL_MEMBER") {
-      const isMember = (existingInterview as any).assigned_members.some((m: any) => m.user_id === session.id)
+      const isMember = existingInterview.assigned_members.some((m: any) => m.user_id === session.id)
       if (!isMember) {
         return res.status(403).json({ error: "Forbidden: Not an active member of this interview panel" })
       }
@@ -173,7 +173,7 @@ export const PUT = async (req: Request, res: Response) => {
     const interview = await prisma.$transaction(async (tx: any) => {
       if (date && start_time) {
         // 1. Conflict Detection for Panel Members (excluding self)
-        const memberUserIds = (existingInterview as any).assigned_members.map((m: any) => m.user_id)
+        const memberUserIds = existingInterview.assigned_members.map((m: any) => m.user_id)
         const conflict = await tx.interview.findFirst({
           where: {
             id: { not: id },

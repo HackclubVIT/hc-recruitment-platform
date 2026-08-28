@@ -24,16 +24,16 @@ export const GET = async (req: Request, res: Response) => {
           where: {
             interviews: {
               some: {
-                panel: { members: { some: { user_id: session.id, active: true } } } // Req 13
+                assigned_members: { some: { user_id: session.id } }
               }
             }
           }
         },
         interviews: {
           where: {
-            panel: { members: { some: { user_id: session.id, active: true } } } // Req 13
+            assigned_members: { some: { user_id: session.id } }
           },
-          include: { panel: true, feedback: true }
+          include: { feedback: true } // Removed panel include to restrict unnecessary data
         }
       }
     }

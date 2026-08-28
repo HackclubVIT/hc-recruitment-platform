@@ -189,10 +189,8 @@ export const GET = async (req: Request, res: Response) => {
     } else if (session.role === "PANEL_MEMBER") {
       where.interviews = {
         some: {
-          panel: {
-            members: {
-              some: { user_id: session.id, active: true } // Req 9
-            }
+          assigned_members: {
+            some: { user_id: session.id }
           }
         }
       }

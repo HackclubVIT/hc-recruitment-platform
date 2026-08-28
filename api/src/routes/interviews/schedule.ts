@@ -98,51 +98,54 @@ export const POST = async (req: Request, res: Response) => {
 
     // Prevent scheduling conflicts with a transaction
     const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. Conflict Detection for Panel Members (Covers entire Panel too)
-      const memberUserIds = panel.members.map((m: any) => m.user_id)
-      const conflict = await tx.interview.findFirst({
-        where: {
-          date: new Date(date),
-          status: { not: "CANCELLED" },
-          OR: [
-            {
-              start_time: { lt: endObj },
-              end_time: { gt: startObj }
-            }
-          ],
-          assigned_members: {
-            some: {
-              user_id: { in: memberUserIds }
-            }
-          }
-        }
-      })
-
-      if (conflict) {
-        if (conflict.panel_id === panel_id) {
-          throw new Error("SLOT_UNAVAILABLE")
-        } else {
-          throw new Error("MEMBER_CONFLICT")
-        }
-      }
-
-      // 2. Conflict Detection for Candidate
+      // 1. Conflict Detection for Candidate
       const candidateConflict = await tx.interview.findFirst({
         where: {
           candidate_id,
           date: new Date(date),
           status: { not: "CANCELLED" },
           OR: [
-            {
-              start_time: { lt: endObj },
-              end_time: { gt: startObj }
-            }
+            { start_time: { lt: endObj }, end_time: { gt: startObj } }
           ]
         }
       })
-
       if (candidateConflict) {
         throw new Error("CANDIDATE_CONFLICT")
+      }
+
+      // 2. Conflict Detection for Exact Same Panel
+      const panelConflict = await tx.interview.findFirst({
+        where: {
+          panel_id: panel_id,
+          date: new Date(date),
+          status: { not: "CANCELLED" },
+          OR: [
+            { start_time: { lt: endObj }, end_time: { gt: startObj } }
+          ]
+        }
+      })
+      if (panelConflict) {
+        throw new Error("SLOT_UNAVAILABLE")
+      }
+
+      // 3. Conflict Detection for Shared Panel Members
+      const memberUserIds = panel.members.map((m: any) => m.user_id)
+      if (memberUserIds.length > 0) {
+        const memberConflict = await tx.interview.findFirst({
+          where: {
+            date: new Date(date),
+            status: { not: "CANCELLED" },
+            OR: [
+              { start_time: { lt: endObj }, end_time: { gt: startObj } }
+            ],
+            assigned_members: {
+              some: { user_id: { in: memberUserIds } }
+            }
+          }
+        })
+        if (memberConflict) {
+          throw new Error("MEMBER_CONFLICT")
+        }
       }
 
       const activePanelMembers = panel.members.filter((m: any) => m.active).map((m: any) => ({ id: m.id }))
