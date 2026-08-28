@@ -396,6 +396,29 @@ async function runTests() {
   const intCGet = await makeRequest(`/interviews/${intC.id}`, 'GET', null, 'PANEL_MEMBER', panelMemberA.id)
   if (intCGet.status !== 403 && intCGet.status !== 404) throw new Error("Inactive Member A accessed new interview incorrectly: " + intCGet.status)
 
+  // APPLICATION AUTHORIZATION REGRESSION TEST
+  // C is no longer on Panel A but was assigned to intD for appD.
+  // C MUST be able to GET appD.
+  const appDGetByC = await makeRequest(`/applications/${appD}`, 'GET', null, 'PANEL_MEMBER', pmC.id)
+  if (appDGetByC.status !== 200) throw new Error("Historical Member C could not access appD: " + appDGetByC.status)
+
+  // D is on Panel A, but D was NOT assigned to intD.
+  // D MUST NOT be able to GET appD.
+  const appDGetByD = await makeRequest(`/applications/${appD}`, 'GET', null, 'PANEL_MEMBER', pmD.id)
+  if (appDGetByD.status !== 403 && appDGetByD.status !== 404) throw new Error("Unassigned Member D improperly accessed appD: " + appDGetByD.status)
+  
+  // JWT REVOCATION TEST
+  // C is active and has access to intD.
+  const validGet = await makeRequest(`/interviews/${intD.id}`, 'GET', null, 'PANEL_MEMBER', pmC.id)
+  if (validGet.status !== 200) throw new Error("C could not access interview initially: " + validGet.status)
+  
+  // Revoke C globally
+  await prisma.user.update({ where: { id: pmC.id }, data: { active: false } })
+  
+  // Try exactly the same again (makeRequest will generate a JWT with active: true payload, but the DB will reject it)
+  const revokedGet = await makeRequest(`/interviews/${intD.id}`, 'GET', null, 'PANEL_MEMBER', pmC.id)
+  if (revokedGet.status !== 401 && revokedGet.status !== 403) throw new Error("C accessed interview with a revoked JWT! Status: " + revokedGet.status)
+
   console.log("All Security and E2E Tests Passed Successfully!")
 }
 

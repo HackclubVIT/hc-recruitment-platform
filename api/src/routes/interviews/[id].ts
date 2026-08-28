@@ -66,6 +66,9 @@ export const GET = async (req: Request, res: Response) => {
       }
     }
 
+    if (session.role === "PANEL_MEMBER") {
+      delete (interview as any).panel;
+    }
     return res.status(200).json({ interview })
   } catch (error) {
     console.error("Fetch interview error:", error)
@@ -110,7 +113,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const existingInterview = await prisma.interview.findUnique({
       where: { id },
-      include: { candidate: true, panel: { include: { members: true } }, assigned_members: true }
+      include: { candidate: true, panel: { include: { members: true } }, assigned_members: true } as any
     })
 
     if (!existingInterview) {
@@ -122,7 +125,7 @@ export const PUT = async (req: Request, res: Response) => {
     }
 
     if (session.role === "PANEL_MEMBER") {
-      const isMember = existingInterview.assigned_members.some(m => m.user_id === session.id)
+      const isMember = (existingInterview as any).assigned_members.some((m: any) => m.user_id === session.id)
       if (!isMember) {
         return res.status(403).json({ error: "Forbidden: Not an active member of this interview panel" })
       }
@@ -130,6 +133,9 @@ export const PUT = async (req: Request, res: Response) => {
 
     // Validate interview status enum
     if (status) {
+      if (session.role === "PANEL_MEMBER" && !["IN_PROGRESS", "COMPLETED"].includes(status)) {
+        return res.status(403).json({ error: "Panel Members may only transition status to IN_PROGRESS or COMPLETED." })
+      }
       if (!VALID_INTERVIEW_STATUSES.includes(status)) {
         return res.status(400).json({ error: `Invalid interview status. Must be one of: ${VALID_INTERVIEW_STATUSES.join(", ")}` })
       }
@@ -164,10 +170,10 @@ export const PUT = async (req: Request, res: Response) => {
     }
 
     // Transactional logic to prevent race conditions during rescheduling
-    const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const interview = await prisma.$transaction(async (tx: any) => {
       if (date && start_time) {
         // 1. Conflict Detection for Panel Members (excluding self)
-        const memberUserIds = existingInterview.assigned_members.map((m: any) => m.user_id)
+        const memberUserIds = (existingInterview as any).assigned_members.map((m: any) => m.user_id)
         const conflict = await tx.interview.findFirst({
           where: {
             id: { not: id },

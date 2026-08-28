@@ -53,7 +53,7 @@ export const GET = async (req: Request, res: Response) => {
       const hasAccess = await prisma.interview.findFirst({
         where: {
           application_id: id,
-          panel: { members: { some: { user_id: session.id, active: true } } } // Req 8
+          assigned_members: { some: { user_id: session.id } }
         }
       })
       if (!hasAccess) {

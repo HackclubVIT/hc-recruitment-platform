@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose"
 import { Request } from "express"
+import prisma from "./db"
 
 function getSecretKey() {
   if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
@@ -36,12 +37,22 @@ interface SessionPayload {
   [key: string]: any
 }
 
-// Updated to use Express Request
 export async function getSession(req?: Request): Promise<SessionPayload | null> {
   if (!req) return null
   const token = req.cookies?.session
   if (!token) return null
   const payload = await verifyToken(token)
-  if (!payload) return null
-  return payload as SessionPayload
+  if (!payload || !payload.id) return null
+  
+  const user = await prisma.user.findUnique({
+    where: { id: payload.id as string }
+  })
+  
+  if (!user || !user.active) return null
+
+  return {
+    id: user.id,
+    role: user.role,
+    departments: user.departments || []
+  }
 }
