@@ -148,7 +148,7 @@ export const POST = async (req: Request, res: Response) => {
         }
       }
 
-      const activePanelMembers = panel.members.filter((m: any) => m.active).map((m: any) => ({ id: m.id }))
+      const activePanelMembers = panel.members.map((m: any) => ({ id: m.id }))
 
       const newInterview = await tx.interview.create({
         data: {
