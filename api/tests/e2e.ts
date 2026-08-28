@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import { signToken } from '../src/lib/auth.js'
 
 const prisma = new PrismaClient()
-const API_URL = "http://localhost:5000/api"
+const API_URL = "http://localhost:3001/api"
 
 async function makeRequest(path: string, method: string, payload?: any, role: string = 'ADMIN', userId: string = 'admin-1', departments: string[] = []) {
   const token = await signToken({ id: userId, role, departments, active: true })
@@ -35,7 +35,7 @@ async function runTests() {
   await prisma.panel.deleteMany({})
   await prisma.application.deleteMany({})
   await prisma.candidate.deleteMany({})
-  await prisma.question.deleteMany({})
+  await prisma.formQuestion.deleteMany({})
   await prisma.form.deleteMany({})
   await prisma.user.deleteMany({})
   
@@ -199,9 +199,23 @@ async function runTests() {
   const intB = schedBRes.data.interview
   await makeRequest(`/interviews/${intB.id}`, 'PUT', { status: 'COMPLETED' }, 'ADMIN', admin.id)
   
-  // Direct DB injection to bypass feedback wait for test speed
-  await prisma.interview.update({ where: { id: intB.id }, data: { status: 'FEEDBACK_SUBMITTED' } })
-  await prisma.application.update({ where: { id: appB }, data: { status: 'INTERVIEW_COMPLETED' } })
+  await makeRequest('/feedback', 'POST', {
+    interview_id: intB.id,
+    technical_score: 5, communication_score: 5, problem_solving_score: 5,
+    confidence_score: 5, teamwork_score: 5, decision: 'SELECTED', comments: 'good'
+  }, 'PANEL_MEMBER', panelMemberA.id)
+  
+  await makeRequest('/feedback', 'POST', {
+    interview_id: intB.id,
+    technical_score: 5, communication_score: 5, problem_solving_score: 5,
+    confidence_score: 5, teamwork_score: 5, decision: 'SELECTED', comments: 'good'
+  }, 'PANEL_MEMBER', panelMemberB.id)
+
+  const intBFin = await prisma.interview.findUnique({ where: { id: intB.id } })
+  if (intBFin!.status !== 'FEEDBACK_SUBMITTED') throw new Error("Interview B not marked FEEDBACK_SUBMITTED")
+  
+  const appBFin = await prisma.application.findUnique({ where: { id: appB } })
+  if (appBFin!.status !== 'INTERVIEW_COMPLETED') throw new Error("Application B not marked INTERVIEW_COMPLETED")
 
   const frRes = await makeRequest(`/applications/${appB}`, 'PUT', { status: 'FURTHER_ROUND' }, 'ADMIN', admin.id)
   if (frRes.status !== 200) throw new Error("Further round transition failed: " + JSON.stringify(frRes.data))
