@@ -1,7 +1,7 @@
 import prisma from "./db"
 
 export async function logAudit(
-  user_id: string,
+  user_id: string | undefined | null,
   action: string,
   entity: string,
   entity_id?: number

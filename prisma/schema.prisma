@@ -169,13 +169,13 @@ model Notification {
 
 model AuditLog {
   id         Int      @id @default(autoincrement())
-  user_id    String
+  user_id    String?
   action     String
   entity     String
   entity_id  Int?
   timestamp  DateTime @default(now())
 
-  user       User     @relation(fields: [user_id], references: [id])
+  user       User?     @relation(fields: [user_id], references: [id])
 
   @@map("audit_logs")
 }

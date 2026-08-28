@@ -1,335 +1,177 @@
-# HackClub VIT — Shared Backend API Documentation
+# Recruitment Platform API Documentation
 
-The HackClub VIT backend is a unified, shared REST API service powering:
-1. **Main Website Frontend** (Member dashboard, projects, leaderboards, feedback, announcements).
-2. **Recruitment Frontend** (Application form submission).
-3. **Recruiter & Admin Dashboards** (Application review, multi-department preference management, 10-minute interview scheduling, conflict detection, panel member management, allowlist control).
+This document describes the unified, canonical architecture of the HackClub VIT Recruitment and Interview Management Platform. 
 
----
+## Base Configuration
 
-## 1. Base Configuration & Headers
-
-- **Base URL**: Configurable via `VITE_API_BASE_URL` (Defaults to `/api` in local dev).
-- **Authentication**: Bearer Token in `Authorization` header:
-  ```http
-  Authorization: Bearer <JWT_TOKEN>
-  ```
-- **Content-Type**: `application/json`
+- **Base URL**: The API client must securely utilize the environment variable `NEXT_PUBLIC_API_URL` to route fetches.
+- **CORS Constraints**: strictly configured to allow requests only from explicitly trusted `ALLOWED_ORIGIN` domains (no wildcard production CORS).
+- **Authentication**: JWT stored in a secure HttpOnly cookie (`session`). No Bearer tokens or LocalStorage JWTs are permitted.
 
 ---
 
-## 2. Standard HTTP Status Codes
-
-| Code | Status | Description |
-| :--- | :--- | :--- |
-| `200` | **OK** | Request succeeded; response payload returned. |
-| `201` | **Created** | Resource successfully created. |
-| `400` | **Bad Request** | Validation failed (missing required fields, invalid format). |
-| `401` | **Unauthorized** | Missing or invalid authentication token. |
-| `403` | **Forbidden** | Insufficient permissions (role mismatch or unassigned department). |
-| `404` | **Not Found** | Target resource does not exist. |
-| `409` | **Conflict** | Slot double-booking or unique constraint violation. |
-| `429` | **Too Many Requests** | Rate limit exceeded (e.g. password reset code requests). |
-| `500` | **Internal Server Error** | Unexpected server error. |
-
----
-
-## 3. System & Health Endpoints
-
-### `GET /api/health`
-- **Auth**: Public (No auth required)
-- **Description**: Verifies service liveness and connectivity.
-- **Response `200`**:
-  ```json
-  { "status": "ok" }
-  ```
-
----
-
-## 4. Authentication Endpoints
+## 1. Authentication Endpoints
 
 ### `POST /api/auth/login`
-- **Auth**: Public
-- **Request Body**:
-  ```json
-  {
-    "email": "user@vitstudent.ac.in",
-    "password": "Password123!",
-    "role": "user"
-  }
-  ```
-- **Response `200`**:
-  ```json
-  {
-    "token": "<JWT_TOKEN>",
-    "role": "recruiter",
-    "user": {
-      "name": "Recruiter User",
-      "email": "recruiter@vitstudent.ac.in",
-      "role": "recruiter"
-    }
-  }
-  ```
+- **Body**: `{ "email": "...", "password": "..." }`
+- **Logic**: Validates credentials and checks `user.active === true`. Sets `session` HttpOnly cookie.
 
-### `POST /api/auth/signup`
-- **Auth**: Public (Allowlist verified)
-- **Request Body**:
-  ```json
-  {
-    "name": "Full Name",
-    "email": "student@vitstudent.ac.in",
-    "password": "Password123!",
-    "registerNumber": "24BCE1234",
-    "department": "Technical"
-  }
-  ```
-- **Response `201`**:
-  ```json
-  { "success": true, "message": "Registration successful. You can now login." }
-  ```
+### `POST /api/auth/logout`
+- **Logic**: Clears the `session` cookie.
 
-### `POST /api/auth/forgot-password`
-- **Auth**: Public (Rate-limited to 1 request / 60 seconds)
-- **Request Body**: `{ "email": "student@vitstudent.ac.in" }`
-- **Response `200`**:
-  ```json
-  { "success": true, "message": "Password reset code sent to your email." }
-  ```
-
-### `POST /api/auth/verify-reset-code`
-- **Auth**: Public
-- **Request Body**: `{ "email": "student@vitstudent.ac.in", "code": "123456" }`
-- **Response `200`**: `{ "success": true, "message": "Code verified." }`
-
-### `POST /api/auth/reset-password`
-- **Auth**: Public
-- **Request Body**: `{ "email": "student@vitstudent.ac.in", "code": "123456", "password": "NewPassword123!" }`
-- **Response `200`**: `{ "success": true, "message": "Password reset successfully." }`
-
-### `GET /api/auth/me` and `GET /api/users/me`
-- **Auth**: `authenticateToken`
-- **Response `200`**:
-  ```json
-  {
-    "user": {
-      "name": "User Name",
-      "email": "user@vitstudent.ac.in",
-      "role": "recruiter"
-    }
-  }
-  ```
+### `GET /api/auth/me`
+- **Logic**: Returns the currently authenticated user based on the decoded JWT session cookie.
 
 ---
 
-## 5. Recruitment Endpoints
+## 2. Health Endpoint
 
-### `POST /api/recruitment/apply`
-- **Auth**: Public
-- **Description**: Submits a new recruitment application with up to 2 department preferences.
-- **Request Body**:
-  ```json
-  {
-    "name": "Candidate Name",
-    "registerNumber": "24BCE5678",
-    "email": "candidate@vitstudent.ac.in",
-    "phoneNumber": "9876543210",
-    "firstPreference": "Technical",
-    "secondPreference": "Projects",
-    "firstPrefReason": "Interest in web/systems",
-    "secondPrefReason": "Interest in planning",
-    "yearOfStudy": "1st",
-    "technicalSkills": ["React", "Node.js", "Python"],
-    "skillLevel": "Intermediate"
-  }
-  ```
-- **Response `201`**:
-  ```json
-  { "success": true, "message": "Application submitted successfully!" }
-  ```
-
-### `GET /api/recruitment/applications`
-- **Auth**: `authenticateToken`, `requireRecruiter`, `loadRecruiterDepartments`
-- **Description**: Returns applications scoped to the recruiter's assigned departments (or all applications for Admins).
-- **Response `200`**:
-  ```json
-  [
-    {
-      "id": 1001,
-      "name": "Aarav Sharma",
-      "email": "aarav.sharma@vitstudent.ac.in",
-      "registerNumber": "24BCE1001",
-      "firstPreference": "Technical",
-      "secondPreference": "Projects",
-      "firstPrefStatus": "Shortlisted",
-      "secondPrefStatus": "Pending",
-      "departmentStatuses": {
-        "Technical": "Shortlisted",
-        "Projects": "Pending"
-      },
-      "status": "Shortlisted",
-      "appliedDate": "2026-08-20"
-    }
-  ]
-  ```
-
-### `PUT /api/recruitment/applications/:id/status`
-- **Auth**: `authenticateToken`, `requireRecruiter`, `loadRecruiterDepartments`
-- **Description**: Updates the status of a specific department preference (`Pending`, `Under Review`, `Shortlisted`, `Rejected`).
-- **Authorization**: Enforces that the authenticated recruiter is assigned to the specified `department`.
-- **Request Body**:
-  ```json
-  {
-    "department": "Technical",
-    "status": "Shortlisted"
-  }
-  ```
-- **Response `200`**:
-  ```json
-  {
-    "success": true,
-    "message": "Technical status updated to Shortlisted (overall: Shortlisted)",
-    "application": {
-      "id": 1001,
-      "firstPrefStatus": "Shortlisted",
-      "secondPrefStatus": "Pending",
-      "status": "Shortlisted"
-    }
-  }
-  ```
-
-### `DELETE /api/recruitment/applications/:id`
-- **Auth**: `authenticateToken`, `requireAdmin`
-- **Description**: Deletes a single application.
-
-### `DELETE /api/recruitment/applications/all`
-- **Auth**: `authenticateToken`, `requireAdmin`
-- **Description**: Clears all application records.
+### `GET /api/health`
+- **Returns**: `{ "status": "ok", "database": "connected" }`
 
 ---
 
-## 6. Interview & Scheduling Endpoints
+## 3. Users Management (Admin)
 
-### `GET /api/recruitment/interviews`
-- **Auth**: `authenticateToken`, `requireRecruiter`, `loadRecruiterDepartments`
-- **Description**: Returns interviews for the recruiter's assigned departments (or all for Admins).
-- **Response `200`**:
-  ```json
-  [
-    {
-      "id": "iv_1",
-      "applicationId": "1001",
-      "candidateName": "Aarav Sharma",
-      "candidateEmail": "aarav.sharma@vitstudent.ac.in",
-      "department": "Technical",
-      "scheduledDate": "2026-09-01T00:00:00.000Z",
-      "startTime": "10:00",
-      "endTime": "10:10",
-      "meetingUrl": "https://meet.google.com/abc-defg-hij",
-      "status": "SCHEDULED",
-      "panelMembers": [
-        { "panelName": "Panel Lead", "panelEmail": "lead@vitstudent.ac.in", "department": "Technical" }
-      ]
-    }
-  ]
-  ```
+### `GET /api/users`
+- **Returns**: Array of all users (Admins, Recruiters, Panel Members).
 
-### `POST /api/recruitment/interviews`
-- **Auth**: `authenticateToken`, `requireRecruiter`, `loadRecruiterDepartments`
-- **Validation**:
-  - `startTime` and `endTime` must be valid `HH:mm` format representing exactly a 10-minute slot.
-  - Recruiter must be authorized for `department`.
-  - Double-booking conflict check for both candidate and panel members (`409 Conflict` on overlap).
-- **Request Body**:
-  ```json
-  {
-    "applicationId": 1001,
-    "department": "Technical",
-    "interviewDate": "2026-09-01",
-    "startTime": "10:00",
-    "endTime": "10:10",
-    "meetingUrl": "https://meet.google.com/abc-defg-hij",
-    "panelMembers": [
-      { "name": "Panel Member", "email": "panel@vitstudent.ac.in", "department": "Technical" }
-    ]
-  }
-  ```
-- **Response `201`**:
-  ```json
-  {
-    "success": true,
-    "message": "Interview scheduled successfully.",
-    "interview": { "id": "1724719200000", "department": "Technical", "status": "SCHEDULED" }
-  }
-  ```
+### `POST /api/users`
+- **Body**: `{ name, email, password, role, departments }`
+- **Logic**: Creates a new user.
 
-### `PUT /api/recruitment/interviews/:id`
-- **Auth**: `authenticateToken`, `requireRecruiter`, `loadRecruiterDepartments`
-- **Description**: Reschedules interview date/time or updates meeting URL / panel members with conflict validation.
-- **Response `200`**:
-  ```json
-  { "success": true, "message": "Interview updated successfully." }
-  ```
+### `PUT /api/users`
+- **Body**: `{ id, name, email, role, departments, active }`
+- **Logic**: Updates user details. Inactive users are instantly prevented from logging in.
 
-### `DELETE /api/recruitment/interviews/:id`
-- **Auth**: `authenticateToken`, `requireRecruiter`, `loadRecruiterDepartments`
-- **Description**: Soft-cancels an interview (`status: CANCELLED`).
-- **Response `200`**:
-  ```json
-  { "success": true, "message": "Interview cancelled successfully." }
-  ```
-
-### `GET /api/recruitment/panels`
-- **Auth**: `authenticateToken`, `requireRecruiter`
-- **Description**: Returns eligible panel members.
-- **Response `200`**:
-  ```json
-  [
-    {
-      "id": "1",
-      "name": "Recruiter One",
-      "email": "recruiter@vitstudent.ac.in",
-      "department": "Technical",
-      "role": "Recruiter"
-    }
-  ]
-  ```
+### `DELETE /api/users`
+- **Body**: `{ id }`
+- **Logic**: Deletes the specified user (prevents self-deletion).
 
 ---
 
-## 7. Global Data & Admin Endpoints
+## 4. Forms & Questions
 
-### `GET /api/data`
-- **Auth**: `authenticateToken`
-- **Description**: Returns core club data (announcements, uploads, projects, members, activities).
+### `GET /api/forms`
+- **Returns**: All forms.
 
-### `GET /api/public/leaderboard`
-- **Auth**: Public
+### `POST /api/forms`
+- **Body**: `{ title, description }`
 
-### `GET /api/projects/leaderboard`
-- **Auth**: Public
+### `GET /api/forms/:id`
+- **Returns**: Specific form with its questions.
 
-### `POST /api/projects`
-- **Auth**: `authenticateToken`
+### `PUT /api/forms/:id`
+- **Body**: `{ title, description, status }`
+- **Logic**: Updates form status (DRAFT, PUBLISHED, CLOSED).
 
-### `POST /api/projects/:id/rate`
-- **Auth**: `authenticateToken`
+### `DELETE /api/forms/:id`
+- **Logic**: Deletes the form.
 
-### `PUT /api/users` & `PUT /api/users/:id` & `DELETE /api/users/:id`
-- **Auth**: `authenticateToken`, `requireAdmin`
+### `POST /api/forms/:id/questions`
+- **Body**: `{ question, type, required, options }`
+- **Logic**: Adds a new question. (Allowed only if form is in DRAFT state).
 
-### `GET /api/allowlist` & `POST /api/allowlist` & `DELETE /api/allowlist/:id`
-- **Auth**: `authenticateToken`, `requireAdmin`
+### `PUT /api/forms/:id/questions/:questionId`
+- **Body**: `{ question, type, required, options }`
+
+### `DELETE /api/forms/:id/questions/:questionId`
+- **Logic**: Removes a question from the form.
 
 ---
 
-## 8. Multi-Department Preference Rule Reference
+## 5. Applications
 
-When updating statuses via `PUT /api/recruitment/applications/:id/status`:
+### `GET /api/applications`
+- **Query Params**: `page`, `limit`, `search`, `status`, `department`, `date`
+- **Returns**: Server-side paginated list: `{ items, page, limit, total, totalPages }`.
 
-```text
-Status Computation Hierarchy:
-1. ANY preference Shortlisted / Accepted / Interview Scheduled  => Overall: SHORTLISTED
-2. ANY preference Under Review                                  => Overall: UNDER_REVIEW
-3. ANY preference Pending                                       => Overall: PENDING
-4. ALL chosen preferences Rejected                             => Overall: REJECTED
-```
+### `POST /api/applications`
+- **Body**: `{ name, email, phone, department, registration_number, resume_url, form_id, answers }`
+- **Logic**: Dynamic Zod validation. Validates required fields, checks array bounds for checkbox options. Validates `resume_url` starts with `https://`. Checks for duplicate submissions. Cannot submit to unpublished forms.
+
+### `PUT /api/applications/:id`
+- **Body**: `{ status, reason? }`
+- **Logic**: Advances application status (e.g., APPLIED -> SHORTLISTED). Final decisions (SELECTED, REJECTED) track decided_by and reason. Validates department authorization for RECRUITER.
+
+---
+
+## 6. Candidates
+
+### `GET /api/candidates`
+- **Query Params**: `page`, `limit`, `search`, `status`, `department`, `date`
+- **Returns**: Paginated list of candidates bounded by Recruiter department or Panel Member assignments.
+
+### `GET /api/candidates/:id`
+- **Returns**: Full candidate profile including complete interview history (all rounds) and feedback scores. Validated by department bounds.
+
+---
+
+## 7. Interviews
+
+### `GET /api/interviews`
+- **Returns**: All interviews (scoped by role constraints).
+
+### `POST /api/interviews/schedule`
+- **Body**: `{ candidate_id, panel_id, date, start_time, meeting_link }`
+- **Logic**: Uses Prisma `$transaction` to guarantee zero double-bookings. Checks candidate eligibility. Checks panel availability. Auto-detects and increments the interview `round`. Returns `409` on conflicts.
+
+### `PUT /api/interviews/:id`
+- **Body**: `{ date, start_time, meeting_link, status }`
+- **Logic**: Rescheduling validates identical conflict logic (excluding the current slot).
+
+### `DELETE /api/interviews/:id`
+- **Logic**: Cancels the interview.
+
+---
+
+## 8. Panels & Panel Members
+
+### `GET /api/panels`
+- **Returns**: All panels.
+
+### `POST /api/panels`
+- **Body**: `{ name, description }`
+
+### `POST /api/panels/members`
+- **Body**: `{ panel_id, user_id }`
+- **Logic**: Assigns a Panel Member.
+
+### `DELETE /api/panels/members`
+- **Body**: `{ member_id }`
+- **Logic**: Unassigns a member.
+
+### `GET /api/panels/dashboard`
+- **Returns**: Dashbaord metrics specifically scoped to a Panel Member.
+
+---
+
+## 9. Feedback & Evaluation
+
+### `POST /api/feedback`
+- **Body**: `{ interview_id, technical_score, communication_score, problem_solving_score, confidence_score, teamwork_score, comments, recommendation }`
+- **Logic**: Computes scores securely. If all required panel members have submitted, automatically advances Interview status to `FEEDBACK_SUBMITTED`.
+
+---
+
+## 10. Dashboards & Analytics
+
+### `GET /api/recruiter/dashboard`
+- **Returns**: Real database aggregate counts for Recruiters (Shortlisted, Upcoming, Completed).
+
+### `GET /api/analytics`
+- **Returns**: System-wide administrative database metrics (Applications by status, department distribution, interview timeline).
+
+---
+
+## 11. System Operations
+
+### `GET /api/audit-logs`
+- **Returns**: Immutable sequence of state modifications (`APPLICATION_SUBMITTED`, `UPDATED_USER`, etc). Properly assigns `user_id` context.
+
+### `GET /api/notifications`
+- **Returns**: Owned system notifications.
+
+### `POST /api/notifications/read`
+- **Body**: `{ id }`
+- **Logic**: Acknowledges a notification securely checking ownership boundaries.

@@ -121,9 +121,8 @@ export async function POST(req: Request) {
       )
     }
 
-    // System audit log (use undefined or a fixed nullable user strategy if your DB allows, 
-    // or just pass a generic non-breaking value. Using a hardcoded ID like 0 if required)
-    await logAudit("SYSTEM", "APPLICATION_SUBMITTED", "Application", application.id)
+    // System audit log (use undefined or a fixed nullable user strategy if your DB allows)
+    await logAudit(undefined, "APPLICATION_SUBMITTED", "Application", application.id)
 
     return NextResponse.json(
       { message: "Application submitted successfully", applicationId: application.id },

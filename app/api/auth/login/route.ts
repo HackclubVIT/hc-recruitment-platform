@@ -25,6 +25,13 @@ export async function POST(req: Request) {
       )
     }
 
+    if (!user.active) {
+      return NextResponse.json(
+        { error: "Account is inactive" },
+        { status: 403 }
+      )
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password)
 
     if (!isPasswordValid) {

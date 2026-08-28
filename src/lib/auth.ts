@@ -1,20 +1,26 @@
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 
-const secretKey = process.env.JWT_SECRET || "default_secret_key_change_in_production"
-const encodedKey = new TextEncoder().encode(secretKey)
+function getSecretKey() {
+  if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET must be provided in production")
+  }
+  return process.env.JWT_SECRET || "development_secret_only"
+}
+
+const getEncodedKey = () => new TextEncoder().encode(getSecretKey())
 
 export async function signToken(payload: any) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(encodedKey)
+    .sign(getEncodedKey())
 }
 
 export async function verifyToken(token: string | undefined = "") {
   try {
-    const { payload } = await jwtVerify(token, encodedKey, {
+    const { payload } = await jwtVerify(token, getEncodedKey(), {
       algorithms: ["HS256"],
     })
     return payload
