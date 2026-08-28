@@ -61,6 +61,17 @@ export const PUT = async (req: Request, res: Response) => {
     if (description !== undefined) updateData.description = description
     
     if (status && status !== existingForm.status) {
+      // Enforce form status lifecycle (Req 27)
+      const validFormTransitions: Record<string, string[]> = {
+        "DRAFT": ["PUBLISHED", "CLOSED"],
+        "PUBLISHED": ["CLOSED"],
+        "CLOSED": []
+      }
+      const allowed = validFormTransitions[existingForm.status] || []
+      if (!allowed.includes(status)) {
+        return res.status(400).json({ error: `Invalid form status transition from ${existingForm.status} to ${status}` })
+      }
+      
       updateData.status = status
       if (status === "PUBLISHED") updateData.published_at = new Date()
       if (status === "CLOSED") updateData.closed_at = new Date()

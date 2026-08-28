@@ -2,6 +2,21 @@ import { Request, Response } from "express";
 import prisma from "../../../../lib/db"
 import { getSession } from "../../../../lib/auth"
 import { logAudit } from "../../../../lib/audit"
+import { z } from "zod"
+
+const VALID_QUESTION_TYPES = ["TEXT", "PARAGRAPH", "RADIO", "DROPDOWN", "CHECKBOX"] as const;
+
+const questionSchema = z.object({
+  question: z.string().min(2),
+  type: z.enum(VALID_QUESTION_TYPES),
+  required: z.boolean().optional(),
+  options: z.array(z.string()).optional()
+}).refine(data => {
+  if (["RADIO", "DROPDOWN", "CHECKBOX"].includes(data.type)) {
+    return data.options && data.options.length > 0
+  }
+  return true
+}, { message: "Options are required for this question type", path: ["options"] })
 
 export const PUT = async (req: Request, res: Response) => {
   const params = req.params;
@@ -27,17 +42,17 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Form not found" })
     }
 
-    // Usually only allow editing DRAFT forms, but maybe we allow modifying PUBLISHED ones if needed. 
-    // Spec says: "Only DRAFT forms should allow question modifications unless there is an explicit safe editing policy."
     if (form.status !== "DRAFT") {
       return res.status(400).json({ error: "Cannot modify questions on a non-DRAFT form" })
     }
 
-    const { question, type, required, options } = req.body
-
-    if (!question || !type) {
-      return res.status(400).json({ error: "Missing required fields" })
+    // Zod validation for question update (Req 28)
+    const parsed = questionSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid question data", details: parsed.error.format() })
     }
+
+    const { question, type, required, options } = parsed.data
 
     // Verify question belongs to form
     const existingQuestion = await prisma.formQuestion.findFirst({
