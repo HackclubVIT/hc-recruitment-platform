@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { logAudit } from "@/lib/audit"
-import { createNotification } from "@/lib/notify"
+import { Prisma } from "@prisma/client";
+import prisma from "../lib/db"
+import { getSession } from "../lib/auth"
+import { logAudit } from "../lib/audit"
+import { createNotification } from "../lib/notify"
 import { z } from "zod"
 
-// TASK 5: Strict validation for feedback scores and decision
 const feedbackSchema = z.object({
   interview_id: z.number().int().positive(),
   technical_score: z.number().int().min(1).max(5),
@@ -26,8 +26,7 @@ export const POST = async (req: Request, res: Response) => {
 
     const body = req.body
     
-    // TASK 5: Validate all fields
-    const parsed = feedbackSchema.safeParse(body)
+        const parsed = feedbackSchema.safeParse(body)
     if (!parsed.success) {
       return res.status(400).json({ error: "Invalid feedback data", details: parsed.error.format() })
     }
@@ -70,8 +69,7 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(409).json({ error: "Feedback already submitted for this interview." })
     }
 
-    // TASK 6: Use $transaction for atomicity
-    const feedback = await prisma.$transaction(async (tx) => {
+        const feedback = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newFeedback = await tx.feedback.create({
         data: {
           interview_id,
@@ -86,7 +84,7 @@ export const POST = async (req: Request, res: Response) => {
         }
       })
 
-      // TASK 23: Check if ALL panel members have submitted feedback
+      // Check if ALL panel members have submitted feedback
       const totalMembers = interview.panel.members.length
       const feedbackCount = await tx.feedback.count({
         where: { interview_id }
@@ -101,14 +99,11 @@ export const POST = async (req: Request, res: Response) => {
 
       // Update Application Status if all feedback submitted
       if (allSubmitted) {
-        const application = await tx.application.findFirst({
-          where: { candidate_id: interview.candidate_id },
-          orderBy: { submitted_at: 'desc' }
-        })
-        
-        if (application) {
+        // @ts-ignore: application_id exists on interview model
+        const applicationId = interview.application_id || (await tx.interview.findUnique({ where: { id: interview_id } }))?.application_id;
+        if (applicationId) {
           await tx.application.update({
-            where: { id: application.id },
+            where: { id: applicationId },
             data: { status: "INTERVIEW_COMPLETED" }
           })
         }

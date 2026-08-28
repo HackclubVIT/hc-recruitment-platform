@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { logAudit } from "@/lib/audit"
-import { createNotification } from "@/lib/notify"
+import { Prisma } from "@prisma/client";
+import prisma from "../../lib/db"
+import { getSession } from "../../lib/auth"
+import { logAudit } from "../../lib/audit"
+import { createNotification } from "../../lib/notify"
 import { z } from "zod"
 
 const VALID_INTERVIEW_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FEEDBACK_PENDING", "FEEDBACK_SUBMITTED"]
@@ -61,7 +62,7 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Candidate is not eligible for scheduling (Current status: ${appStatus})` })
     }
 
-    // TASK 16: Validate panel exists and is active
+    // Validate panel exists and is active
     const panel = await prisma.panel.findUnique({ where: { id: panel_id } })
     if (!panel) {
       return res.status(404).json({ error: "Panel not found" })
@@ -73,15 +74,16 @@ export const POST = async (req: Request, res: Response) => {
     const startObj = new Date(`${date}T${start_time}:00Z`)
     const endObj = new Date(startObj.getTime() + 10 * 60000) // 10 minutes default
 
-    // TASK 4: Calculate next round number
+    // Calculate next round number
     const lastInterview = await prisma.interview.findFirst({
       where: { candidate_id, status: { not: "CANCELLED" } },
       orderBy: { round: 'desc' }
     })
     const nextRound = lastInterview ? lastInterview.round + 1 : 1
 
-    // Transactional logic to prevent race conditions during scheduling
-    const interview = await prisma.$transaction(async (tx) => {
+    // Prevent scheduling conflicts with a transaction
+    const application_id = candidate.applications[0].id;
+    const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Conflict Detection for Panel
       const conflict = await tx.interview.findFirst({
         where: {
@@ -123,9 +125,10 @@ export const POST = async (req: Request, res: Response) => {
       const newInterview = await tx.interview.create({
         data: {
           candidate_id,
+          application_id,
           panel_id,
           recruiter_id: session.id,
-          round: nextRound,  // TASK 4: Use calculated round
+          round: nextRound,  // Use calculated round
           date: new Date(date),
           start_time: startObj,
           end_time: endObj,
@@ -135,12 +138,10 @@ export const POST = async (req: Request, res: Response) => {
         include: { candidate: true, panel: true }
       })
 
-      if (candidate.applications.length > 0) {
-        await tx.application.update({
-          where: { id: candidate.applications[0].id },
-          data: { status: "INTERVIEW_SCHEDULED" }
-        })
-      }
+      await tx.application.update({
+        where: { id: application_id },
+        data: { status: "INTERVIEW_SCHEDULED" }
+      })
 
       return newInterview
     })
