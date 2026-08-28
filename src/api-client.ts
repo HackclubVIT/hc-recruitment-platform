@@ -55,35 +55,37 @@ export const fetchApi = async (path: string, options: RequestInit = {}) => {
 
 export const api = {
   getMe: async () => {
-    const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+    const res = await fetchApi("/api/auth/me");
     if (!res.ok) throw new Error("Not logged in");
     return res.json();
   },
   login: async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+    const res = await fetchApi("/api/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-      credentials: "include"
     });
     if (!res.ok) throw new Error("Invalid credentials");
     return res.json();
   },
   logout: async () => {
-    await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
+    await fetchApi("/api/auth/logout", { method: "POST" });
   },
   getRecruitmentApplications: async () => {
-    const res = await fetch(`${API_BASE}/api/applications`, { credentials: "include" });
+    const res = await fetchApi("/api/applications");
     if (!res.ok) throw new Error("Failed to fetch applications");
     const json = await res.json();
-    return json.applications;
+    return {
+      items: json.items,
+      page: json.page,
+      limit: json.limit,
+      total: json.total,
+      totalPages: json.totalPages
+    };
   },
   updateRecruitmentStatus: async (id: number | string, status: string) => {
-    const res = await fetch(`${API_BASE}/api/applications/${id}`, {
+    const res = await fetchApi(`/api/applications/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
-      credentials: "include"
     });
     if (!res.ok) throw new Error("Failed to update status");
     return res.json();

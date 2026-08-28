@@ -1,70 +1,102 @@
-# HackClub VIT Recruitment & Interview Management Platform
+# HackClub VIT Recruitment and Interview Management Platform
 
-Welcome to the HackClub VIT Recruitment Platform. This platform handles the entire lifecycle of student recruitment, application processing, candidate filtering, interview scheduling, panel management, and analytics.
+The HackClub VIT Recruitment Platform is built on a strictly decoupled 3-tier architecture. It comprises a Next.js Frontend for recruitment and administration, an independent Express API to securely manage all business logic, and a PostgreSQL database.
 
-## Architecture
+## Architecture Overview
 
-This project is built using a decoupled architecture, clearly separating the frontend client from the backend API logic.
+Main Website
+       |
+       v
+Independent Express API
+       |
+       v
+PostgreSQL
+       ^
+       |
+Recruitment Website
 
-```mermaid
-graph TD
-    A[Recruitment Frontend] -->|NEXT_PUBLIC_API_URL| B(Independent Express API)
-    B -->|Prisma| C[(PostgreSQL Database)]
+- **Recruitment Frontend**: Built with Next.js (App Router), deployed independently. Handles purely presentation and UX. All recruitment data is fetched securely from the Independent Express API.
+- **Independent Express API**: Located in `api/`. This is the authoritative source for authentication, authorization, session management, scheduling, candidate logic, and database interactions.
+- **Database**: PostgreSQL (managed via Prisma ORM exclusively inside the API).
+
+---
+
+## Setup Instructions
+
+### 1. Database & Environment
+
+Ensure you have a PostgreSQL instance running.
+
+Create a `.env` file at the root of the project for the Frontend:
+```env
+# Frontend Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-### Components
+Create a `.env` file inside `api/` for the Backend:
+```env
+# Backend Configuration
+PORT=3001
+DATABASE_URL="postgresql://user:password@localhost:5432/hackclub_db"
+JWT_SECRET="your-super-secret-jwt-key"
+FRONTEND_URL="http://localhost:3000"
+```
 
-1. **Recruitment Frontend (Next.js)**
-   - Located in the root directory (`app/`, `src/`).
-   - Purely a frontend client communicating strictly via cross-domain credentials to the API.
-   - Run with `pnpm run dev` and build with `pnpm run build`.
+### 2. Independent API Setup
 
-2. **Independent API (Express.js)**
-   - Located in the `api/` directory.
-   - Owns authentication, session cookies, database access (Prisma), and all core business logic.
-   - Exposes REST endpoints on port 3001.
+The API is fully self-contained and strictly decoupled from the frontend. It has its own `package.json` and `pnpm-lock.yaml`.
 
-3. **Database (PostgreSQL)**
-   - Powered by Prisma (schemas located in `api/prisma/schema.prisma`).
-
-## Getting Started
-
-### 1. Database Setup
-Ensure you have PostgreSQL running. Run the following from the `api/` directory:
 ```bash
 cd api
 pnpm install
 npx prisma generate
 npx prisma db push
-npx prisma db seed
 ```
 
-### 2. Independent API
-The API handles all requests and owns the `JWT_SECRET` for authentication.
+#### Running the API (Development)
 ```bash
-cd api
 pnpm run dev
-# The API will be available at http://localhost:3001
+```
+*The API will start on `http://localhost:3001`.*
+
+#### Building the API (Production)
+```bash
+pnpm run build
+pnpm run start
 ```
 
-**Environment Variables (`api/.env`):**
-- `DATABASE_URL`
-- `JWT_SECRET` (Must be set securely in production)
-- `ALLOWED_ORIGIN` (For CORS, e.g., `http://localhost:3000`)
-- `PORT` (Defaults to 3001)
+### 3. Frontend Setup
 
-### 3. Recruitment Frontend
-The frontend requires only the public API URL to function.
+The frontend consumes the Independent API via the centralized `fetchApi` client. It requires the API to be running to function properly.
+
 ```bash
+# From the root directory
 pnpm install
-pnpm run dev
-# The frontend will be available at http://localhost:3000
 ```
 
-**Environment Variables (`.env`):**
-- `NEXT_PUBLIC_API_URL`: Should point to the running API (e.g., `http://localhost:3001`). Must be set in production.
+#### Running the Frontend (Development)
+```bash
+pnpm run dev
+```
+*The Frontend will start on `http://localhost:3000`.*
 
-## Authentication & Authorization
+#### Building the Frontend (Production)
+```bash
+pnpm run build
+pnpm run start
+```
 
-Authentication is natively handled via `httpOnly`, `secure`, and `sameSite` cookies issued by the `api/` service. 
-The Next.js frontend uses NextMiddleware solely for User Experience (UX) redirection by decoding the unverified token payload, ensuring that the API remains the singular authoritative source of truth for validation.
+*Note: In production, `NEXT_PUBLIC_API_URL` must be set to the live API domain. The frontend will explicitly crash or warn if it attempts to silently fallback to itself.*
+
+---
+
+## Technical Policies
+
+- **No Shared Database Logic**: The frontend must never contain Prisma schema definitions or database queries.
+- **API Centralization**: All API calls from the frontend must be routed through `src/api-client.ts` to ensure credentials and JSON headers are systematically attached.
+- **Authentication**: JWT-based session cookies are issued directly by the Express API. The cookies are strictly `httpOnly` and validated directly by the backend for every protected route.
+- **Strict Workflow Integrity**: Administrative privileges do not bypass the logical recruitment state machine (e.g. `INTERVIEW_SCHEDULED` -> `INTERVIEW_COMPLETED` -> `SELECTED`).
+
+## API Documentation
+
+For full details on the registered API endpoints, please see [API.md](./API.md).
