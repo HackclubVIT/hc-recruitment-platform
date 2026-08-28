@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { logAudit } from "@/lib/audit"
-import { createNotification } from "@/lib/notify"
+import prisma from "../../lib/db"
+import { getSession } from "../../lib/auth"
+import { logAudit } from "../../lib/audit"
+import { createNotification } from "../../lib/notify"
 import { z } from "zod"
 
 export const GET = async (req: Request, res: Response) => {

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { createNotification } from "@/lib/notify"
-import { logAudit } from "@/lib/audit"
+import prisma from "../lib/db"
+import { getSession } from "../lib/auth"
+import { createNotification } from "../lib/notify"
+import { logAudit } from "../lib/audit"
 import { z } from "zod"
 
 const applicationSchema = z.object({
@@ -139,8 +139,7 @@ export const POST = async (req: Request, res: Response) => {
 
 export const GET = async (req: Request, res: Response) => {
   try {
-    // TASK 1: Add authentication/authorization
-    const session = await getSession(req)
+        const session = await getSession(req)
     if (!session) {
       return res.status(401).json({ error: "Unauthorized" })
     }
@@ -157,14 +156,22 @@ export const GET = async (req: Request, res: Response) => {
 
     const where: any = {}
 
-    // TASK 1: Enforce role-based access
-    // Build candidate filter object carefully to avoid overwrite (TASK 10)
+        // Build candidate filter object
     const candidateFilter: any = {}
 
-    if (session.role === "RECRUITER") {
+    if (department) {
+      if (session.role === "RECRUITER") {
+        if (session.departments.includes(department)) {
+          candidateFilter.department = department
+        } else {
+          return res.status(403).json({ error: "Forbidden: Department not assigned" })
+        }
+      } else if (session.role === "ADMIN") {
+        candidateFilter.department = department
+      }
+    } else if (session.role === "RECRUITER") {
       candidateFilter.department = { in: session.departments }
     } else if (session.role === "PANEL_MEMBER") {
-      // Panel members can only see applications for candidates they have interviews with
       candidateFilter.interviews = {
         some: {
           panel: {
@@ -181,11 +188,6 @@ export const GET = async (req: Request, res: Response) => {
       candidateFilter.name = { contains: search, mode: "insensitive" }
     }
 
-    // Department filter (admin only - recruiters already filtered by their departments)
-    if (department && session.role === "ADMIN") {
-      candidateFilter.department = department
-    }
-
     // Only set where.candidate if we have filters
     if (Object.keys(candidateFilter).length > 0) {
       where.candidate = candidateFilter
@@ -195,8 +197,7 @@ export const GET = async (req: Request, res: Response) => {
       where.status = status
     }
 
-    // TASK 2: Fix date filter to use submitted_at (not created_at which doesn't exist)
-    if (date) {
+        if (date) {
       const startDate = new Date(date)
       const endDate = new Date(date)
       endDate.setDate(endDate.getDate() + 1)
@@ -220,7 +221,7 @@ export const GET = async (req: Request, res: Response) => {
       prisma.application.count({ where })
     ])
 
-    return res.status(500).json({
+    return res.status(200).json({
       items,
       page,
       limit,
@@ -229,6 +230,6 @@ export const GET = async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error("Fetch applications error:", error)
-    return res.status(200).json({ error: "Internal server error" })
+    return res.status(500).json({ error: "Internal server error" })
   }
 }

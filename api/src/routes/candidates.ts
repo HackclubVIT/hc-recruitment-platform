@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import prisma from "../lib/db"
+import { getSession } from "../lib/auth"
 
 export const GET = async (req: Request, res: Response) => {
   try {
@@ -16,22 +16,28 @@ export const GET = async (req: Request, res: Response) => {
 
     let whereClause: any = {}
     
-    if (session.role === "RECRUITER") {
+    if (department) {
+      if (session.role === "RECRUITER") {
+        if (session.departments.includes(department)) {
+          whereClause.department = department
+        } else {
+          return res.status(403).json({ error: "Forbidden: Department not assigned" })
+        }
+      } else if (session.role === "ADMIN") {
+        whereClause.department = department
+      }
+    } else if (session.role === "RECRUITER") {
       whereClause.department = { in: session.departments }
     } else if (session.role === "PANEL_MEMBER") {
       whereClause.interviews = {
         some: {
           panel: {
             members: {
-              some: {
-                user_id: session.id
-              }
+              some: { user_id: session.id }
             }
           }
         }
       }
-    } else if (department) {
-      whereClause.department = department
     }
 
     if (q) {
