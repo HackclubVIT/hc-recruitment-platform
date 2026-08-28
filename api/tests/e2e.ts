@@ -179,6 +179,26 @@ async function runTests() {
   const intAGet = await makeRequest(`/interviews/${intA.id}`, 'GET', null, 'PANEL_MEMBER', panelMemberA.id)
   if (intAGet.status !== 200) throw new Error("Panel A access Interview A failed. Status: " + intAGet.status)
   
+  // NEW PANEL MEMBER TEST (Req 6)
+  // Interview 1 has A and B assigned. We add a new member D to the live panel A.
+  const pmD = await prisma.user.create({ data: { name: 'PM_D', email: 'd@test.com', role: 'PANEL_MEMBER', active: true, password: 'pw' } })
+  await prisma.panelMember.create({ data: { user_id: pmD.id, panel_id: panelA.id, active: true } })
+  
+  // Verify D is NOT added to assigned_members
+  const intACheckMembers = await prisma.interview.findUnique({ where: { id: intA.id }, include: { assigned_members: true } })
+  if (intACheckMembers!.assigned_members.length !== 2) throw new Error("New panel member was improperly assigned to a historical interview!")
+  
+  // Verify D cannot submit feedback for Interview A
+  const fD = await makeRequest('/feedback', 'POST', {
+    interview_id: intA.id, technical_score: 5, communication_score: 5, problem_solving_score: 5,
+    confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'test'
+  }, 'PANEL_MEMBER', pmD.id)
+  if (fD.status !== 403) throw new Error("Unassigned live panel member submitted feedback! Status: " + fD.status)
+
+  // Clean up D so they don't get assigned to future Panel A interviews in this test script
+  await prisma.panelMember.deleteMany({ where: { user_id: pmD.id } })
+
+  
   // Panel Member A CANNOT access Application B
   const appBGet = await makeRequest(`/applications/${appB}`, 'GET', null, 'PANEL_MEMBER', panelMemberA.id)
   if (appBGet.status !== 403 && appBGet.status !== 404) throw new Error("Panel A accessed Application B incorrectly: " + appBGet.status)
