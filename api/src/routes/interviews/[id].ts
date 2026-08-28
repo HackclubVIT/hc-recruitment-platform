@@ -42,11 +42,34 @@ export const GET = async (req: Request, res: Response) => {
       const isMember = interview.panel.members.some((m: any) => m.user_id === session.id)
       if (!isMember) return res.status(403).json({ error: "Forbidden" })
       
-      if (interview.candidate && interview.candidate.applications) {
-        interview.candidate.applications = interview.candidate.applications.filter(
-          (app: any) => app.id === interview.application_id
-        )
+      // Data minimization: only return the exact application for this interview (Req 4)
+      const scopedInterview = await prisma.interview.findUnique({
+        where: { id },
+        include: {
+          candidate: true,
+          panel: {
+            include: { members: { include: { user: { select: { name: true, email: true } } } } }
+          },
+          feedback: true
+        }
+      })
+      
+      if (!scopedInterview) return res.status(404).json({ error: "Not found" })
+      
+      // Attach only the relevant application
+      const relevantApplication = scopedInterview.application_id 
+        ? await prisma.application.findUnique({ where: { id: scopedInterview.application_id } })
+        : null
+      
+      const result = {
+        ...scopedInterview,
+        candidate: {
+          ...scopedInterview.candidate,
+          applications: relevantApplication ? [relevantApplication] : []
+        }
       }
+      
+      return res.status(200).json({ interview: result })
     }
 
     if (session.role === "RECRUITER") {
@@ -80,6 +103,15 @@ export const PUT = async (req: Request, res: Response) => {
 
     if (start_time && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(start_time)) {
       return res.status(400).json({ error: "Invalid time format, use HH:MM (00:00 - 23:59)" })
+    }
+
+    // Real calendar date validation (Req 20)
+    if (date) {
+      const [yr, mo, dy] = date.split('-').map(Number)
+      const dateCheck = new Date(yr, mo - 1, dy)
+      if (isNaN(dateCheck.getTime()) || dateCheck.getFullYear() !== yr || dateCheck.getMonth() !== mo - 1 || dateCheck.getDate() !== dy) {
+        return res.status(400).json({ error: `Invalid calendar date: ${date}` })
+      }
     }
 
     const existingInterview = await prisma.interview.findUnique({

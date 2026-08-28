@@ -42,6 +42,13 @@ export const POST = async (req: Request, res: Response) => {
 
     const { candidate_id, application_id, panel_id, date, start_time, meeting_link } = parsed.data
 
+    // Real calendar date validation (Req 20) — reject invalid dates like 2026-02-31
+    const [year, month, day] = date.split('-').map(Number)
+    const dateObj = new Date(year, month - 1, day)
+    if (dateObj.getFullYear() !== year || dateObj.getMonth() !== month - 1 || dateObj.getDate() !== day) {
+      return res.status(400).json({ error: `Invalid calendar date: ${date}` })
+    }
+
     const candidate = await prisma.candidate.findUnique({
       where: { id: candidate_id },
       include: { applications: { where: { id: application_id } } }
