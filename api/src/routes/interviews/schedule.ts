@@ -110,11 +110,9 @@ export const POST = async (req: Request, res: Response) => {
               end_time: { gt: startObj }
             }
           ],
-          panel: {
-            members: {
-              some: {
-                user_id: { in: memberUserIds }
-              }
+          assigned_members: {
+            some: {
+              user_id: { in: memberUserIds }
             }
           }
         }

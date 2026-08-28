@@ -167,7 +167,7 @@ export const PUT = async (req: Request, res: Response) => {
     const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (date && start_time) {
         // 1. Conflict Detection for Panel Members (excluding self)
-        const memberUserIds = existingInterview.panel.members.map((m: any) => m.user_id)
+        const memberUserIds = existingInterview.assigned_members.map((m: any) => m.user_id)
         const conflict = await tx.interview.findFirst({
           where: {
             id: { not: id },
@@ -179,11 +179,9 @@ export const PUT = async (req: Request, res: Response) => {
                 end_time: { gt: startObj }
               }
             ],
-            panel: {
-              members: {
-                some: {
-                  user_id: { in: memberUserIds }
-                }
+            assigned_members: {
+              some: {
+                user_id: { in: memberUserIds }
               }
             }
           }
@@ -221,7 +219,7 @@ export const PUT = async (req: Request, res: Response) => {
       const updatedInterview = await tx.interview.update({
         where: { id },
         data: updateData,
-        include: { candidate: true, panel: { include: { members: true } } }
+        include: { candidate: true, assigned_members: true }
       })
 
       return updatedInterview
@@ -234,7 +232,7 @@ export const PUT = async (req: Request, res: Response) => {
     // Notify Panel Members
     const { createNotification } = await import("../../lib/notify")
     const action = status === "CANCELLED" ? "cancelled" : "updated"
-    for (const pm of interview.panel.members) {
+    for (const pm of interview.assigned_members) {
       await createNotification(
         pm.user_id,
         `Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,

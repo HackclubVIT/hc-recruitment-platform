@@ -281,6 +281,83 @@ async function runTests() {
   if (schedB2Res.status !== 201) throw new Error("Admin scheduling B round 2 failed: " + JSON.stringify(schedB2Res.data))
   if (schedB2Res.data.interview.round !== 2) throw new Error("Further round did not increment round number")
   
+  // NEW INTERVIEW CONFLICT TEST (Req 14)
+  // Panel A currently has A and B (Wait, it actually has A and B, we added them at line 48).
+  // Let's add C to Panel A.
+  const pmC = await prisma.user.create({ data: { name: 'PM_C', email: 'c@test.com', role: 'PANEL_MEMBER', active: true, password: 'pw' } })
+  const panelMemberC = await prisma.panelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id, active: true } })
+  
+  // Create Cand D
+  const applyResD = await fetch(`${API_URL}/applications`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Candidate D', email: 'candD@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG004',
+      answers: { [q1.id.toString()]: "D text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  const appD = (await applyResD.json()).applicationId
+  const candD = await prisma.candidate.findFirst({ where: { email: 'candD@test.com' } })
+  await makeRequest(`/applications/${appD}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appD}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+
+  // Schedule Int D for Panel A (now has A, B, C)
+  const schedDRes = await makeRequest('/interviews/schedule', 'POST', {
+    candidate_id: candD!.id, application_id: appD, panel_id: panelA.id,
+    date: '2026-10-20', start_time: '10:00'
+  }, 'ADMIN', admin.id)
+  if (schedDRes.status !== 201) throw new Error("Scheduling D failed: " + JSON.stringify(schedDRes.data))
+  const intD = schedDRes.data.interview
+
+  // Remove C from Panel A
+  await prisma.panelMember.update({ where: { id: panelMemberC.id }, data: { active: false } })
+  
+  // Add C to Panel B
+  await prisma.panelMember.create({ data: { user_id: pmC.id, panel_id: panelB.id, active: true } })
+
+  // Schedule Int E for Panel B at same time as Int D
+  // Create Cand E
+  const applyResE = await fetch(`${API_URL}/applications`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Candidate E', email: 'candE@test.com', phone: '1234567890', department: 'Engineering', registration_number: 'REG005',
+      answers: { [q1.id.toString()]: "E text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  const appE = (await applyResE.json()).applicationId
+  const candE = await prisma.candidate.findFirst({ where: { email: 'candE@test.com' } })
+  await makeRequest(`/applications/${appE}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  await makeRequest(`/applications/${appE}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+
+  const schedERes = await makeRequest('/interviews/schedule', 'POST', {
+    candidate_id: candE!.id, application_id: appE, panel_id: panelB.id,
+    date: '2026-10-20', start_time: '10:00' // SAME TIME AS INT D
+  }, 'ADMIN', admin.id)
+  
+  if (schedERes.status !== 409) throw new Error("Historical conflict scheduling failed to block. Status: " + schedERes.status)
+
+  // FINAL DECISION REGRESSION TEST (Req 15)
+  // Int D has assigned members A, B, C.
+  await makeRequest(`/interviews/${intD.id}`, 'PUT', { status: 'IN_PROGRESS' }, 'PANEL_MEMBER', panelMemberA.id)
+  await makeRequest(`/interviews/${intD.id}`, 'PUT', { status: 'COMPLETED' }, 'PANEL_MEMBER', panelMemberA.id)
+  
+  // Submit A and B feedback
+  await makeRequest('/feedback', 'POST', { interview_id: intD.id, technical_score: 5, communication_score: 5, problem_solving_score: 5, confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'good' }, 'PANEL_MEMBER', panelMemberA.id)
+  await makeRequest('/feedback', 'POST', { interview_id: intD.id, technical_score: 5, communication_score: 5, problem_solving_score: 5, confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'good' }, 'PANEL_MEMBER', panelMemberB.id)
+  
+  // Attempt final decision - MUST FAIL because C has not submitted, even though C is no longer on Panel A
+  const decDFail = await makeRequest(`/applications/${appD}`, 'PUT', { status: 'SELECTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  if (decDFail.status !== 400) throw new Error("Final decision succeeded improperly without historical C feedback. Status: " + decDFail.status)
+  
+  // Submit C feedback (using C's original panelMemberC id from Panel A, which is inactive, but they can still submit for historical assignments)
+  const cFbRes = await makeRequest('/feedback', 'POST', { interview_id: intD.id, technical_score: 5, communication_score: 5, problem_solving_score: 5, confidence_score: 5, teamwork_score: 5, decision: 'RECOMMENDED', comments: 'good' }, 'PANEL_MEMBER', pmC.id)
+  if (cFbRes.status !== 201) throw new Error("Historical member C failed to submit feedback: " + JSON.stringify(cFbRes.data))
+
+  // Now attempt final decision - MUST SUCCEED
+  const decDSuccess = await makeRequest(`/applications/${appD}`, 'PUT', { status: 'SELECTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
+  if (decDSuccess.status !== 200) throw new Error("Final decision failed after C feedback: " + JSON.stringify(decDSuccess.data))
+  
   // Req 6: Active Membership Security
   await prisma.panelMember.updateMany({
     where: { user_id: panelMemberA.id },

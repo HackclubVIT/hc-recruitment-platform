@@ -145,7 +145,7 @@ export const PUT = async (req: Request, res: Response) => {
       const latestInterview = await prisma.interview.findFirst({
         where: { application_id: id },
         orderBy: { round: 'desc' },
-        include: { panel: { include: { members: true } }, feedback: true }
+        include: { assigned_members: true, feedback: true }
       })
 
       if (!latestInterview) {
@@ -156,7 +156,7 @@ export const PUT = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Cannot transition status: Interview is not fully completed or feedback is missing." })
       }
 
-      const requiredMemberIds = latestInterview.panel.members.map((m: any) => m.id).sort()
+      const requiredMemberIds = latestInterview.assigned_members.map((m: any) => m.id).sort()
       const submittedFeedbackIds = latestInterview.feedback.map((f: any) => f.panel_member_id).sort()
 
       const allSubmitted = requiredMemberIds.length > 0 && 
