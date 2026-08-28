@@ -1,4 +1,5 @@
 // Status constants (match Prisma String fields)
+// This file defines the core state machine for the recruitment pipeline
 
 export const Role = {
   ADMIN: "ADMIN",
@@ -50,6 +51,11 @@ export const FeedbackRecommendation = {
 
 export type FeedbackRecommendation = (typeof FeedbackRecommendation)[keyof typeof FeedbackRecommendation]
 
+/**
+ * VALID_TRANSITIONS - Defines the allowed state transitions for applications
+ * This is the core state machine. Each status can only transition to the listed next statuses.
+ * Terminal states (SELECTED, REJECTED) have empty arrays - no further transitions allowed.
+ */
 export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
   [ApplicationStatus.APPLIED]: [ApplicationStatus.UNDER_REVIEW, ApplicationStatus.REJECTED],
   [ApplicationStatus.UNDER_REVIEW]: [ApplicationStatus.SHORTLISTED, ApplicationStatus.ON_HOLD, ApplicationStatus.REJECTED],
@@ -62,6 +68,13 @@ export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> =
   [ApplicationStatus.REJECTED]: [],
 }
 
+/**
+ * ROLE_TRANSITION_PERMISSIONS - Defines which roles can trigger each transition
+ * Key: fromStatus -> toStatus -> allowed roles[]
+ * 
+ * NOTE: ADMIN is not explicitly listed but has full access via requireRoles guard in API routes.
+ * FIXME: [BUG] ADMIN role missing from explicit permissions - may cause canTransition to return false for admins
+ */
 export const ROLE_TRANSITION_PERMISSIONS: Record<ApplicationStatus, Partial<Record<ApplicationStatus, Role[]>>> = {
   [ApplicationStatus.APPLIED]: {
     [ApplicationStatus.UNDER_REVIEW]: [Role.RECRUITER, Role.LEAD],
@@ -77,15 +90,15 @@ export const ROLE_TRANSITION_PERMISSIONS: Record<ApplicationStatus, Partial<Reco
     [ApplicationStatus.REJECTED]: [Role.RECRUITER, Role.LEAD],
   },
   [ApplicationStatus.SHORTLISTED]: {
-    [ApplicationStatus.INTERVIEW_SCHEDULED]: [Role.LEAD],
+    [ApplicationStatus.INTERVIEW_SCHEDULED]: [Role.LEAD], // Only LEAD can schedule interviews
     [ApplicationStatus.REJECTED]: [Role.RECRUITER, Role.LEAD],
   },
   [ApplicationStatus.INTERVIEW_SCHEDULED]: {
-    [ApplicationStatus.INTERVIEWED]: [Role.LEAD],
-    [ApplicationStatus.SHORTLISTED]: [Role.LEAD],
+    [ApplicationStatus.INTERVIEWED]: [Role.LEAD], // Only LEAD can mark as interviewed
+    [ApplicationStatus.SHORTLISTED]: [Role.LEAD], // LEAD can move back to shortlisted
   },
   [ApplicationStatus.INTERVIEWED]: {
-    [ApplicationStatus.SELECTED]: [Role.LEAD],
+    [ApplicationStatus.SELECTED]: [Role.LEAD], // Only LEAD can make final decisions
     [ApplicationStatus.WAITLISTED]: [Role.LEAD],
     [ApplicationStatus.REJECTED]: [Role.LEAD],
   },
@@ -97,6 +110,15 @@ export const ROLE_TRANSITION_PERMISSIONS: Record<ApplicationStatus, Partial<Reco
   [ApplicationStatus.REJECTED]: {},
 }
 
+/**
+ * canTransition - Checks if a role can transition from one status to another
+ * Used by API routes to validate status change requests
+ * 
+ * @param fromStatus - Current application status
+ * @param toStatus - Desired new status
+ * @param userRole - Role of user attempting the transition
+ * @returns boolean - true if transition is valid for this role
+ */
 export function canTransition(
   fromStatus: ApplicationStatus,
   toStatus: ApplicationStatus,
@@ -111,6 +133,14 @@ export function canTransition(
   return rolePermissions.includes(userRole)
 }
 
+/**
+ * getValidNextStatuses - Returns all valid next statuses for a given role
+ * Used by UI to populate status dropdown with only allowed transitions
+ * 
+ * @param currentStatus - Current application status
+ * @param userRole - Role of current user
+ * @returns ApplicationStatus[] - Array of valid next statuses
+ */
 export function getValidNextStatuses(
   currentStatus: ApplicationStatus,
   userRole: Role
@@ -122,6 +152,13 @@ export function getValidNextStatuses(
   })
 }
 
+/**
+ * isTerminalStatus - Checks if a status is terminal (no further transitions)
+ * Used to determine if decision/feedback actions are available
+ * 
+ * @param status - Application status to check
+ * @returns boolean - true if SELECTED or REJECTED
+ */
 export function isTerminalStatus(status: ApplicationStatus): boolean {
   return status === ApplicationStatus.SELECTED || status === ApplicationStatus.REJECTED
 }

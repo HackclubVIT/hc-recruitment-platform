@@ -1,5 +1,16 @@
 "use client"
 
+/**
+ * Client-side Authentication Context
+ * Manages user session state, login/logout, and role-based access
+ * 
+ * PROVIDES: user, loading, login, logout, refreshUser
+ * CONSUMED BY: All dashboard pages and protected components
+ * 
+ * TOKEN STORAGE: localStorage (hc_session_token) + httpOnly cookie (set by API)
+ * INTEGRATION: Main site handles auth; this app proxies login and verifies tokens
+ */
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { api, getToken, clearToken } from "./api"
 
@@ -25,6 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
+  /**
+   * refreshUser - Fetches current user profile from /api/auth/me
+   * Called on mount and after login
+   * Clears token and user on failure (expired/invalid session)
+   */
   const refreshUser = async () => {
     const token = getToken()
     if (!token) {
@@ -43,16 +59,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * login - Authenticates via API proxy to main site
+   * Sets token in localStorage, then refreshes user
+   */
   const login = async (email: string, password: string) => {
     await api.login(email, password)
     await refreshUser()
   }
 
+  /**
+   * logout - Clears local token and user state
+   * Server-side cookie cleared by API route
+   */
   const logout = async () => {
     await api.logout()
     setUser(null)
   }
 
+  // Initialize auth on mount
   useEffect(() => {
     refreshUser()
   }, [])
@@ -72,6 +97,17 @@ export function useAuth() {
   return context
 }
 
+/**
+ * useRequireAuth - Hook for role-based route/component protection
+ * Returns { user, loading, authorized }
+ * 
+ * @param allowedRoles - Optional array of allowed role strings
+ * @returns Object with authorization state
+ * 
+ * USAGE: const { authorized, loading } = useRequireAuth(["LEAD", "ADMIN"])
+ *        if (loading) return <Loading />
+ *        if (!authorized) return <AccessDenied />
+ */
 export function useRequireAuth(allowedRoles?: string[]) {
   const { user, loading } = useAuth()
   if (loading) return { user: null, loading: true, authorized: false }

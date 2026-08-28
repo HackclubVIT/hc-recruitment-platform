@@ -1,5 +1,29 @@
 "use client"
 
+/**
+ * ApplicationTable - Reusable paginated, filterable table for applications
+ * Used by both Lead and Recruiter dashboards
+ * 
+ * FEATURES:
+ * - Server-side pagination, search, status filter, department filter
+ * - Row selection for bulk actions (checkbox column)
+ * - Row click handler for detail view
+ * - Role-aware department filter (only shows for LEAD/ADMIN)
+ * 
+ * PROPS:
+ * - initialApplications: Optional initial data (for SSR/hydration)
+ * - onRowClick: Callback when row clicked (opens detail modal)
+ * - showDepartmentFilter: Whether to show department dropdown
+ * - selectedIds: Currently selected row IDs (controlled)
+ * - onSelectionChange: Callback for selection changes
+ * 
+ * FIXME: [BUG] Department filter only shows departments from current page
+ * FIXME: [BUG] "Select All" checkbox logic flawed for partial selections
+ * FIXME: [BUG] Selection persists across page changes (should reset or sync)
+ * TODO: [INTEGRATION] Add column sorting
+ * TODO: [INTEGRATION] Add virtualized rows for large datasets
+ */
+
 import { useState, useEffect } from "react"
 import { api } from "@/lib/client/api"
 import { StatusBadge } from "./StatusBadge"
@@ -48,6 +72,10 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
 
   const isLead = user?.role === "LEAD"
 
+  /**
+   * fetchApplications - Calls API with current filters and pagination
+   * Resets to page 1 when filters change (handled by onChange handlers)
+   */
   const fetchApplications = async () => {
     setLoading(true)
     try {
@@ -67,26 +95,37 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
     }
   }
 
-   useEffect(() => {
-     const load = async () => {
-       await fetchApplications();
-     };
-     load();
-   }, [page, search, statusFilter, deptFilter]);
+  // Refetch when pagination or filters change
+  useEffect(() => {
+    const load = async () => {
+      await fetchApplications();
+    };
+    load();
+  }, [page, search, statusFilter, deptFilter]);
 
-   const toggleSelection = (id: number) => {
-     if (!onSelectionChange) return
-     const newSelected = selectedIds.includes(id)
-       ? selectedIds.filter(i => i !== id)
-       : [...selectedIds, id]
-     onSelectionChange(newSelected)
-   }
+  /**
+   * toggleSelection - Toggles a single row's selection state
+   * Called by row checkbox onChange
+   */
+  const toggleSelection = (id: number) => {
+    if (!onSelectionChange) return
+    const newSelected = selectedIds.includes(id)
+      ? selectedIds.filter(i => i !== id)
+      : [...selectedIds, id]
+    onSelectionChange(newSelected)
+  }
 
-   const departments = Array.from(new Set(applications.map((a) => a.department)));
+  /**
+   * departments - Unique departments from current page's applications
+   * FIXME: [BUG] Only reflects departments on current page, not all departments
+   * TODO: [INTEGRATION] Fetch all departments from separate API endpoint
+   */
+  const departments = Array.from(new Set(applications.map((a) => a.department)));
 
 
   return (
     <div className="space-y-4">
+      {/* Filter Bar - Search, Status Filter, Department Filter */}
       <div className="flex flex-wrap gap-4 items-center">
         <div className="relative flex-1 min-w-[250px]">
           <input
@@ -113,6 +152,7 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
           <option value="WAITLISTED">Waitlisted</option>
           <option value="REJECTED">Rejected</option>
         </select>
+        {/* Department Filter - Only for LEAD/ADMIN */}
         {showDepartmentFilter && isLead && (
           <select
             value={deptFilter}
@@ -127,6 +167,7 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
         )}
       </div>
 
+      {/* Loading / Empty / Table */}
       {loading ? (
         <div className="text-center py-12 text-gray-400">Loading applications...</div>
       ) : applications.length === 0 ? (
@@ -137,6 +178,7 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
             <table className="w-full text-sm">
               <thead className="bg-gray-900/50">
                 <tr className="text-left text-gray-400 font-mono text-xs uppercase tracking-wider">
+                  {/* Select All Checkbox */}
                   <th className="px-4 py-3">
                     <input
                       type="checkbox"
@@ -170,6 +212,7 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
                     onClick={() => onRowClick?.(app)}
                     className="hover:bg-red-900/10 cursor-pointer transition-colors"
                   >
+                    {/* Row Checkbox */}
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -196,6 +239,7 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
                     <td className="px-4 py-3 text-xs text-gray-500 font-mono">
                       {new Date(app.createdAt).toLocaleDateString()}
                     </td>
+                    {/* View Button - stops row click propagation */}
                     <td className="px-4 py-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); onRowClick?.(app); }}
@@ -210,6 +254,7 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
             </table>
           </div>
 
+          {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between text-sm text-gray-500">
               <span>Showing {(page - 1) * perPage + 1}–{Math.min(page * perPage, total)} of {total}</span>

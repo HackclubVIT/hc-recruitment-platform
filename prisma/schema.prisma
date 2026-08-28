@@ -1,6 +1,13 @@
 // HackClub VIT Chennai — Recruitment & Interview Management Platform
 // Prisma schema for Recruiter & Lead modules
 // Provider: SQLite (dev) → swap to PostgreSQL/Neon for prod via DATABASE_URL
+// 
+// KEY DESIGN DECISIONS:
+// - User.id uses BigInt to match main site's user ID scale
+// - User.department is a String (name), not FK - matches main site schema
+// - Department linkage via name lookup in application code
+// - All timestamps use DateTime with @default(now()) and @updatedAt
+// - Cascade deletes for dependent records (notes, history, interviews)
 
 generator client {
   provider = "prisma-client-js"
@@ -11,6 +18,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/**
+ * User - All system users (admin, lead, recruiter, panel, candidate)
+ * Synced from main site via auth proxy
+ * role: ADMIN | LEAD | RECRUITER | PANEL | CANDIDATE | MEMBER
+ * department: String name (looked up in Department table for deptIds)
+ * isReviewer: Legacy field for panelist eligibility
+ */
 model User {
   id                 BigInt  @id
   name               String
@@ -21,17 +35,23 @@ model User {
   isReviewer         Boolean @default(false)
   avatar             String?
   
-  assignedApps     Application[]           @relation("AssignedRecruiter")
-  notes            ApplicationNote[]
-  statusChanges    StatusHistory[]         @relation("StatusChangedBy")
-  createdInterviews Interview[]            @relation("InterviewCreatedBy")
+  // Relations
+  assignedApps       Application[]           @relation("AssignedRecruiter")
+  notes              ApplicationNote[]
+  statusChanges      StatusHistory[]         @relation("StatusChangedBy")
+  createdInterviews  Interview[]             @relation("InterviewCreatedBy")
   panelistAssignments InterviewPanelist[]
-  feedbacks        Feedback[]
-  notifications    Notification[]
+  feedbacks          Feedback[]
+  notifications      Notification[]
 
   @@map("users")
 }
 
+/**
+ * Department - Organizational units (Technical, Design, Operations, etc.)
+ * Referenced by Application.departmentId (FK)
+ * User.department stores name as String for main site compatibility
+ */
 model Department {
   id          Int    @id @default(autoincrement())
   name        String @unique
@@ -47,6 +67,13 @@ model Department {
 
 // Removed UserDepartment since department is a string in main site User model
 
+/**
+ * Application - Candidate application with full recruitment data
+ * status: APPLIED → UNDER_REVIEW → ON_HOLD → SHORTLISTED → INTERVIEW_SCHEDULED → INTERVIEWED → SELECTED/WAITLISTED/REJECTED
+ * technicalSkills: JSON string array ["React", "TypeScript"]
+ * answers: JSON string object { whyJoin: "...", projectDetails: "..." }
+ * assignedRecruiterId: BigInt (FK to User)
+ */
 model Application {
   id                  Int                @id @default(autoincrement())
   departmentId        Int
@@ -64,6 +91,7 @@ model Application {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
+  // Relations
   department          Department         @relation(fields: [departmentId],        references: [id], onDelete: Cascade)
   assignedRecruiter   User?              @relation("AssignedRecruiter", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
   notes               ApplicationNote[]
@@ -76,6 +104,10 @@ model Application {
   @@map("applications")
 }
 
+/**
+ * ApplicationNote - Internal notes on applications
+ * authorId: BigInt (FK to User)
+ */
 model ApplicationNote {
   id            Int      @id @default(autoincrement())
   applicationId Int
@@ -90,6 +122,11 @@ model ApplicationNote {
   @@map("application_notes")
 }
 
+/**
+ * StatusHistory - Audit trail of application status changes
+ * fromStatus: null for initial creation
+ * changedByUserId: BigInt (FK to User who made the change)
+ */
 model StatusHistory {
   id            Int                @id @default(autoincrement())
   applicationId Int
@@ -106,6 +143,12 @@ model StatusHistory {
   @@map("status_history")
 }
 
+/**
+ * Interview - Scheduled interview with panelists
+ * mode: ONLINE | OFFLINE
+ * status: SCHEDULED | RESCHEDULED | COMPLETED | CANCELLED | NO_SHOW
+ * panelists: Many-to-many via InterviewPanelist
+ */
 model Interview {
   id                Int            @id @default(autoincrement())
   applicationId     Int
@@ -129,6 +172,10 @@ model Interview {
   @@map("interviews")
 }
 
+/**
+ * InterviewPanelist - Many-to-many: Interview ↔ User (panelist)
+ * Composite primary key (interviewId, panelistUserId)
+ */
 model InterviewPanelist {
   interviewId     Int
   panelistUserId  BigInt
@@ -140,6 +187,13 @@ model InterviewPanelist {
   @@map("interview_panelists")
 }
 
+/**
+ * Feedback - Panelist feedback for an interview
+ * ratings: JSON string object { technical: 4, communication: 5, ... }
+ * overall: 0-100 score
+ * recommendation: STRONG_HIRE | HIRE | MAYBE | NO_HIRE
+ * Unique constraint: one feedback per panelist per interview
+ */
 model Feedback {
   id                Int                   @id @default(autoincrement())
   interviewId       Int
@@ -157,6 +211,12 @@ model Feedback {
   @@map("feedbacks")
 }
 
+/**
+ * Notification - In-app notifications for users
+ * type: APPLICATION_SHORTLISTED | INTERVIEW_SCHEDULED | INTERVIEW_RESCHEDULED | INTERVIEW_CANCELLED | DECISION_MADE | FEEDBACK_SUBMITTED
+ * relatedEntityType: "application" | "interview" | etc.
+ * relatedEntityId: ID of related entity
+ */
 model Notification {
   id                 Int      @id @default(autoincrement())
   userId             BigInt

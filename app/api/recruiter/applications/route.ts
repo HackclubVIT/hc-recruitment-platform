@@ -3,6 +3,30 @@ import { prisma } from "@/lib/prisma"
 import { authenticateRequest, requireRoles } from "@/lib/guards"
 import { Role } from "@/lib/status"
 
+/**
+ * GET /api/recruiter/applications
+ * Returns paginated, filtered list of applications
+ * 
+ * AUTH: Requires RECRUITER, LEAD, or ADMIN
+ * SCOPE: Department-scoped (RECRUITER/LEAD see only their depts; ADMIN can filter by departmentId)
+ * 
+ * QUERY PARAMS:
+ * - status: Filter by application status
+ * - search: Search name, email, registerNumber (case-insensitive)
+ * - roleAppliedFor: Filter by role (partial match)
+ * - departmentId: (ADMIN only) Filter by specific department
+ * - page: Page number (default 1)
+ * - limit: Items per page (default 20)
+ * 
+ * RESPONSE: {
+ *   applications: Array<Application>,
+ *   pagination: { page, limit, total, totalPages }
+ * }
+ * 
+ * INTEGRATION: Used by ApplicationTable component
+ * TODO: [INTEGRATION] Add sorting parameters (sortBy, sortOrder)
+ */
+
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request)
   if (auth instanceof NextResponse) return auth
@@ -30,6 +54,7 @@ export async function GET(request: NextRequest) {
     ]
   }
 
+  // Department scoping: non-admin users restricted to their departments
   if (auth.role !== Role.ADMIN) {
     where.departmentId = { in: auth.deptIds }
   } else if (departmentId) {

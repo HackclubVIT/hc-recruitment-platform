@@ -9,6 +9,13 @@ interface EmailOptions {
 
 let transporter: nodemailer.Transporter | null = null
 
+/**
+ * getTransporter - Lazy-initializes nodemailer transporter
+ * Returns null if SMTP not configured (logs to console instead)
+ * 
+ * INTEGRATION: Set SMTP_USER and SMTP_PASS in .env for production emails
+ * TODO: [INTEGRATION] Support other email providers (SendGrid, Mailgun, etc.)
+ */
 function getTransporter() {
   if (transporter) return transporter
 
@@ -30,6 +37,13 @@ function getTransporter() {
   return transporter
 }
 
+/**
+ * sendEmail - Core email sending function
+ * Falls back to console logging if SMTP not configured
+ * 
+ * @param options - Email options (to, subject, text, html)
+ * @returns boolean - true if sent/logged successfully
+ */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const transport = getTransporter()
 
@@ -54,6 +68,16 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   }
 }
 
+/**
+ * sendInterviewScheduledEmail - Sends interview confirmation to candidate
+ * 
+ * @param to - Candidate email
+ * @param candidateName - Candidate name
+ * @param interviewDate - Interview date/time
+ * @param mode - ONLINE or OFFLINE
+ * @param locationOrLink - Meeting link or physical location
+ * @param panelists - Array of panelist names
+ */
 export async function sendInterviewScheduledEmail(
   to: string,
   candidateName: string,
@@ -108,6 +132,9 @@ HackClub VIT Chennai Recruitment Team
   return sendEmail({ to, subject: "Interview Scheduled - HackClub VIT Chennai", text, html })
 }
 
+/**
+ * sendInterviewRescheduledEmail - Notifies candidate of interview time change
+ */
 export async function sendInterviewRescheduledEmail(
   to: string,
   candidateName: string,
@@ -147,6 +174,9 @@ HackClub VIT Chennai Recruitment Team
   })
 }
 
+/**
+ * sendInterviewCancelledEmail - Notifies candidate of interview cancellation
+ */
 export async function sendInterviewCancelledEmail(
   to: string,
   candidateName: string,
@@ -175,6 +205,12 @@ HackClub VIT Chennai Recruitment Team
   })
 }
 
+/**
+ * sendDecisionEmail - Sends final hiring decision to candidate
+ * 
+ * @param decision - SELECTED, REJECTED, or WAITLISTED
+ * @param reason - Optional reason for decision
+ */
 export async function sendDecisionEmail(
   to: string,
   candidateName: string,
@@ -207,6 +243,10 @@ HackClub VIT Chennai Recruitment Team
   })
 }
 
+/**
+ * sendShortlistedEmail - Notifies candidate they've been shortlisted
+ * Triggered when application status changes to SHORTLISTED
+ */
 export async function sendShortlistedEmail(to: string, candidateName: string) {
   const text = `
 Application Shortlisted - HackClub VIT Chennai

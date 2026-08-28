@@ -1,0 +1,636 @@
+================================================================================
+HACKCLUB VIT CHENNAI - RECRUITMENT & INTERVIEW MANAGEMENT PLATFORM
+DETAILED TECHNICAL REPORT
+================================================================================
+
+Report Generated: August 2026
+System Version: 1.0.0
+Platform: Next.js 15 (App Router) + Prisma ORM + SQLite/PostgreSQL
+
+================================================================================
+1. SYSTEM OVERVIEW
+================================================================================
+
+The HC Recruitment Platform is a role-based web application for managing the
+complete recruitment lifecycle at HackClub VIT Chennai. It serves as a companion
+system to the main HackClub website, handling everything from application review
+to final hiring decisions.
+
+PURPOSE:
+- Streamline recruitment workflow for Leads, Recruiters, and Panelists
+- Provide department-scoped access control
+- Automate interview scheduling with conflict detection
+- Track application status through a defined state machine
+- Generate analytics and export capabilities
+
+TECH STACK:
+- Frontend: Next.js 15 (App Router), React 18, TypeScript
+- Styling: Tailwind CSS with custom design system
+- Database: Prisma ORM (SQLite dev, PostgreSQL prod)
+- Authentication: JWT tokens proxied from main site
+- Email: Nodemailer (Gmail SMTP) with console fallback
+- Testing: Vitest
+
+================================================================================
+2. ROLE-BASED ACCESS CONTROL (RBAC)
+================================================================================
+
+ROLE HIERARCHY (highest to lowest):
+  ADMIN > LEAD > RECRUITER > PANEL > CANDIDATE
+
+DEPARTMENT SCOPING:
+- ADMIN: Access to all departments
+- LEAD: Access only to their assigned department(s)
+- RECRUITER: Access only to their assigned department
+- PANEL: Access only to assigned interviews
+
+PERMISSION MATRIX:
+
+| Action                    | ADMIN | LEAD | RECRUITER | PANEL |
+|---------------------------|-------|------|-----------|-------|
+| View all departments      | YES   | NO   | NO        | NO    |
+| Manage recruiters         | YES   | YES  | NO        | NO    |
+| View analytics            | YES   | YES  | NO        | NO    |
+| Schedule interviews       | YES   | YES  | NO        | NO    |
+| Make final decisions      | YES   | YES  | NO        | NO    |
+| Update application status | YES   | YES  | LIMITED   | NO    |
+| Bulk update status        | YES   | YES  | YES       | NO    |
+| Add notes                 | YES   | YES  | YES       | YES   |
+| View assigned applications| YES   | YES  | YES       | YES   |
+| Submit feedback           | YES   | YES  | YES       | YES   |
+
+STATUS TRANSITION PERMISSIONS (enforced by canTransition()):
+
+  APPLIED → UNDER_REVIEW, REJECTED                    [RECRUITER, LEAD]
+  UNDER_REVIEW → SHORTLISTED, ON_HOLD, REJECTED      [RECRUITER, LEAD]
+  ON_HOLD → UNDER_REVIEW, REJECTED                   [RECRUITER, LEAD]
+  SHORTLISTED → INTERVIEW_SCHEDULED, REJECTED        [LEAD only for scheduling]
+  INTERVIEW_SCHEDULED → INTERVIEWED, SHORTLISTED     [LEAD only]
+  INTERVIEWED → SELECTED, WAITLISTED, REJECTED       [LEAD only]
+  WAITLISTED → SELECTED, REJECTED                    [LEAD only]
+  SELECTED → (terminal)                              [none]
+  REJECTED → (terminal)                              [none]
+
+NOTE: ADMIN role is implicitly allowed via requireRoles guard but not explicitly
+listed in ROLE_TRANSITION_PERMISSIONS - this is a known bug.
+
+================================================================================
+3. APPLICATION STATE MACHINE
+================================================================================
+
+The recruitment pipeline follows a strict finite state machine defined in
+lib/status.ts:
+
+VALID TRANSITIONS:
+  APPLIED
+    └──> UNDER_REVIEW
+    └──> REJECTED
+
+  UNDER_REVIEW
+    └──> SHORTLISTED
+    └──> ON_HOLD
+    └──> REJECTED
+
+  ON_HOLD
+    └──> UNDER_REVIEW
+    └──> REJECTED
+
+  SHORTLISTED
+    └──> INTERVIEW_SCHEDULED
+    └──> REJECTED
+
+  INTERVIEW_SCHEDULED
+    └──> INTERVIEWED
+    └──> SHORTLISTED (reschedule/cancel)
+
+  INTERVIEWED
+    └──> SELECTED
+    └──> WAITLISTED
+    └──> REJECTED
+
+  WAITLISTED
+    └──> SELECTED
+    └──> REJECTED
+
+  SELECTED, REJECTED = TERMINAL (no outgoing transitions)
+
+ENFORCEMENT:
+- Frontend: getValidNextStatuses() filters dropdown options
+- Backend: canTransition() validates every status change in API
+- Database: No constraints (enforced at application layer)
+
+================================================================================
+4. CORE FUNCTIONAL MODULES
+================================================================================
+
+4.1 LEAD DASHBOARD (app/(dashboard)/lead/dashboard/page.tsx)
+-------------------------------------------------------------
+Main control center for Department Leads with 5 tabs:
+
+  OVERVIEW TAB:
+  - Funnel metrics (Total, Applied, Under Review, Shortlisted, Selected)
+  - Recruiter workload table (active application counts)
+  - Recent activity feed (last 20 status changes)
+  - API: GET /api/lead/dashboard
+
+  APPLICATIONS TAB:
+  - Full ApplicationTable with department filter
+  - Search, status filter, pagination (10/page)
+  - Row click opens detail modal
+  - API: GET /api/recruiter/applications
+
+  RECRUITERS TAB:
+  - Recruiter team table with department badges
+  - Active application counts per recruiter
+  - API: GET /api/lead/recruiters
+
+  SCHEDULING TAB:
+  - Placeholder UI for interview scheduling guidance
+  - Links to Applications tab for candidate selection
+  - InterviewSchedulerModal integration
+
+  ANALYTICS TAB:
+  - Funnel visualization with counts
+  - Panel workload (upcoming interviews)
+  - Feedback recommendation distribution
+  - API: GET /api/lead/analytics
+
+APPLICATION DETAIL MODAL (shared with Recruiter):
+- Basic info, skills, answers (parsed from JSON)
+- NotesThread (real-time notes via /api/recruiter/applications/[id]/notes)
+- StatusHistoryTimeline (audit trail)
+- Interviews list with feedback preview
+- FeedbackSummary (loads on demand via /api/lead/applications/[id]/feedback)
+- Action bar: Status dropdown (valid transitions only) + Final Decision button
+
+4.2 RECRUITER DASHBOARD (app/(dashboard)/recruiter/page.tsx)
+-------------------------------------------------------------
+Simplified interface focused on application processing:
+
+- ApplicationTable (scoped to recruiter's department, no dept filter)
+- Bulk selection with bulk status update dialog
+- Application detail modal (read-only interviews, no scheduling)
+- Status change dropdown with role-validated transitions
+- Fixed navbar (known bug: pt-20 may not match actual height)
+
+4.3 INTERVIEW MANAGEMENT (Lead only)
+------------------------------------
+Full CRUD for interviews via /api/lead/interviews:
+
+  SCHEDULE (POST):
+  - Select candidate (SHORTLISTED apps)
+  - Pick panelists (PanelistPicker component)
+  - Set date/time, mode (ONLINE/OFFLINE), location/link
+  - Conflict detection: panelist double-booking + candidate conflicts
+  - Email notifications to candidate + panelists
+
+  RESCHEDULE (PATCH action=reschedule):
+  - New time, optional panelist changes
+  - Conflict re-check
+  - Email notifications
+
+  CANCEL (PATCH action=cancel):
+  - Status → CANCELLED
+  - Email notifications
+
+  COMPLETE (PATCH action=complete):
+  - Status → COMPLETED
+  - Enables feedback submission
+
+  PANELIST AVAILABILITY:
+  - getPanelistAvailability() shows busy/free for time slot
+  - Used by InterviewSchedulerModal
+
+4.4 FEEDBACK SYSTEM
+-------------------
+- Panelists submit feedback on COMPLETED interviews
+- Ratings (technical, communication, problemSolving, cultureFit: 1-5)
+- Overall score (0-100)
+- Recommendation: STRONG_HIRE, HIRE, MAYBE, NO_HIRE
+- Comments optional
+- FeedbackSummary aggregates for Lead decision making
+- Decision requires feedback unless override checked
+
+4.5 NOTIFICATIONS
+-----------------
+Real-time in-app notifications via Notification model:
+
+TYPES:
+- APPLICATION_SHORTLISTED
+- INTERVIEW_SCHEDULED
+- INTERVIEW_RESCHEDULED
+- INTERVIEW_CANCELLED
+- DECISION_MADE
+- FEEDBACK_SUBMITTED
+
+FEATURES:
+- Unread count badge
+- Mark as read / mark all read
+- Paginated list (50 per page)
+- Created in same transaction as triggering event
+
+================================================================================
+5. API ARCHITECTURE
+================================================================================
+
+All API routes use Next.js App Router with authentication guards:
+
+AUTHENTICATION FLOW:
+1. Client calls /api/auth/login with email/password
+2. Server proxies to MAIN_SITE_API (/api/auth/login)
+3. Main site returns JWT
+4. Server sets httpOnly cookie + returns token
+5. Client stores token in localStorage
+6. Subsequent requests include Authorization: Bearer <token>
+7. authenticateRequest() verifies JWT, fetches fresh user from DB
+
+GUARDS (lib/guards.ts):
+- authenticateRequest(): Token verification + user fetch
+- requireRoles(...): Role authorization
+- requireDeptAccess(): Department scoping
+- requireApplicationAccess(): App-level department check
+- requireInterviewAccess(): Interview-level department check
+
+LEAD ENDPOINTS (/api/lead/):
+  GET  /dashboard              - Dashboard stats
+  GET  /recruiters             - Recruiter list with workload
+  GET  /analytics              - Funnel, panel workload, recommendations
+  GET  /interviews             - Interview list (filters: status, applicationId)
+  POST /interviews             - Schedule new interview
+  PATCH /interviews/[id]       - Reschedule/cancel/complete
+  GET  /applications/[id]/feedback - Feedback summary
+  POST /applications/[id]/decision - Final decision (SELECTED/WAITLISTED/REJECTED)
+  GET  /applications/export    - CSV export
+
+RECRUITER ENDPOINTS (/api/recruiter/):
+  GET  /applications           - Paginated, filtered list
+  GET  /applications/[id]      - Full detail with relations
+  PATCH /applications/[id]/status - Status change (validated)
+  POST /applications/[id]/notes   - Add note
+  POST /applications/bulk-status  - Bulk status update
+
+SHARED ENDPOINTS:
+  POST /auth/login             - Login proxy
+  GET  /auth/me                - Current user
+  GET  /notifications          - User notifications
+  PATCH /notifications/[id]    - Mark read
+
+================================================================================
+6. DATABASE SCHEMA (Prisma)
+================================================================================
+
+KEY MODELS AND RELATIONSHIPS:
+
+User (BigInt PK)
+├── assignedApps (Application) - Recruiter assignments
+├── notes (ApplicationNote)
+├── statusChanges (StatusHistory)
+├── createdInterviews (Interview)
+├── panelistAssignments (InterviewPanelist)
+├── feedbacks (Feedback)
+└── notifications (Notification)
+
+Department (Int PK)
+└── applications (Application)
+
+Application (Int PK)
+├── department (Department) - FK
+├── assignedRecruiter (User) - FK BigInt
+├── notes (ApplicationNote)
+├── history (StatusHistory)
+└── interviews (Interview)
+
+Interview (Int PK)
+├── application (Application)
+├── createdBy (User)
+├── panelists (InterviewPanelist[]) - M:N User
+└── feedbacks (Feedback)
+
+InterviewPanelist (Composite PK: interviewId + panelistUserId)
+├── interview (Interview)
+└── panelist (User)
+
+Feedback (Int PK)
+├── interview (Interview)
+├── panelist (User)
+└── Unique: [interviewId, panelistUserId]
+
+StatusHistory (Int PK)
+├── application (Application)
+└── changedBy (User)
+
+Notification (Int PK)
+└── user (User) - FK BigInt
+
+DATA TYPES:
+- User.id: BigInt (matches main site scale)
+- User.department: String (name, not FK - main site compatibility)
+- Application.technicalSkills: String (JSON array)
+- Application.answers: String (JSON object)
+- Feedback.ratings: String (JSON object)
+
+================================================================================
+7. UI COMPONENT LIBRARY
+================================================================================
+
+components/ui/:
+
+ApplicationTable.tsx
+- Server-side pagination, search, status filter, department filter
+- Row selection for bulk actions
+- Row click handler
+- Role-aware department filter (LEAD/ADMIN only)
+- BUGS: Dept filter only current page; Select All logic flawed
+
+StatusBadge.tsx
+- Color-coded status display
+- Size variants: sm, md, lg
+- Maps status to Tailwind colors
+
+StatusHistoryTimeline.tsx
+- Vertical timeline of status changes
+- Shows from→to, author, timestamp, reason
+
+NotesThread.tsx
+- Threaded notes with author avatar/name
+- Real-time add via API
+- Auto-refresh on new note
+
+InterviewSchedulerModal.tsx
+- Multi-step: Panelists → Date/Time → Confirm
+- PanelistPicker with availability indicators
+- Conflict warnings
+- Calls POST/PATCH /api/lead/interviews
+
+FeedbackSummary.tsx
+- Aggregated feedback display
+- Average ratings, recommendation distribution
+- Individual panelist cards
+
+ConfirmDialog.tsx
+- Accessible modal with focus trap
+- Variants: primary, danger
+- Custom content slot
+
+PanelistPicker.tsx
+- Multi-select with search
+- Shows availability for selected time slot
+- Department-scoped panelist list
+
+Shell.tsx
+- Dashboard layout with sidebar navigation
+- Responsive mobile drawer
+- Active route highlighting
+
+================================================================================
+8. AUTHENTICATION INTEGRATION
+================================================================================
+
+MAIN SITE INTEGRATION:
+- This platform does NOT handle user registration/password storage
+- Login proxies to MAIN_SITE_API (env: MAIN_SITE_API)
+- Main site returns JWT with user info
+- This platform verifies JWT and syncs user from local DB
+
+TOKEN HANDLING:
+- JWT_SECRET: env variable (fallback in code for dev)
+- Expiry: 7 days
+- Storage: localStorage (client) + httpOnly cookie (server)
+- Refresh: Manual via refreshUser() on mount/login
+
+ROLE MAPPING (verifyToken):
+- Main site roles → Platform roles
+- "ADMIN*" → ADMIN
+- "LEAD*" → LEAD
+- "RECRUITER*" → RECRUITER
+- "PANEL*" → PANEL
+- Default → CANDIDATE
+
+DEPARTMENT RESOLUTION:
+- User.department = String name from main site
+- On each auth, lookup Department by name → deptIds[]
+- Used for department-scoped queries
+
+================================================================================
+9. EMAIL SYSTEM
+================================================================================
+
+Nodemailer with Gmail SMTP (configurable):
+- SMTP_USER, SMTP_PASS in .env
+- If not configured: logs to console (dev mode)
+
+EMAIL TEMPLATES:
+1. Interview Scheduled - Date, time, mode, link/location, panelists
+2. Interview Rescheduled - Old vs new time
+3. Interview Cancelled
+4. Decision (SELECTED/REJECTED/WAITLISTED) - With optional reason
+5. Shortlisted - Next steps info
+
+TRIGGERS:
+- Status → SHORTLISTED: sendShortlistedEmail()
+- Status → SELECTED/REJECTED/WAITLISTED: sendDecisionEmail()
+- Interview scheduled/rescheduled/cancelled: respective functions
+
+================================================================================
+10. CONFLICT DETECTION SYSTEM
+================================================================================
+
+lib/conflict.ts - hasSchedulingConflict():
+
+ALGORITHM:
+1. Find all interviews with status SCHEDULED/RESCHEDULED
+2. Filter to those overlapping proposed time slot:
+   (existing.start < proposed.end) AND (existing.end > proposed.start)
+3. Check panelist conflicts: any assigned panelist in proposed panelists
+4. Check candidate conflict: same applicationId
+
+RETURNS:
+{ conflict: boolean, conflictingWith: [{ type, userId, interviewId, ... }] }
+
+USAGE:
+- POST /api/lead/interviews (schedule)
+- PATCH /api/lead/interviews/[id] (reschedule)
+- InterviewSchedulerModal shows warnings
+
+TODO: Add buffer time between interviews (15 min gap)
+
+================================================================================
+11. KNOWN BUGS & TECHNICAL DEBT
+================================================================================
+
+🔴 HIGH PRIORITY:
+-----------------
+1. Department Filter Leak (ApplicationTable.tsx:85)
+   - departments derived from current page only
+   - User cannot filter by departments not on current page
+
+2. Select All Checkbox Logic (ApplicationTable.tsx:143-153)
+   - Flawed when some items already selected
+   - Doesn't properly handle mixed selection states
+
+3. Notification BigInt/Number Mismatch
+   - createNotificationsForUsers expects number[]
+   - Receives bigint[] from Prisma panelistUserIds
+   - Silent failures possible
+
+4. Feedback API Wrong Status Filter (lead/feedback/route.ts:23)
+   - Includes SCHEDULED/RESCHEDULED but feedback only on COMPLETED
+
+5. Unsafe Type Cast (lead/dashboard/page.tsx:177)
+   - Complex (feedbackApp as any).feedbacks could fail at runtime
+
+6. ADMIN Missing from Transition Permissions (lib/status.ts:65-98)
+   - ROLE_TRANSITION_PERMISSIONS doesn't include ADMIN explicitly
+
+🟡 MEDIUM PRIORITY:
+-------------------
+7. Lead Sub-pages Re-export Dashboard
+   - /applications and /interviews just import LeadDashboard
+   - Tab state not synced with Shell sidebar
+
+8. Recruiter Stats Hardcoded (recruiter/page.tsx:107-113)
+   - All zeros, no API endpoint for stats
+
+9. Bulk Update Allows Invalid Transitions
+   - Dropdown shows all statuses, no validation per app
+
+10. Navbar Height Mismatch (recruiter/page.tsx:133)
+    - pt-20 fixed, may not match actual navbar
+
+11. Recent Activity No Pagination (lead/dashboard/route.ts:33)
+    - Hardcoded take: 20
+
+12. No Error Boundaries / User-Facing Error Messages
+    - API errors only console.error + alert()
+
+🔵 LOW PRIORITY:
+----------------
+13. No Role-Based UI for Panelists
+    - "View" button shown to all roles
+
+14. Export Only in Lead Dashboard
+    - API may not be recruiter-accessible
+
+15. Search Resets Page But Not Selection
+    - selectedIds persists across page changes
+
+================================================================================
+12. INTEGRATION POINTS & EXTENSION GUIDE
+================================================================================
+
+TO ADD A NEW STATUS:
+1. Add to ApplicationStatus enum in lib/status.ts
+2. Add transitions in VALID_TRANSITIONS
+3. Add role permissions in ROLE_TRANSITION_PERMISSIONS
+4. Update Prisma schema comment (line 62)
+5. Add StatusBadge color in StatusBadge.tsx
+6. Update seed.js if needed
+
+TO ADD A NEW ROLE:
+1. Add to Role enum in lib/status.ts
+2. Update role mapping in lib/auth.ts verifyToken()
+3. Add to requireRoles() calls in API routes
+4. Update ROLE_TRANSITION_PERMISSIONS
+5. Update useRequireAuth allowedRoles
+
+TO CHANGE DATABASE:
+1. Modify prisma/schema.prisma
+2. Run: npx prisma migrate dev --name descriptive_name
+3. Run: npx prisma generate
+
+TO ADD EMAIL PROVIDER:
+1. Modify lib/email.ts getTransporter()
+2. Add provider config (SendGrid, Mailgun, etc.)
+3. Update sendEmail() for provider-specific options
+
+TO ENABLE REAL-TIME UPDATES:
+1. Add WebSocket/SSE server (or use Pusher/Ably)
+2. Subscribe in ApplicationTable, LeadDashboard
+3. Broadcast on status changes, new notes, interviews
+
+TO ADD DEPARTMENTS:
+1. Add to DEPARTMENTS array in prisma/seed.js
+2. Run seed or manually insert
+3. Create Lead/Recruiter users with department assignment
+
+================================================================================
+13. DEPLOYMENT CHECKLIST
+================================================================================
+
+PRE-PRODUCTION:
+☐ Set strong JWT_SECRET (32+ chars)
+☐ Configure PostgreSQL DATABASE_URL
+☐ Set SMTP_USER/SMTP_PASS for emails
+☐ Set MAIN_SITE_API to production main site
+☐ Run npx prisma migrate deploy
+☐ Run npx prisma db seed (if fresh DB)
+☐ Configure CORS for main site domain
+☐ Set NODE_ENV=production
+☐ Configure HTTPS
+☐ Set up monitoring/logging
+
+SCALING CONSIDERATIONS:
+- Add Redis for session caching
+- Implement API rate limiting
+- Add database connection pooling (PgBouncer)
+- Consider read replicas for analytics queries
+- Add CDN for static assets
+- Implement background jobs for emails (BullMQ/Redis)
+
+================================================================================
+14. TESTING STATUS
+================================================================================
+
+CURRENT:
+- Unit tests: lib/status.test.ts (state machine validation)
+- Component tests: None yet
+- Integration tests: None yet
+- E2E tests: None yet
+
+RECOMMENDED:
+- Test all status transitions per role
+- Test conflict detection edge cases
+- Test department scoping
+- Test bulk operations
+- Test email triggers
+- Load test interview scheduling
+
+================================================================================
+15. FILE STRUCTURE SUMMARY
+================================================================================
+
+hc-recruitment-platform/
+├── app/
+│   ├── (auth)/login/page.tsx          # Login page
+│   ├── (dashboard)/
+│   │   ├── lead/
+│   │   │   ├── dashboard/page.tsx     # Main Lead dashboard (5 tabs)
+│   │   │   ├── applications/page.tsx  # Re-exports dashboard
+│   │   │   └── interviews/page.tsx    # Re-exports dashboard
+│   │   └── recruiter/page.tsx         # Recruiter dashboard
+│   ├── api/
+│   │   ├── auth/login/me/route.ts     # Auth proxy + user fetch
+│   │   ├── lead/                      # Lead endpoints
+│   │   ├── recruiter/                 # Recruiter endpoints
+│   │   └── notifications/             # Notification endpoints
+│   ├── globals.css                    # Global styles + Tailwind
+│   ├── layout.tsx                     # Root layout + AuthProvider
+│   └── page.tsx                       # Landing page
+├── components/ui/                     # Reusable components (10)
+├── lib/
+│   ├── auth.ts                        # JWT handling
+│   ├── client/                        # Client utilities
+│   ├── guards.ts                      # Server auth guards
+│   ├── status.ts                      # State machine + permissions
+│   ├── notifications.ts               # Notification CRUD
+│   ├── email.ts                       # Email templates
+│   ├── conflict.ts                    # Scheduling conflicts
+│   └── prisma.ts                      # Prisma singleton
+├── prisma/
+│   ├── schema.prisma                  # Database schema
+│   └── seed.js                        # Demo data seed
+└── tests/                             # Vitest tests
+
+================================================================================
+END OF REPORT
+================================================================================

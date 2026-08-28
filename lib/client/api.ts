@@ -1,5 +1,11 @@
 const API_BASE = "/api"
 
+/**
+ * Client-side API module
+ * Handles token management (localStorage + memory cache) and authenticated fetch wrapper
+ * All API calls go through apiFetch which attaches Bearer token and handles auth errors
+ */
+
 let cachedToken: string | null = null
 
 export function setToken(token: string | null) {
@@ -26,6 +32,19 @@ export function clearToken() {
   cachedToken = null
 }
 
+/**
+ * apiFetch - Core fetch wrapper with auth header and error handling
+ * Automatically attaches Bearer token from localStorage
+ * Handles 401/403 by clearing token and redirecting to login
+ * 
+ * @param endpoint - API endpoint (e.g., "/recruiter/applications")
+ * @param options - Fetch options (method, body, headers)
+ * @returns Parsed JSON response
+ * @throws Error with message from API or status text
+ * 
+ * INTEGRATION: All client-side API calls go through this
+ * TODO: [INTEGRATION] Add request/response interceptors for logging/analytics
+ */
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = getToken()
   const headers: Record<string, string> = {
@@ -67,6 +86,10 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
 }
 
 export const api = {
+  /**
+   * login - Authenticates user via main site API proxy
+   * Sets token in localStorage and httpOnly cookie
+   */
   async login(email: string, password: string) {
     // Use local proxy route to avoid CORS issues
     const response = await fetch(`${API_BASE}/auth/login`, {
@@ -80,14 +103,21 @@ export const api = {
     return data
   },
 
+  /** logout - Clears local token (server-side cookie cleared by API) */
   async logout() {
     clearToken()
   },
 
+  /** getMe - Fetches current user profile from /api/auth/me */
   async getMe() {
     return apiFetch("/auth/me")
   },
 
+  /**
+   * getApplications - Fetches paginated, filtered application list
+   * Supports: status, search, roleAppliedFor, page, limit
+   * API: GET /api/recruiter/applications
+   */
   async getApplications(params?: { status?: string; search?: string; roleAppliedFor?: string; page?: number; limit?: number }) {
     const searchParams = new URLSearchParams()
     if (params?.status) searchParams.set("status", params.status)
@@ -98,10 +128,12 @@ export const api = {
     return apiFetch(`/recruiter/applications?${searchParams.toString()}`)
   },
 
+  /** getApplication - Fetches full application detail with nested relations */
   async getApplication(id: number) {
     return apiFetch(`/recruiter/applications/${id}`)
   },
 
+  /** updateApplicationStatus - Changes application status */
   async updateApplicationStatus(id: number, status: string, reason?: string) {
     return apiFetch(`/recruiter/applications/${id}/status`, {
       method: "PATCH",
@@ -109,6 +141,7 @@ export const api = {
     })
   },
 
+  /** addNote - Adds internal note to application */
   async addNote(id: number, body: string) {
     return apiFetch(`/recruiter/applications/${id}/notes`, {
       method: "POST",
@@ -116,6 +149,7 @@ export const api = {
     })
   },
 
+  /** bulkUpdateStatus - Updates status for multiple applications */
   async bulkUpdateStatus(applicationIds: number[], status: string, reason?: string) {
     return apiFetch("/recruiter/applications/bulk-status", {
       method: "POST",
@@ -123,14 +157,17 @@ export const api = {
     })
   },
 
+  /** getLeadDashboard - Fetches lead dashboard stats */
   async getLeadDashboard() {
     return apiFetch("/lead/dashboard")
   },
 
+  /** getLeadRecruiters - Fetches recruiters in lead's department */
   async getLeadRecruiters() {
     return apiFetch("/lead/recruiters")
   },
 
+  /** getPanelCandidates - Fetches candidates for panelist scheduling */
   async getPanelCandidates(startTime?: string, endTime?: string) {
     const params = new URLSearchParams()
     if (startTime) params.set("startTime", startTime)
@@ -138,6 +175,7 @@ export const api = {
     return apiFetch(`/lead/panel-candidates?${params.toString()}`)
   },
 
+  /** getInterviews - Fetches interviews with filters */
   async getInterviews(params?: { status?: string; applicationId?: number }) {
     const searchParams = new URLSearchParams()
     if (params?.status) searchParams.set("status", params.status)
@@ -145,6 +183,7 @@ export const api = {
     return apiFetch(`/lead/interviews?${searchParams.toString()}`)
   },
 
+  /** createInterview - Schedules a new interview */
   async createInterview(data: {
     applicationId: number
     panelistUserIds: number[]
@@ -159,6 +198,7 @@ export const api = {
     })
   },
 
+  /** updateInterview - Reschedules, cancels, or completes an interview */
   async updateInterview(id: number, data: {
     action?: "reschedule" | "cancel" | "complete"
     startTime?: string
@@ -174,10 +214,12 @@ export const api = {
     })
   },
 
+  /** getFeedback - Fetches feedback summary for an application */
   async getFeedback(applicationId: number) {
     return apiFetch(`/lead/applications/${applicationId}/feedback`)
   },
 
+  /** makeDecision - Records final hiring decision */
   async makeDecision(applicationId: number, decision: string, reason?: string, override?: boolean) {
     return apiFetch(`/lead/applications/${applicationId}/decision`, {
       method: "POST",
@@ -185,10 +227,12 @@ export const api = {
     })
   },
 
+  /** getAnalytics - Fetches analytics data for lead dashboard */
   async getAnalytics() {
     return apiFetch("/lead/analytics")
   },
 
+  /** exportApplications - Downloads applications as CSV blob */
   async exportApplications() {
     const token = getToken()
     const headers: Record<string, string> = {}
@@ -197,6 +241,7 @@ export const api = {
     return response.blob()
   },
 
+  /** getNotifications - Fetches user notifications */
   async getNotifications(limit = 50, offset = 0, unreadOnly = false) {
     const params = new URLSearchParams()
     params.set("limit", String(limit))
@@ -205,6 +250,7 @@ export const api = {
     return apiFetch(`/notifications?${params.toString()}`)
   },
 
+  /** markNotificationRead - Marks a notification as read */
   async markNotificationRead(id: number) {
     return apiFetch(`/notifications/${id}`, { method: "PATCH" })
   },

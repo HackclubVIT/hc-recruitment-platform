@@ -1,6 +1,11 @@
 import { prisma } from "./prisma"
 import { InterviewStatus } from "./status"
 
+/**
+ * ConflictResult - Result of scheduling conflict check
+ * conflict: true if any conflicts found
+ * conflictingWith: Array of conflict details (panelist or candidate)
+ */
 export interface ConflictResult {
   conflict: boolean
   conflictingWith?: {
@@ -13,6 +18,22 @@ export interface ConflictResult {
   }[]
 }
 
+/**
+ * hasSchedulingConflict - Checks for scheduling conflicts for a new interview
+ * Detects two types of conflicts:
+ * 1. Panelist conflict - any assigned panelist already booked during the time slot
+ * 2. Candidate conflict - the applicant already has an interview during the time slot
+ * 
+ * @param applicationId - Application ID (for candidate conflict check)
+ * @param panelistUserIds - Array of panelist user IDs (BigInt)
+ * @param startTime - Proposed interview start time
+ * @param endTime - Proposed interview end time
+ * @param excludeInterviewId - Optional interview ID to exclude (for rescheduling)
+ * @returns ConflictResult with conflict flag and details
+ * 
+ * INTEGRATION: Called by /api/lead/interviews POST and PATCH routes
+ * TODO: [INTEGRATION] Add buffer time between interviews (e.g., 15 min gap)
+ */
 export async function hasSchedulingConflict(
   applicationId: number,
   panelistUserIds: bigint[],
@@ -22,12 +43,13 @@ export async function hasSchedulingConflict(
 ): Promise<ConflictResult> {
   const scheduledStatuses = [InterviewStatus.SCHEDULED, InterviewStatus.RESCHEDULED]
 
+  // Find all interviews that overlap with the proposed time slot
   const existingInterviews = await prisma.interview.findMany({
     where: {
       status: { in: scheduledStatuses },
       id: excludeInterviewId ? { not: excludeInterviewId } : undefined,
-      startTime: { lt: endTime },
-      endTime: { gt: startTime },
+      startTime: { lt: endTime },    // Existing starts before proposed ends
+      endTime: { gt: startTime },    // Existing ends after proposed starts
     },
     include: {
       panelists: true,
@@ -38,6 +60,7 @@ export async function hasSchedulingConflict(
   const conflicts: ConflictResult["conflictingWith"] = []
 
   for (const interview of existingInterviews) {
+    // Check panelist conflicts
     const panelistConflict = interview.panelists.find((p) =>
       panelistUserIds.includes(p.panelistUserId)
     )
@@ -51,6 +74,7 @@ export async function hasSchedulingConflict(
       })
     }
 
+    // Check candidate conflicts
     if (interview.applicationId === applicationId) {
       conflicts.push({
         type: "candidate",
@@ -68,6 +92,15 @@ export async function hasSchedulingConflict(
   }
 }
 
+/**
+ * getPanelistAvailability - Returns availability status for panelists in a time slot
+ * Used by UI to show which panelists are free/busy
+ * 
+ * @param panelistUserIds - Array of panelist user IDs
+ * @param startTime - Time slot start
+ * @param endTime - Time slot end
+ * @returns Record mapping userId to { busy: boolean, conflictingInterviews: number[] }
+ */
 export async function getPanelistAvailability(panelistUserIds: bigint[], startTime: Date, endTime: Date) {
   const scheduledStatuses = [InterviewStatus.SCHEDULED, InterviewStatus.RESCHEDULED]
 
@@ -101,6 +134,10 @@ export async function getPanelistAvailability(panelistUserIds: bigint[], startTi
   return availability
 }
 
+/**
+ * getCandidateConflicts - Checks if a candidate has interviews in a time slot
+ * Simpler version of hasSchedulingConflict for candidate-only check
+ */
 export async function getCandidateConflicts(candidateApplicationId: number, startTime: Date, endTime: Date) {
   const scheduledStatuses = [InterviewStatus.SCHEDULED, InterviewStatus.RESCHEDULED]
 

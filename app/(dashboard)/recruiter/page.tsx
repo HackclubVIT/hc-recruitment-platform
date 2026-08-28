@@ -1,5 +1,27 @@
 "use client"
 
+/**
+ * Recruiter Dashboard - Application management for Recruiters
+ * 
+ * FUNCTIONALITY:
+ * - Paginated, filterable application table (scoped to recruiter's department)
+ * - Bulk status updates for multiple applications
+ * - Application detail modal with full candidate info
+ * - Status transitions with role-based validation
+ * - Notes and status history viewing
+ * 
+ * INTEGRATION POINTS:
+ * - Uses ApplicationTable component with selection support
+ * - API calls via client/api.ts: getApplications, getApplication, updateApplicationStatus, bulkUpdateStatus
+ * - Status validation via getValidNextStatuses from lib/status
+ * 
+ * TODO: [INTEGRATION] Add real-time updates via WebSocket for live table refresh
+ * TODO: [INTEGRATION] Connect stats cards to actual API data (currently hardcoded to 0)
+ * FIXME: [BUG] Navbar uses fixed pt-20 which may not match actual navbar height
+ * FIXME: [BUG] Bulk update dialog shows all statuses without filtering by valid transitions
+ * FIXME: [BUG] No loading skeleton for initial table load
+ */
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ApplicationTable } from "@/components/ui/ApplicationTable"
@@ -11,6 +33,10 @@ import { api } from "@/lib/client/api"
 import { useAuth, useRequireAuth } from "@/lib/client/auth"
 import { getValidNextStatuses, ApplicationStatus, Role } from "@/lib/status"
 
+/**
+ * ApplicationDetail - Full shape matching Lead dashboard for consistency
+ * Includes all nested relations needed for detail modal
+ */
 interface ApplicationDetail {
   id: number
   name: string
@@ -35,17 +61,23 @@ interface ApplicationDetail {
 export default function RecruiterDashboard() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  // Allow RECRUITER, LEAD, ADMIN - Leads/Admins can also view recruiter dashboard
   const { authorized } = useRequireAuth(["RECRUITER", "LEAD", "ADMIN"])
 
   const [selectedApp, setSelectedApp] = useState<ApplicationDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  
+  // Bulk action state
   const [bulkIds, setBulkIds] = useState<number[]>([])
   const [bulkStatus, setBulkStatus] = useState("")
   const [bulkReason, setBulkReason] = useState("")
   const [showBulkDialog, setShowBulkDialog] = useState(false)
+  
+  // Status change dialog state
   const [statusChange, setStatusChange] = useState<{ appId: number; fromStatus: string; toStatus: string; reason: string } | null>(null)
   const [showStatusDialog, setShowStatusDialog] = useState(false)
 
+  // Auth guard
   useEffect(() => {
     if (!authLoading && (!authorized || !user)) {
       router.push("/login")
@@ -54,6 +86,11 @@ export default function RecruiterDashboard() {
 
   if (authLoading || !authorized) return null
 
+  /**
+   * handleRowClick - Opens application detail modal
+   * Fetches full application data including nested relations
+   * API: GET /api/recruiter/applications/[id]
+   */
   const handleRowClick = async (app: ApplicationDetail) => {
     setDetailLoading(true)
     try {
@@ -66,11 +103,19 @@ export default function RecruiterDashboard() {
     }
   }
 
+  /**
+   * handleStatusChange - Initiates status change dialog for single application
+   */
   const handleStatusChange = (appId: number, fromStatus: string, toStatus: string) => {
     setStatusChange({ appId, fromStatus, toStatus, reason: "" })
     setShowStatusDialog(true)
   }
 
+  /**
+   * confirmStatusChange - Submits status change to API
+   * API: PATCH /api/recruiter/applications/[id]/status
+   * Refreshes selected app detail on success
+   */
   const confirmStatusChange = async () => {
     if (!statusChange) return
     try {
@@ -86,6 +131,12 @@ export default function RecruiterDashboard() {
     }
   }
 
+  /**
+   * handleBulkAction - Submits bulk status update
+   * API: POST /api/recruiter/applications/bulk-status
+   * FIXME: [BUG] No validation that all selected apps can transition to the target status
+   * FIXME: [BUG] Shows all statuses in dropdown without filtering by current status/role
+   */
   const handleBulkAction = async () => {
     if (!bulkIds.length || !bulkStatus) return
     try {
@@ -100,10 +151,13 @@ export default function RecruiterDashboard() {
     }
   }
 
+  // Compute valid next statuses for selected app based on current status and user role
   const validNextStatuses = selectedApp
     ? getValidNextStatuses(selectedApp.status as ApplicationStatus, user?.role as Role)
     : []
 
+  // FIXME: [BUG] Stats are hardcoded to 0 - should fetch from API
+  // TODO: [INTEGRATION] Add API endpoint for recruiter stats or compute from applications list
   const stats = selectedApp ? {
     total: 0, // Would need from parent
     applied: 0,
@@ -112,8 +166,9 @@ export default function RecruiterDashboard() {
     selected: 0,
   } : {}
 
-  return (
+return (
     <div className="min-h-screen bg-gray-950">
+      {/* Fixed Navbar - FIXME: [BUG] pt-20 on main may not match actual navbar height */}
       <nav className="fixed top-0 left-0 right-0 h-16 bg-gray-900/80 backdrop-blur border-b border-red-900/30 z-40 flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <span className="text-xl text-red-600 animate-pulse">◆</span>
@@ -136,13 +191,16 @@ export default function RecruiterDashboard() {
           <p className="text-gray-500 mt-1">Review and manage applications for your department</p>
         </div>
 
+        {/* Application Table with bulk selection support */}
         <ApplicationTable<ApplicationDetail>
           onRowClick={handleRowClick}
+          {/* Show department filter for LEAD/ADMIN only */}
           showDepartmentFilter={user?.role === "LEAD" || user?.role === "ADMIN"}
           selectedIds={bulkIds}
           onSelectionChange={setBulkIds}
         />
 
+        {/* Bulk Action Bar - appears when items selected */}
         {bulkIds.length > 0 && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-600/30 rounded-lg flex items-center justify-between">
             <span className="text-white">{bulkIds.length} applications selected</span>
@@ -156,9 +214,10 @@ export default function RecruiterDashboard() {
         )}
       </main>
 
+      {/* APPLICATION DETAIL MODAL */}
       {selectedApp && (
-<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true">
-            <div className="relative bg-gray-900 border border-red-900/30 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <div className="relative bg-gray-900 border border-red-900/30 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95">
             <div className="p-6 border-b border-red-900/30 flex items-center justify-between">
               <div>
                 <h2 className="font-display font-bold text-2xl text-white">{selectedApp.name}</h2>
@@ -176,6 +235,7 @@ export default function RecruiterDashboard() {
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Basic Info & Skills */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-900/30 border border-red-900/20 rounded-lg p-4">
                   <h3 className="font-mono text-red-600 text-xs tracking-wider mb-2">BASIC INFO</h3>
@@ -200,6 +260,7 @@ export default function RecruiterDashboard() {
                 </div>
               </div>
 
+              {/* Answers */}
               <div className="bg-gray-900/30 border border-red-900/20 rounded-lg p-4">
                 <h3 className="font-mono text-red-600 text-xs tracking-wider mb-3">ANSWERS</h3>
                 <div className="space-y-3 text-sm">
@@ -212,6 +273,7 @@ export default function RecruiterDashboard() {
                 </div>
               </div>
 
+              {/* Notes & Status History */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="font-mono text-red-600 text-xs tracking-wider mb-3">NOTES</h3>
@@ -223,6 +285,7 @@ export default function RecruiterDashboard() {
                 </div>
               </div>
 
+              {/* Interviews - read only for recruiters */}
               {selectedApp.interviews.length > 0 && (
                 <div>
                   <h3 className="font-mono text-red-600 text-xs tracking-wider mb-3">INTERVIEWS</h3>
@@ -253,6 +316,7 @@ export default function RecruiterDashboard() {
                 </div>
               )}
 
+              {/* Action Bar - Status Change dropdown */}
               <div className="pt-4 border-t border-red-900/20 flex justify-end gap-3">
                 {validNextStatuses.length > 0 && (
                   <select
@@ -280,6 +344,7 @@ export default function RecruiterDashboard() {
         </div>
       )}
 
+      {/* STATUS CHANGE CONFIRMATION DIALOG */}
       <ConfirmDialog
         open={showStatusDialog}
         onClose={() => { setShowStatusDialog(false); setStatusChange(null); }}
@@ -303,6 +368,7 @@ export default function RecruiterDashboard() {
         )}
       </ConfirmDialog>
 
+      {/* BULK UPDATE DIALOG */}
       <ConfirmDialog
         open={showBulkDialog}
         onClose={() => setShowBulkDialog(false)}
