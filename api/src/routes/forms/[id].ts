@@ -16,7 +16,14 @@ export const GET = async (req: Request, res: Response) => {
     })
 
     if (!form) {
-      return res.status(404).json({ error: "Form not found" })
+      return res.status(404).json({ error: "Form not found or not currently available" })
+    }
+
+    if (form.status !== "PUBLISHED") {
+      const session = await getSession(req)
+      if (!session || session.role !== "ADMIN") {
+        return res.status(404).json({ error: "Form not found or not currently available" })
+      }
     }
 
     return res.status(200).json({ form })

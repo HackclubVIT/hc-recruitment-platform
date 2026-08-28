@@ -70,6 +70,29 @@ async function runTests() {
   const pubRes = await makeRequest(`/forms/${form.id}`, 'PUT', { status: 'PUBLISHED' }, 'ADMIN', admin.id)
   if (pubRes.status !== 200) throw new Error("Form publish failed: " + JSON.stringify(pubRes.data))
   
+  // PUBLIC FORM SECURITY & APPLICATION SUBMISSION REGRESSION TEST (Req Final)
+  // Create a DRAFT form
+  const draftFormRes = await makeRequest('/forms', 'POST', { title: 'Draft Form', description: 'desc', status: 'DRAFT' }, 'ADMIN', admin.id)
+  const draftForm = draftFormRes.data.form
+  const draftGetPublic = await fetch(`${API_URL}/forms/${draftForm.id}`)
+  if (draftGetPublic.status !== 404) throw new Error("Publicly retrieved a DRAFT form! Status: " + draftGetPublic.status)
+  
+  const draftSubmit = await fetch(`${API_URL}/applications`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: draftForm.id, name: 'T', email: 't@t.com', phone: '1', department: 'Engineering', registration_number: 'R1' }) })
+  if (draftSubmit.status !== 400) throw new Error("Successfully submitted to a DRAFT form! Status: " + draftSubmit.status)
+
+  // Create a CLOSED form
+  const closedFormRes = await makeRequest('/forms', 'POST', { title: 'Closed Form', description: 'desc', status: 'CLOSED' }, 'ADMIN', admin.id)
+  const closedForm = closedFormRes.data.form
+  const closedGetPublic = await fetch(`${API_URL}/forms/${closedForm.id}`)
+  if (closedGetPublic.status !== 404) throw new Error("Publicly retrieved a CLOSED form! Status: " + closedGetPublic.status)
+
+  const closedSubmit = await fetch(`${API_URL}/applications`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: closedForm.id, name: 'T2', email: 't2@t.com', phone: '2', department: 'Engineering', registration_number: 'R2' }) })
+  if (closedSubmit.status !== 400) throw new Error("Successfully submitted to a CLOSED form! Status: " + closedSubmit.status)
+
+  // Test PUBLISHED form GET public
+  const pubGetPublic = await fetch(`${API_URL}/forms/${form.id}`)
+  if (pubGetPublic.status !== 200) throw new Error("Public failed to retrieve PUBLISHED form! Status: " + pubGetPublic.status)
+
   // Public Apply (Candidate A)
   const applyResA = await fetch(`${API_URL}/applications`, {
     method: 'POST',
