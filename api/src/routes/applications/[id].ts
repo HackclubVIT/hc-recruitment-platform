@@ -114,12 +114,37 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Invalid transition from ${currentStatus} to ${status}` })
     }
 
-    const finalDecisions = ["SELECTED", "REJECTED", "WAITLISTED", "FURTHER_ROUND"]
-    const isFinalDecision = finalDecisions.includes(status)
+    const finalDecisions = ["SELECTED", "WAITLISTED", "FURTHER_ROUND"]
+    const isFinalDecision = finalDecisions.includes(status) || (status === "REJECTED" && currentStatus === "INTERVIEW_COMPLETED")
+
+    if (isFinalDecision) {
+      // Must verify actual workflow, not just application status
+      const latestInterview = await prisma.interview.findFirst({
+        where: { application_id: id },
+        orderBy: { round: 'desc' },
+        include: { panel: { include: { members: true } }, feedback: true }
+      })
+
+      if (!latestInterview) {
+        return res.status(400).json({ error: "Cannot make final decision: No interview found for this application." })
+      }
+
+      if (latestInterview.status !== "FEEDBACK_SUBMITTED") {
+        return res.status(400).json({ error: "Cannot make final decision: Interview is not fully completed or feedback is missing." })
+      }
+
+      const requiredMembers = latestInterview.panel.members.length
+      const submittedFeedback = latestInterview.feedback.length
+
+      if (requiredMembers === 0 || submittedFeedback < requiredMembers) {
+        return res.status(400).json({ error: "Cannot make final decision: Not all panel members have submitted feedback." })
+      }
+    }
 
     const updateData: any = { status }
 
-    if (isFinalDecision) {
+    const anyFinal = ["SELECTED", "REJECTED", "WAITLISTED", "FURTHER_ROUND"].includes(status)
+    if (anyFinal) {
       updateData.decided_by = session.id
       updateData.decided_at = new Date()
       // If the frontend sent a reason, capture it.

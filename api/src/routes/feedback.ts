@@ -99,8 +99,7 @@ export const POST = async (req: Request, res: Response) => {
 
       // Update Application Status if all feedback submitted
       if (allSubmitted) {
-        // @ts-ignore: application_id exists on interview model
-        const applicationId = interview.application_id || (await tx.interview.findUnique({ where: { id: interview_id } }))?.application_id;
+        const applicationId = interview.application_id;
         if (applicationId) {
           await tx.application.update({
             where: { id: applicationId },

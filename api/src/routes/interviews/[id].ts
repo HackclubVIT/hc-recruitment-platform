@@ -68,6 +68,10 @@ export const PUT = async (req: Request, res: Response) => {
     const id = parseInt((resolvedParams.id as string), 10)
     const { status, date, start_time, meeting_link } = req.body
 
+    if ((date && !start_time) || (!date && start_time)) {
+      return res.status(400).json({ error: "Both date and start_time must be provided together when rescheduling." })
+    }
+
     const existingInterview = await prisma.interview.findUnique({
       where: { id },
       include: { candidate: true, panel: { include: { members: true } } }
