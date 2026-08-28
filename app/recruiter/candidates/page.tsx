@@ -40,7 +40,8 @@ export default function CandidatesPage() {
       
       if (statusFilter !== "ALL") {
         filtered = filtered.filter((c: any) => {
-          const appStatus = c.applications?.[0]?.status || "APPLIED"
+          const latestApp = c.applications?.[c.applications.length - 1]
+          const appStatus = latestApp?.status || "APPLIED"
           return appStatus === statusFilter
         })
       }
@@ -51,7 +52,8 @@ export default function CandidatesPage() {
 
       if (dateFilter) {
         filtered = filtered.filter((c: any) => {
-          const appDate = c.applications?.[0]?.submitted_at
+          const latestApp = c.applications?.[c.applications.length - 1]
+          const appDate = latestApp?.submitted_at
           if (!appDate) return false
           return new Date(appDate).toISOString().split('T')[0] === dateFilter
         })
@@ -145,7 +147,8 @@ export default function CandidatesPage() {
                 <tr><td colSpan={5} className="p-8 text-center text-[#bfa8a2] font-mono">NO CANDIDATES FOUND.</td></tr>
               ) : (
                 candidates.map((candidate) => {
-                  const appStatus = candidate.applications?.[0]?.status || "APPLIED"
+                  const latestApp = candidate.applications?.[candidate.applications.length - 1]
+                  const appStatus = latestApp?.status || "APPLIED"
                   return (
                     <tr key={candidate.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">{candidate.registration_number}</td>
