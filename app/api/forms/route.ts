@@ -10,13 +10,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const questions = await prisma.formQuestion.findMany({
-      orderBy: { id: 'asc' }
+    const forms = await prisma.form.findMany({
+      include: { questions: true },
+      orderBy: { created_at: 'desc' }
     })
 
-    return NextResponse.json({ questions }, { status: 200 })
+    return NextResponse.json({ forms }, { status: 200 })
   } catch (error) {
-    console.error("Fetch form questions error:", error)
+    console.error("Fetch forms error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -28,27 +29,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { question, type, required, options } = await req.json()
+    const { title, description } = await req.json()
 
-    if (!question || !type) {
+    if (!title) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const formQuestion = await prisma.formQuestion.create({
+    const form = await prisma.form.create({
       data: {
-        form_id: 1, // Default form
-        question,
-        type,
-        required: Boolean(required),
-        options: options || null
-      }
+        title,
+        description,
+        status: "DRAFT"
+      },
+      include: { questions: true }
     })
 
-    await logAudit(session.id, "CREATED_FORM_QUESTION", "FormQuestion", formQuestion.id)
+    await logAudit(session.id, "CREATED_FORM", "Form", form.id)
 
-    return NextResponse.json({ question: formQuestion }, { status: 201 })
+    return NextResponse.json({ form }, { status: 201 })
   } catch (error) {
-    console.error("Create form question error:", error)
+    console.error("Create form error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
