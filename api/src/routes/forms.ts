@@ -22,6 +22,13 @@ export const GET = async (req: Request, res: Response) => {
   }
 }
 
+import { z } from "zod"
+
+const createFormSchema = z.object({
+  title: z.string().min(2),
+  description: z.string().optional()
+})
+
 export const POST = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
@@ -29,11 +36,12 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const { title, description } = req.body
-
-    if (!title) {
-      return res.status(400).json({ error: "Missing required fields" })
+    const parsed = createFormSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid form data", details: parsed.error.format() })
     }
+
+    const { title, description } = parsed.data
 
     const form = await prisma.form.create({
       data: {

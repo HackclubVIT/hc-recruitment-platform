@@ -26,6 +26,14 @@ export const GET = async (req: Request, res: Response) => {
   }
 }
 
+import { z } from "zod"
+
+const updateFormSchema = z.object({
+  title: z.string().min(2).optional(),
+  description: z.string().optional(),
+  status: z.enum(["DRAFT", "PUBLISHED", "CLOSED"]).optional()
+})
+
 export const PUT = async (req: Request, res: Response) => {
   const params = req.params;
   try {
@@ -36,8 +44,12 @@ export const PUT = async (req: Request, res: Response) => {
     
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
-    const body = req.body
-    const { status, title, description } = body
+    
+    const parsed = updateFormSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid form data", details: parsed.error.format() })
+    }
+    const { status, title, description } = parsed.data
 
     const existingForm = await prisma.form.findUnique({ where: { id } })
     if (!existingForm) {

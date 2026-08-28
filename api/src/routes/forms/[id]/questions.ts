@@ -3,7 +3,21 @@ import prisma from "../../../lib/db"
 import { getSession } from "../../../lib/auth"
 import { logAudit } from "../../../lib/audit"
 
-const VALID_QUESTION_TYPES = ["TEXT", "PARAGRAPH", "RADIO", "DROPDOWN", "CHECKBOX"]
+import { z } from "zod"
+
+const VALID_QUESTION_TYPES = ["TEXT", "PARAGRAPH", "RADIO", "DROPDOWN", "CHECKBOX"] as const;
+
+const questionSchema = z.object({
+  question: z.string().min(2),
+  type: z.enum(VALID_QUESTION_TYPES),
+  required: z.boolean().optional(),
+  options: z.array(z.string()).optional()
+}).refine(data => {
+  if (["RADIO", "DROPDOWN", "CHECKBOX"].includes(data.type)) {
+    return data.options && data.options.length > 0
+  }
+  return true
+}, { message: "Options are required for this question type", path: ["options"] })
 
 export const POST = async (req: Request, res: Response) => {
   const params = req.params;
@@ -16,23 +30,12 @@ export const POST = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
     
-    const { question, type, required, options } = req.body
-
-    if (!question || !type) {
-      return res.status(400).json({ error: "Missing required fields" })
+    const parsed = questionSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid question data", details: parsed.error.format() })
     }
 
-    // Validate question type
-    if (!VALID_QUESTION_TYPES.includes(type)) {
-      return res.status(400).json({ error: `Invalid question type. Must be one of: ${VALID_QUESTION_TYPES.join(", ")}` })
-    }
-
-    // Validate options for types that require them
-    if (["RADIO", "DROPDOWN", "CHECKBOX"].includes(type)) {
-      if (!options || !Array.isArray(options) || options.length === 0) {
-        return res.status(400).json({ error: `Options are required for ${type} question type` })
-      }
-    }
+    const { question, type, required, options } = parsed.data
 
     // Check form exists and is in DRAFT state
     const form = await prisma.form.findUnique({ where: { id } })

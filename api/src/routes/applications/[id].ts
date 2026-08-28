@@ -38,7 +38,7 @@ export const GET = async (req: Request, res: Response) => {
     if (session.role === "PANEL_MEMBER") {
       const hasAccess = await prisma.interview.findFirst({
         where: {
-          candidate_id: application.candidate_id,
+          application_id: id,
           panel: { members: { some: { user_id: session.id } } }
         }
       })

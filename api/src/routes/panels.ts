@@ -94,6 +94,25 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing panel ID" })
     }
 
+    const panelRelations = await prisma.panel.findUnique({
+      where: { id },
+      include: { interviews: { take: 1 } }
+    })
+
+    if (!panelRelations) {
+      return res.status(404).json({ error: "Panel not found" })
+    }
+
+    if (panelRelations.interviews.length > 0) {
+      // Prevent deletion, deactivate instead
+      await prisma.panel.update({
+        where: { id },
+        data: { status: "INACTIVE" }
+      })
+      await logAudit(session.id, "DEACTIVATED_PANEL", "Panel", id)
+      return res.status(200).json({ success: true, message: "Panel deactivated because it has historical interviews." })
+    }
+
     // Must delete panel members first due to foreign key
     await prisma.panelMember.deleteMany({
       where: { panel_id: id }

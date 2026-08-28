@@ -57,6 +57,18 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "You are not authorized to review this interview." })
     }
 
+    if (!interview.application_id) {
+      return res.status(400).json({ error: "Interview does not belong to a valid application." })
+    }
+
+    if (interview.status === "SCHEDULED" || interview.status === "CANCELLED" || interview.status === "IN_PROGRESS") {
+      return res.status(400).json({ error: "Interview is not yet ready for feedback." })
+    }
+
+    if (interview.status === "FEEDBACK_SUBMITTED") {
+      return res.status(409).json({ error: "All feedback has already been submitted for this interview." })
+    }
+
     // Check for duplicate submissions
     const existingFeedback = await prisma.feedback.findFirst({
       where: {

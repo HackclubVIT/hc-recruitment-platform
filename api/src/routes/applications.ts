@@ -172,7 +172,7 @@ export const GET = async (req: Request, res: Response) => {
     } else if (session.role === "RECRUITER") {
       candidateFilter.department = { in: session.departments }
     } else if (session.role === "PANEL_MEMBER") {
-      candidateFilter.interviews = {
+      where.interviews = {
         some: {
           panel: {
             members: {

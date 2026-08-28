@@ -74,6 +74,22 @@ export const GET = async (req: Request, res: Response) => {
       prisma.candidate.count({ where: whereClause })
     ])
 
+    if (session.role === "PANEL_MEMBER") {
+      const allowedInterviews = await prisma.interview.findMany({
+        where: {
+          panel: { members: { some: { user_id: session.id } } }
+        },
+        select: { id: true, application_id: true }
+      })
+      const allowedInterviewIds = allowedInterviews.map((i: any) => i.id)
+      const allowedAppIds = allowedInterviews.map((i: any) => i.application_id)
+
+      for (const candidate of candidates) {
+        candidate.applications = candidate.applications.filter((a: any) => allowedAppIds.includes(a.id))
+        candidate.interviews = candidate.interviews.filter((i: any) => allowedInterviewIds.includes(i.id))
+      }
+    }
+
     return res.status(200).json({ 
       candidates, // keeping candidates array for backward compatibility
       items: candidates,

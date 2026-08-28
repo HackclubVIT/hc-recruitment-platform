@@ -30,7 +30,7 @@ export const GET = async (req: Request, res: Response) => {
 
     // Access control: Panel Member can only view candidates for their assigned interviews
     if (session.role === "PANEL_MEMBER") {
-      const isAssigned = await prisma.interview.findFirst({
+      const assignedInterviews = await prisma.interview.findMany({
         where: {
           candidate_id: candidate.id,
           panel: {
@@ -40,11 +40,18 @@ export const GET = async (req: Request, res: Response) => {
               }
             }
           }
-        }
+        },
+        select: { application_id: true, id: true }
       })
-      if (!isAssigned) {
+      if (assignedInterviews.length === 0) {
         return res.status(403).json({ error: "Forbidden" })
       }
+      
+      const allowedAppIds = assignedInterviews.map((i: any) => i.application_id)
+      const allowedInterviewIds = assignedInterviews.map((i: any) => i.id)
+      
+      candidate.applications = candidate.applications.filter((a: any) => allowedAppIds.includes(a.id))
+      candidate.interviews = candidate.interviews.filter((i: any) => allowedInterviewIds.includes(i.id))
     }
 
     return res.status(200).json({ candidate })
