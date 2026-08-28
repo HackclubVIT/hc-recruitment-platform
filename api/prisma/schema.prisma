@@ -113,6 +113,7 @@ model PanelMember {
   panel    Panel  @relation(fields: [panel_id], references: [id])
   user     User   @relation(fields: [user_id], references: [id])
   feedback Feedback[]
+  assigned_interviews Interview[] @relation("InterviewAssignments")
 
   @@map("panel_members")
 }
@@ -135,6 +136,7 @@ model Interview {
   panel          Panel       @relation(fields: [panel_id], references: [id])
   recruiter      User        @relation(fields: [recruiter_id], references: [id])
   feedback       Feedback[]
+  assigned_members PanelMember[] @relation("InterviewAssignments")
 
   @@map("interviews")
 }
