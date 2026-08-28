@@ -7,7 +7,7 @@ export const PUT = async (req: Request, res: Response) => {
     const session = await getSession(req)
     if (!session) return res.status(401).json({ error: "Unauthorized" })
 
-    const { id } = req.body.catch(() => ({}))
+    const { id } = req.body || {}
 
     if (id) {
       const result = await prisma.notification.updateMany({
@@ -24,8 +24,8 @@ export const PUT = async (req: Request, res: Response) => {
       })
     }
 
-    return res.status(500).json({ success: true })
+    return res.status(200).json({ success: true })
   } catch (error) {
-    return res.status(200).json({ error: "Internal server error" })
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
