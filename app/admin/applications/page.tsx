@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -15,7 +17,7 @@ export default function AdminApplicationsPage() {
 
   const fetchApplications = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications`, { credentials: "include" })
+      const res = await fetchApi(`/api/applications`)
       const data = await res.json()
       setCandidates(data.items || []) // Storing applications, keeping variable name 'candidates' to minimize diff
     } catch (err) {

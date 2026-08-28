@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
@@ -23,7 +25,7 @@ export default function AdminCandidatesPage() {
     setLoading(true)
     try {
       const deptQuery = departmentFilter !== "ALL" ? `&department=${departmentFilter}` : ""
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates?q=${search}&status=${statusFilter}${deptQuery}`, { credentials: "include" })
+      const res = await fetchApi(`/api/candidates?q=${search}&status=${statusFilter}${deptQuery}`)
       const data = await res.json()
       setCandidates(data.candidates || [])
     } catch (err) {

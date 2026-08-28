@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
@@ -24,7 +26,7 @@ export default function CandidatesPage() {
     setLoading(true)
     try {
       // In a real app, pass search and statusFilter to API as query params
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates`, { credentials: "include" })
+      const res = await fetchApi(`/api/candidates`)
       const data = await res.json()
       
       // Client side filtering for completeness

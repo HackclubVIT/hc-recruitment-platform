@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -28,8 +30,8 @@ function ScheduleForm() {
   useEffect(() => {
     // Fetch dependencies
     Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, { credentials: "include" }).then(r => r.json()),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates?status=SHORTLISTED`, { credentials: "include" }).then(r => r.json())
+      fetchApi(`/api/panels`).then(r => r.json()),
+      fetchApi(`/api/candidates?status=SHORTLISTED`).then(r => r.json())
     ]).then(([panelData, candidateData]) => {
       setPanels(panelData.panels || [])
       setCandidates(candidateData.candidates || [])
@@ -42,7 +44,7 @@ function ScheduleForm() {
     setError("")
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/interviews/schedule`, { credentials: "include", 
+      const res = await fetchApi(`/api/interviews/schedule`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

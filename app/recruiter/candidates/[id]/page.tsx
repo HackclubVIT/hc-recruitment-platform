@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -20,7 +22,7 @@ export default function RecruiterCandidateProfile() {
 
   const fetchCandidate = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates/${id}`, { credentials: "include" })
+      const res = await fetchApi(`/api/candidates/${id}`)
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
       setCandidate(data.candidate)
@@ -37,7 +39,7 @@ export default function RecruiterCandidateProfile() {
     setActionLoading(true)
     setError("")
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications/${appId}`, { credentials: "include", 
+      const res = await fetchApi(`/api/applications/${appId}`, {  
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })

@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -41,7 +43,7 @@ export default function DynamicRecruitmentPage() {
 
   const fetchQuestions = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${formId}`, { credentials: "include" })
+      const res = await fetchApi(`/api/forms/${formId}`)
       if (!res.ok) throw new Error("Form not found")
       const data = await res.json()
       setQuestions(data.questions || [])
@@ -81,7 +83,7 @@ export default function DynamicRecruitmentPage() {
         answers: dynamicAnswers
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications`, { credentials: "include", 
+      const res = await fetchApi(`/api/applications`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -11,8 +13,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/analytics`, { credentials: "include" }).then(res => res.json()),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/audit-logs`, { credentials: "include" }).then(res => res.json())
+      fetchApi(`/api/analytics`).then(res => res.json()),
+      fetchApi(`/api/audit-logs`).then(res => res.json())
     ]).then(([analyticsData, logsData]) => {
       setMetrics(analyticsData.metrics || {})
       setRecentLogs((logsData.logs || []).slice(0, 10)) // Get top 10 recent

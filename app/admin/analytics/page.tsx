@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -14,7 +16,7 @@ export default function AnalyticsPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/analytics`, { credentials: "include" })
+      const res = await fetchApi(`/api/analytics`)
       const result = await res.json()
       setData(result)
     } catch (err) {

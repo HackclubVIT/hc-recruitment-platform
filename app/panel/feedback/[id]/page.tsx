@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, use } from "react"
 import { useRouter } from "next/navigation"
@@ -29,7 +31,7 @@ export default function FeedbackForm({ params }: { params: Promise<{ id: string 
     setError("")
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/feedback`, { credentials: "include", 
+      const res = await fetchApi(`/api/feedback`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)

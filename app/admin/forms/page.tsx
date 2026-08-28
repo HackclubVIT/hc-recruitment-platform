@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -24,7 +26,7 @@ export default function FormsPage() {
 
   const fetchForms = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms`, { credentials: "include" })
+      const res = await fetchApi(`/api/forms`)
       const data = await res.json()
       setForms(data.forms || [])
     } catch (err) {
@@ -37,7 +39,7 @@ export default function FormsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms`, { credentials: "include", 
+      await fetchApi(`/api/forms`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
@@ -51,7 +53,7 @@ export default function FormsPage() {
 
   const handleStatusChange = async (id: number, status: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${id}`, { credentials: "include", 
+      await fetchApi(`/api/forms/${id}`, {  
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })

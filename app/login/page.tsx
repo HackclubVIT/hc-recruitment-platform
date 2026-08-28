@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -20,7 +22,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/login`, { credentials: "include", 
+      const res = await fetchApi(`/api/auth/login`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

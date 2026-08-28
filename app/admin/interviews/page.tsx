@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -17,7 +19,7 @@ export default function AdminInterviewsPage() {
 
   const fetchInterviews = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/interviews`, { credentials: "include" })
+      const res = await fetchApi(`/api/interviews`)
       const data = await res.json()
       setInterviews(data.interviews || [])
     } catch (err) {

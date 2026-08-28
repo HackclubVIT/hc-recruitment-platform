@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -13,7 +15,7 @@ export default function PanelDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/dashboard`, { credentials: "include" })
+        const res = await fetchApi(`/api/panels/dashboard`)
         if (res.ok) {
           const json = await res.json()
           setData(json)

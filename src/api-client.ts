@@ -40,6 +40,19 @@ if (!API_BASE) {
   console.warn("NEXT_PUBLIC_API_URL is not defined! API calls will fail.");
 }
 
+export const fetchApi = async (path: string, options: RequestInit = {}) => {
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, {
+    ...options,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+  return res;
+};
+
 export const api = {
   getMe: async () => {
     const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });

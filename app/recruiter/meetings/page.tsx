@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
@@ -20,7 +22,7 @@ export default function RecruiterMeetingsPage() {
 
   const fetchInterviews = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/interviews`, { credentials: "include" })
+      const res = await fetchApi(`/api/interviews`)
       const data = await res.json()
       setInterviews(data.interviews || [])
     } catch (err) {
@@ -227,7 +229,7 @@ export default function RecruiterMeetingsPage() {
                           <button 
                             onClick={async () => {
                               if(confirm("Cancel this interview?")) {
-                                await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/interviews/${interview.id}`, { credentials: "include",  method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "CANCELLED" }) })
+                                await fetchApi(`/api/interviews/${interview.id}`, {   method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "CANCELLED" }) })
                                 // In a real app we'd trigger a re-fetch here, but for brevity we rely on a manual refresh or a state update function
                                 window.location.reload()
                               }

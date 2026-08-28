@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -15,7 +17,7 @@ export default function RecruiterDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/recruiter/dashboard`, { credentials: "include" })
+        const res = await fetchApi(`/api/recruiter/dashboard`)
         if (res.ok) {
           const json = await res.json()
           setData(json)

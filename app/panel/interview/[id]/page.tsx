@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
@@ -19,7 +21,7 @@ export default function SingleInterviewPage({ params }: { params: Promise<{ id: 
 
   const fetchInterview = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/interviews/${resolvedParams.id}`, { credentials: "include" })
+      const res = await fetchApi(`/api/interviews/${resolvedParams.id}`)
       const data = await res.json()
       setInterview(data.interview)
     } catch (err) {

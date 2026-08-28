@@ -1,4 +1,6 @@
 "use client"
+import { fetchApi } from "@/api-client"
+
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -25,7 +27,7 @@ export default function RecruiterPanelsPage() {
   useEffect(() => {
     async function fetchPanels() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, { credentials: "include" })
+        const res = await fetchApi(`/api/panels`)
         if (res.ok) {
           const json = await res.json()
           setPanels(json.panels || [])
