@@ -32,14 +32,16 @@ export function clearToken() {
   // It's handled by POST /api/auth/logout now
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+
 export const api = {
   getMe: async () => {
-    const res = await fetch("/api/auth/me");
+    const res = await fetch(`${API_BASE}/api/auth/me`);
     if (!res.ok) throw new Error("Not logged in");
     return res.json();
   },
   login: async (email: string, password: string) => {
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -48,16 +50,16 @@ export const api = {
     return res.json();
   },
   logout: async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
   },
   getRecruitmentApplications: async () => {
-    const res = await fetch("/api/applications");
+    const res = await fetch(`${API_BASE}/api/applications`);
     if (!res.ok) throw new Error("Failed to fetch applications");
     const json = await res.json();
     return json.applications;
   },
   updateRecruitmentStatus: async (id: number | string, status: string) => {
-    const res = await fetch(`/api/applications/${id}`, {
+    const res = await fetch(`${API_BASE}/api/applications/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
