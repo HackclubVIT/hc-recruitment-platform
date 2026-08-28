@@ -5,6 +5,57 @@ import { logAudit } from "@/lib/audit"
 import { createNotification } from "@/lib/notify"
 import { z } from "zod"
 
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const resolvedParams = await params
+    const id = parseInt(resolvedParams.id, 10)
+
+    const application = await prisma.application.findUnique({
+      where: { id },
+      include: {
+        candidate: true,
+        form: { include: { questions: true } }
+      }
+    })
+
+    if (!application) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 })
+    }
+
+    // Authorization
+    if (session.role === "RECRUITER") {
+      if (!session.departments?.includes(application.candidate.department)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+    }
+
+    if (session.role === "PANEL_MEMBER") {
+      const hasAccess = await prisma.interview.findFirst({
+        where: {
+          candidate_id: application.candidate_id,
+          panel: { members: { some: { user_id: session.id } } }
+        }
+      })
+      if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+    }
+
+    return NextResponse.json({ application }, { status: 200 })
+  } catch (error) {
+    console.error("Fetch application error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
 const updateSchema = z.object({
   status: z.enum([
     "APPLIED", "UNDER_REVIEW", "SHORTLISTED", "REJECTED", 
