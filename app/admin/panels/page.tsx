@@ -25,7 +25,7 @@ export default function PanelsPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users`, { credentials: "include" })
       const data = await res.json()
       setUsers(data.users?.filter((u: any) => u.role === 'PANEL_MEMBER') || [])
     } catch (err) {
@@ -35,7 +35,7 @@ export default function PanelsPage() {
 
   const fetchPanels = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, { credentials: "include" })
       const data = await res.json()
       setPanels(data.panels || [])
     } catch (err) {
@@ -49,7 +49,7 @@ export default function PanelsPage() {
     e.preventDefault()
     try {
       const method = formData.id ? "PUT" : "POST"
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, { credentials: "include", 
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
@@ -64,7 +64,7 @@ export default function PanelsPage() {
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this panel?")) return
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, { credentials: "include", 
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
@@ -78,7 +78,7 @@ export default function PanelsPage() {
   const handleToggleStatus = async (panel: any) => {
     try {
       const newStatus = panel.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, { credentials: "include", 
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: panel.id, name: panel.name, description: panel.description, status: newStatus })
@@ -97,7 +97,7 @@ export default function PanelsPage() {
   const handleAddMember = async (panel_id: number) => {
     if (!selectedUser) return
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/members`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/members`, { credentials: "include", 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ panel_id, user_id: selectedUser })
@@ -112,7 +112,7 @@ export default function PanelsPage() {
 
   const handleRemoveMember = async (panel_id: number, user_id: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/members`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/members`, { credentials: "include", 
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ panel_id, user_id })

@@ -31,10 +31,7 @@ app.use(cors({
 // Routes
 app.use('/api', router);
 
-// Health Endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', server: 'independent-api' });
-});
+
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

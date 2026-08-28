@@ -29,7 +29,7 @@ export default function FormDetailsPage() {
 
   const fetchForm = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${params.id}`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${params.id}`, { credentials: "include" })
       if (!res.ok) {
         router.push("/admin/forms")
         return
@@ -48,7 +48,7 @@ export default function FormDetailsPage() {
     try {
       const optionsArray = qData.options.split(",").map(s => s.trim()).filter(Boolean)
       
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${params.id}/questions`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${params.id}/questions`, { credentials: "include", 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -69,7 +69,7 @@ export default function FormDetailsPage() {
   const handleDeleteQuestion = async (qId: number) => {
     if (!confirm("Delete this question?")) return
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${params.id}/questions/${qId}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${params.id}/questions/${qId}`, { credentials: "include", 
         method: "DELETE"
       })
       fetchForm()

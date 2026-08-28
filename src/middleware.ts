@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { verifyToken } from "./lib/auth"
+import { decodeTokenPayload } from "./lib/auth"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
   ) {
     // If logged in user tries to access /login, redirect to their dashboard
     if (pathname === "/login" && token) {
-      const payload = await verifyToken(token)
+      const payload = decodeTokenPayload(token)
       if (payload) {
         if (payload.role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
         if (payload.role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  const payload = await verifyToken(token)
+  const payload = decodeTokenPayload(token)
   if (!payload) {
     const response = NextResponse.redirect(new URL("/login", request.url))
     response.cookies.delete("session")

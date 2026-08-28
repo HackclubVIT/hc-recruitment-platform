@@ -32,11 +32,17 @@ export function clearToken() {
   // It's handled by POST /api/auth/logout now
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+if (!API_BASE) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_API_URL must be defined in production.");
+  }
+  console.warn("NEXT_PUBLIC_API_URL is not defined! API calls will fail.");
+}
 
 export const api = {
   getMe: async () => {
-    const res = await fetch(`${API_BASE}/api/auth/me`);
+    const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
     if (!res.ok) throw new Error("Not logged in");
     return res.json();
   },
@@ -45,15 +51,16 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+      credentials: "include"
     });
     if (!res.ok) throw new Error("Invalid credentials");
     return res.json();
   },
   logout: async () => {
-    await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
+    await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
   },
   getRecruitmentApplications: async () => {
-    const res = await fetch(`${API_BASE}/api/applications`);
+    const res = await fetch(`${API_BASE}/api/applications`, { credentials: "include" });
     if (!res.ok) throw new Error("Failed to fetch applications");
     const json = await res.json();
     return json.applications;
@@ -63,6 +70,7 @@ export const api = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
+      credentials: "include"
     });
     if (!res.ok) throw new Error("Failed to update status");
     return res.json();

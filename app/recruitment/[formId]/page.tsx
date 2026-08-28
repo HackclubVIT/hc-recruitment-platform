@@ -41,7 +41,7 @@ export default function DynamicRecruitmentPage() {
 
   const fetchQuestions = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${formId}`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/forms/${formId}`, { credentials: "include" })
       if (!res.ok) throw new Error("Form not found")
       const data = await res.json()
       setQuestions(data.questions || [])
@@ -81,7 +81,7 @@ export default function DynamicRecruitmentPage() {
         answers: dynamicAnswers
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications`, { credentials: "include", 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

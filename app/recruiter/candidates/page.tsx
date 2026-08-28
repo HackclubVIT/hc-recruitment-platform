@@ -24,7 +24,7 @@ export default function CandidatesPage() {
     setLoading(true)
     try {
       // In a real app, pass search and statusFilter to API as query params
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates`, { credentials: "include" })
       const data = await res.json()
       
       // Client side filtering for completeness

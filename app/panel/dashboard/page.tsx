@@ -13,7 +13,7 @@ export default function PanelDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/dashboard`)
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/dashboard`, { credentials: "include" })
         if (res.ok) {
           const json = await res.json()
           setData(json)

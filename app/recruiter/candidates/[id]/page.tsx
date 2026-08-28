@@ -20,7 +20,7 @@ export default function RecruiterCandidateProfile() {
 
   const fetchCandidate = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates/${id}`)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates/${id}`, { credentials: "include" })
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
       setCandidate(data.candidate)
@@ -37,7 +37,7 @@ export default function RecruiterCandidateProfile() {
     setActionLoading(true)
     setError("")
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications/${appId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications/${appId}`, { credentials: "include", 
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })

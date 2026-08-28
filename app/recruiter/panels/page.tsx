@@ -25,7 +25,7 @@ export default function RecruiterPanelsPage() {
   useEffect(() => {
     async function fetchPanels() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`)
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels`, { credentials: "include" })
         if (res.ok) {
           const json = await res.json()
           setPanels(json.panels || [])

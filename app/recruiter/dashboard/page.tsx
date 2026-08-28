@@ -15,7 +15,7 @@ export default function RecruiterDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/recruiter/dashboard`)
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/recruiter/dashboard`, { credentials: "include" })
         if (res.ok) {
           const json = await res.json()
           setData(json)
