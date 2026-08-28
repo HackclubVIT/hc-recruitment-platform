@@ -60,21 +60,88 @@ export async function PUT(
     const id = parseInt(resolvedParams.id, 10)
     const { status, date, start_time, meeting_link } = await req.json()
 
+    const existingInterview = await prisma.interview.findUnique({
+      where: { id },
+      include: { candidate: true, panel: { include: { members: true } } }
+    })
+
+    if (!existingInterview) {
+      return NextResponse.json({ error: "Interview not found" }, { status: 404 })
+    }
+
+    if (session.role === "RECRUITER" && !session.departments.includes(existingInterview.candidate.department)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     const updateData: any = {}
     if (status) updateData.status = status
+    if (meeting_link !== undefined) updateData.meeting_link = meeting_link
+
+    let startObj = existingInterview.start_time
+    let endObj = existingInterview.end_time
+    let targetDate = existingInterview.date
+
     if (date && start_time) {
-      const startObj = new Date(`${date}T${start_time}:00Z`)
-      const endObj = new Date(startObj.getTime() + 10 * 60000)
-      updateData.date = new Date(date)
+      startObj = new Date(`${date}T${start_time}:00Z`)
+      endObj = new Date(startObj.getTime() + 10 * 60000)
+      targetDate = new Date(date)
+      
+      updateData.date = targetDate
       updateData.start_time = startObj
       updateData.end_time = endObj
     }
-    if (meeting_link !== undefined) updateData.meeting_link = meeting_link
 
-    const interview = await prisma.interview.update({
-      where: { id },
-      data: updateData,
-      include: { candidate: true, panel: { include: { members: true } } }
+    // Transactional logic to prevent race conditions during rescheduling
+    const interview = await prisma.$transaction(async (tx) => {
+      if (date && start_time) {
+        // 1. Conflict Detection for Panel (excluding self)
+        const conflict = await tx.interview.findFirst({
+          where: {
+            id: { not: id },
+            panel_id: existingInterview.panel_id,
+            date: targetDate,
+            status: { not: "CANCELLED" },
+            OR: [
+              {
+                start_time: { lt: endObj },
+                end_time: { gt: startObj }
+              }
+            ]
+          }
+        })
+
+        if (conflict) {
+          throw new Error("SLOT_UNAVAILABLE")
+        }
+
+        // 2. Conflict Detection for Candidate (excluding self)
+        const candidateConflict = await tx.interview.findFirst({
+          where: {
+            id: { not: id },
+            candidate_id: existingInterview.candidate_id,
+            date: targetDate,
+            status: { not: "CANCELLED" },
+            OR: [
+              {
+                start_time: { lt: endObj },
+                end_time: { gt: startObj }
+              }
+            ]
+          }
+        })
+
+        if (candidateConflict) {
+          throw new Error("CANDIDATE_CONFLICT")
+        }
+      }
+
+      const updatedInterview = await tx.interview.update({
+        where: { id },
+        data: updateData,
+        include: { candidate: true, panel: { include: { members: true } } }
+      })
+
+      return updatedInterview
     })
 
     // Log audit
@@ -93,7 +160,13 @@ export async function PUT(
     }
 
     return NextResponse.json({ interview }, { status: 200 })
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === "SLOT_UNAVAILABLE") {
+      return NextResponse.json({ error: "Slot unavailable. The panel is already booked for this time." }, { status: 409 })
+    }
+    if (error.message === "CANDIDATE_CONFLICT") {
+      return NextResponse.json({ error: "Candidate is already scheduled for an interview during this time." }, { status: 409 })
+    }
     console.error("Update interview error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

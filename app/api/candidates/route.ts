@@ -18,6 +18,18 @@ export async function GET(req: Request) {
     
     if (session.role === "RECRUITER") {
       whereClause.department = { in: session.departments }
+    } else if (session.role === "PANEL_MEMBER") {
+      whereClause.interviews = {
+        some: {
+          panel: {
+            members: {
+              some: {
+                user_id: session.id
+              }
+            }
+          }
+        }
+      }
     } else if (department) {
       whereClause.department = department
     }

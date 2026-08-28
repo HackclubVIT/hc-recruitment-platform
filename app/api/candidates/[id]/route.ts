@@ -30,6 +30,25 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    // Access control: Panel Member can only view candidates for their assigned interviews
+    if (session.role === "PANEL_MEMBER") {
+      const isAssigned = await prisma.interview.findFirst({
+        where: {
+          candidate_id: candidate.id,
+          panel: {
+            members: {
+              some: {
+                user_id: session.id
+              }
+            }
+          }
+        }
+      })
+      if (!isAssigned) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+    }
+
     return NextResponse.json({ candidate }, { status: 200 })
   } catch (error) {
     console.error("Fetch candidate error:", error)
