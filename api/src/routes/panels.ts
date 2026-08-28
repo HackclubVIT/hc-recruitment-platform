@@ -30,6 +30,18 @@ export const GET = async (req: Request, res: Response) => {
   }
 }
 
+import { z } from "zod"
+
+const panelSchema = z.object({
+  name: z.string().min(2),
+  description: z.string().optional(),
+})
+
+const panelUpdateSchema = panelSchema.extend({
+  id: z.number().int().positive(),
+  status: z.enum(["ACTIVE", "INACTIVE"])
+})
+
 export const POST = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
@@ -37,9 +49,12 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const { name, description } = req.body
+    const parsed = panelSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid panel data", details: parsed.error.format() })
+    }
 
-    if (!name) return res.status(400).json({ error: "Name is required" })
+    const { name, description } = parsed.data
 
     const panel = await prisma.panel.create({
       data: { name, description },
@@ -61,11 +76,12 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const { id, name, description, status } = req.body
-
-    if (!id || !name) {
-      return res.status(400).json({ error: "Missing required fields" })
+    const parsed = panelUpdateSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid panel update data", details: parsed.error.format() })
     }
+
+    const { id, name, description, status } = parsed.data
 
     const panel = await prisma.panel.update({
       where: { id },
@@ -75,8 +91,11 @@ export const PUT = async (req: Request, res: Response) => {
     await logAudit(session.id, "UPDATED_PANEL", "Panel", panel.id)
 
     return res.status(200).json({ panel })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Update panel error:", error)
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: "Panel not found" })
+    }
     return res.status(500).json({ error: "Internal server error" })
   }
 }

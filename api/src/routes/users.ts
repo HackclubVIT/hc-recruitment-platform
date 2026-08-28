@@ -112,6 +112,11 @@ export const PUT = async (req: Request, res: Response) => {
 
     const { name, email, role, departments, active } = parsed.data
 
+    const existingUser = await prisma.user.findUnique({ where: { id } })
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found" })
+    }
+
     const updateData: any = { name, email, role, departments: departments || [] }
     if (active !== undefined) {
       updateData.active = active
@@ -122,6 +127,14 @@ export const PUT = async (req: Request, res: Response) => {
       data: updateData,
       select: { id: true, name: true, email: true, role: true, active: true }
     })
+
+    // Req 13: Prevent inconsistent active relationships if role changed from PANEL_MEMBER
+    if (existingUser.role === "PANEL_MEMBER" && role !== "PANEL_MEMBER") {
+      await prisma.panelMember.updateMany({
+        where: { user_id: id },
+        data: { active: false }
+      })
+    }
 
     await logAudit(session.id, "UPDATED_USER", "User", user.id)
 

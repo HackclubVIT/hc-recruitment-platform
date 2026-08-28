@@ -39,13 +39,21 @@ export const POST = async (req: Request, res: Response) => {
       where: { panel_id, user_id }
     })
     
+    let member;
     if (existing) {
-      return res.status(409).json({ error: "User already in panel" })
+      if (existing.active) {
+        return res.status(409).json({ error: "User already in panel" })
+      } else {
+        member = await prisma.panelMember.update({
+          where: { id: existing.id },
+          data: { active: true }
+        })
+      }
+    } else {
+      member = await prisma.panelMember.create({
+        data: { panel_id, user_id }
+      })
     }
-
-    const member = await prisma.panelMember.create({
-      data: { panel_id, user_id }
-    })
 
     await logAudit(session.id, "ADDED_PANEL_MEMBER", "PanelMember", member.id)
 
@@ -70,15 +78,17 @@ export const DELETE = async (req: Request, res: Response) => {
     }
 
     const member = await prisma.panelMember.findFirst({
-      where: { panel_id, user_id }
+      where: { panel_id, user_id, active: true }
     })
 
     if (!member) {
       return res.status(404).json({ error: "Member not found in panel" })
     }
 
-    await prisma.panelMember.delete({
-      where: { id: member.id }
+    // Safe historical deletion (Req 10)
+    await prisma.panelMember.update({
+      where: { id: member.id },
+      data: { active: false }
     })
 
     await logAudit(session.id, "REMOVED_PANEL_MEMBER", "PanelMember", member.id)
