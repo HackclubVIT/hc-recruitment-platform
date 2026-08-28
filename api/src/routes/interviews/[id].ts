@@ -41,6 +41,12 @@ export const GET = async (req: Request, res: Response) => {
     if (session.role === "PANEL_MEMBER") {
       const isMember = interview.panel.members.some((m: any) => m.user_id === session.id)
       if (!isMember) return res.status(403).json({ error: "Forbidden" })
+      
+      if (interview.candidate && interview.candidate.applications) {
+        interview.candidate.applications = interview.candidate.applications.filter(
+          (app: any) => app.id === interview.application_id
+        )
+      }
     }
 
     if (session.role === "RECRUITER") {
@@ -93,6 +99,10 @@ export const PUT = async (req: Request, res: Response) => {
     if (status) {
       if (!VALID_INTERVIEW_STATUSES.includes(status)) {
         return res.status(400).json({ error: `Invalid interview status. Must be one of: ${VALID_INTERVIEW_STATUSES.join(", ")}` })
+      }
+
+      if (status === "FEEDBACK_PENDING" || status === "FEEDBACK_SUBMITTED") {
+        return res.status(400).json({ error: "Cannot manually transition to feedback states. These are managed automatically." })
       }
 
       // Validate status transition

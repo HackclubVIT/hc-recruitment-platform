@@ -124,19 +124,24 @@ export const POST = async (req: Request, res: Response) => {
         }
       }
 
-      return newFeedback
+      return { newFeedback, allSubmitted }
     })
 
-    await logAudit(session.id, "SUBMITTED_FEEDBACK", "Feedback", feedback.id)
+    const newFeedback = feedback.newFeedback
+    const allSubmitted = feedback.allSubmitted
 
-    // Notify Recruiter
-    await createNotification(
-      interview.recruiter_id,
-      "Feedback Submitted",
-      `Panel feedback has been submitted for ${interview.candidate.name}.`
-    )
+    await logAudit(session.id, "SUBMITTED_FEEDBACK", "Feedback", newFeedback.id)
 
-    return res.status(201).json({ message: "Feedback submitted successfully", feedback })
+    // Notify Recruiter only when ALL feedback is complete
+    if (allSubmitted) {
+      await createNotification(
+        interview.recruiter_id,
+        "Interview Feedback Complete",
+        `All panel members have submitted feedback for ${interview.candidate.name}. The interview is now completed.`
+      )
+    }
+
+    return res.status(201).json({ message: "Feedback submitted successfully", feedback: newFeedback })
   } catch (error) {
     console.error("Submit feedback error:", error)
     return res.status(500).json({ error: "Internal server error" })

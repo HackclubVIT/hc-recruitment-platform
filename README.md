@@ -97,6 +97,12 @@ pnpm run start
 - **Authentication**: JWT-based session cookies are issued directly by the Express API. The cookies are strictly `httpOnly` and validated directly by the backend for every protected route.
 - **Strict Workflow Integrity**: Administrative privileges do not bypass the logical recruitment state machine (e.g. `INTERVIEW_SCHEDULED` -> `INTERVIEW_COMPLETED` -> `SELECTED`).
 
+## Local Development & Testing
+
+- Always run the API (`cd api && pnpm dev`) and the Frontend (`pnpm dev`) concurrently during local development.
+- Utilize standard local tools (e.g., Postman) targeting `http://localhost:3001` for direct API testing.
+- Test workflows end-to-end starting from Public Form application submission to Final Decision. Ensure strict isolation mechanisms are respected by switching between Admin, Recruiter, and Panel Member accounts.
+
 ## API Documentation
 
-For full details on the registered API endpoints, please see [API.md](./API.md).
+For full details on the registered API endpoints, architecture, and environment configuration, please see [API.md](./API.md).

@@ -117,7 +117,7 @@ export const PUT = async (req: Request, res: Response) => {
     const finalDecisions = ["SELECTED", "WAITLISTED", "FURTHER_ROUND"]
     const isFinalDecision = finalDecisions.includes(status) || (status === "REJECTED" && currentStatus === "INTERVIEW_COMPLETED")
 
-    if (isFinalDecision) {
+    if (isFinalDecision || status === "INTERVIEW_COMPLETED") {
       // Must verify actual workflow, not just application status
       const latestInterview = await prisma.interview.findFirst({
         where: { application_id: id },
@@ -126,18 +126,22 @@ export const PUT = async (req: Request, res: Response) => {
       })
 
       if (!latestInterview) {
-        return res.status(400).json({ error: "Cannot make final decision: No interview found for this application." })
+        return res.status(400).json({ error: "Cannot transition status: No interview found for this application." })
       }
 
       if (latestInterview.status !== "FEEDBACK_SUBMITTED") {
-        return res.status(400).json({ error: "Cannot make final decision: Interview is not fully completed or feedback is missing." })
+        return res.status(400).json({ error: "Cannot transition status: Interview is not fully completed or feedback is missing." })
       }
 
-      const requiredMembers = latestInterview.panel.members.length
-      const submittedFeedback = latestInterview.feedback.length
+      const requiredMemberIds = latestInterview.panel.members.map((m: any) => m.id).sort()
+      const submittedFeedbackIds = latestInterview.feedback.map((f: any) => f.panel_member_id).sort()
 
-      if (requiredMembers === 0 || submittedFeedback < requiredMembers) {
-        return res.status(400).json({ error: "Cannot make final decision: Not all panel members have submitted feedback." })
+      const allSubmitted = requiredMemberIds.length > 0 && 
+                           requiredMemberIds.length === submittedFeedbackIds.length && 
+                           requiredMemberIds.every((id: number, index: number) => id === submittedFeedbackIds[index])
+
+      if (!allSubmitted) {
+        return res.status(400).json({ error: "Cannot transition status: Not all exact panel members have submitted feedback." })
       }
     }
 
