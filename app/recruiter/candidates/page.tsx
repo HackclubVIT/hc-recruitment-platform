@@ -12,19 +12,52 @@ export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
+  const [departmentFilter, setDepartmentFilter] = useState("ALL")
+  const [dateFilter, setDateFilter] = useState("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchCandidates()
-  }, [search, statusFilter])
+  }, [search, statusFilter, departmentFilter, dateFilter])
 
   const fetchCandidates = async () => {
     setLoading(true)
     try {
       // In a real app, pass search and statusFilter to API as query params
-      const res = await fetch(`/api/candidates?q=${search}&status=${statusFilter}`)
+      const res = await fetch(`/api/candidates`)
       const data = await res.json()
-      setCandidates(data.candidates || [])
+      
+      // Client side filtering for completeness
+      let filtered = data.candidates || []
+      
+      if (search) {
+        filtered = filtered.filter((c: any) => 
+          c.name.toLowerCase().includes(search.toLowerCase()) || 
+          c.email.toLowerCase().includes(search.toLowerCase()) ||
+          c.registration_number?.toLowerCase().includes(search.toLowerCase())
+        )
+      }
+      
+      if (statusFilter !== "ALL") {
+        filtered = filtered.filter((c: any) => {
+          const appStatus = c.applications?.[0]?.status || "APPLIED"
+          return appStatus === statusFilter
+        })
+      }
+      
+      if (departmentFilter !== "ALL") {
+        filtered = filtered.filter((c: any) => c.department === departmentFilter)
+      }
+
+      if (dateFilter) {
+        filtered = filtered.filter((c: any) => {
+          const appDate = c.applications?.[0]?.submitted_at
+          if (!appDate) return false
+          return new Date(appDate).toISOString().split('T')[0] === dateFilter
+        })
+      }
+      
+      setCandidates(filtered)
     } catch (err) {
       console.error(err)
     } finally {
@@ -48,14 +81,27 @@ export default function CandidatesPage() {
 
       {/* Filters */}
       <Card className="flex flex-col sm:flex-row gap-4 p-4 items-center">
-        <div className="w-full sm:w-1/2">
+        <div className="w-full sm:w-2/5">
           <Input 
             placeholder="Search by name, email, or registration..." 
             value={search}
             onChange={(e: any) => setSearch(e.target.value)}
           />
         </div>
-        <div className="w-full sm:w-1/4">
+        <div className="w-full sm:w-1/5">
+          <select 
+            className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono text-[12px] focus:outline-none focus:border-[#d07d22]"
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+          >
+            <option value="ALL">All Depts</option>
+            <option value="CSE">CSE</option>
+            <option value="ECE">ECE</option>
+            <option value="EEE">EEE</option>
+            <option value="MECH">MECH</option>
+          </select>
+        </div>
+        <div className="w-full sm:w-1/5">
           <select 
             className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono text-[12px] focus:outline-none focus:border-[#d07d22]"
             value={statusFilter}
@@ -66,6 +112,13 @@ export default function CandidatesPage() {
             <option value="SHORTLISTED">Shortlisted</option>
             <option value="REJECTED">Rejected</option>
           </select>
+        </div>
+        <div className="w-full sm:w-1/5">
+          <Input 
+            type="date"
+            value={dateFilter}
+            onChange={(e: any) => setDateFilter(e.target.value)}
+          />
         </div>
         <Button variant="ghost" className="w-full sm:w-auto h-[46px]" onClick={fetchCandidates}>
           REFRESH

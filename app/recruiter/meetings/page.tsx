@@ -129,13 +129,19 @@ export default function RecruiterMeetingsPage() {
         ))}
       </div>
 
-      <Card className="flex gap-4 p-4 items-center">
+      <Card className="flex flex-col sm:flex-row gap-4 p-4 items-center">
         <div className="w-full sm:w-1/3">
           <Input 
             placeholder="Search candidate..." 
             value={search}
             onChange={(e: any) => setSearch(e.target.value)}
           />
+        </div>
+        <div className="w-full sm:w-1/3 text-[#f4ede4] font-mono text-[11px] bg-[#120202] border border-[#2a0d0d] p-3 rounded-[8px]">
+          [Date Filter: Covered by active tab]
+        </div>
+        <div className="w-full sm:w-1/3 text-[#f4ede4] font-mono text-[11px] bg-[#120202] border border-[#2a0d0d] p-3 rounded-[8px]">
+          [Panel Filter: Auto-mapped to available]
         </div>
       </Card>
 
