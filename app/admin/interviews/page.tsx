@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
 import { DiamondIcon } from "@/components/ui/Icons"
 import { StatusPill } from "@/components/ui/StatusPill"
+import { Button } from "@/components/ui/Button"
+import Link from "next/link"
 
 export default function AdminInterviewsPage() {
   const [interviews, setInterviews] = useState<any[]>([])
@@ -39,14 +41,19 @@ export default function AdminInterviewsPage() {
 
   return (
     <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out]">
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-3 text-[#d07d22] font-mono text-[11.5px] uppercase tracking-[0.2em]">
-          <DiamondIcon />
-          <span>Global Data View</span>
+      <header className="flex items-end justify-between">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 text-[#d07d22] font-mono text-[11.5px] uppercase tracking-[0.2em]">
+            <DiamondIcon />
+            <span>Global Data View</span>
+          </div>
+          <h1 className="font-display font-bold text-[32px] sm:text-[40px] leading-tight text-[#f4ede4]">
+            All Interviews
+          </h1>
         </div>
-        <h1 className="font-display font-bold text-[32px] sm:text-[40px] leading-tight text-[#f4ede4]">
-          All Interviews
-        </h1>
+        <Link href="/admin/interviews/schedule">
+          <Button variant="cta">SCHEDULE</Button>
+        </Link>
       </header>
 
       <Card className="p-0 overflow-hidden">
