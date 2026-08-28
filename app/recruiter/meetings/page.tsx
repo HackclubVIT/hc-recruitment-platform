@@ -54,7 +54,13 @@ export default function RecruiterMeetingsPage() {
     return new Date(dateStr) > new Date()
   }
 
-  // Filter based on tabs
+  const [dateFilter, setDateFilter] = useState("")
+  const [panelFilter, setPanelFilter] = useState("ALL")
+
+  // Extract unique panels for filter dropdown
+  const uniquePanels = Array.from(new Set(interviews.map(inv => inv.panel?.name))).filter(Boolean)
+
+  // Filter based on tabs, search, and explicit filters
   const filteredInterviews = interviews.filter(inv => {
     let tabMatch = false
     if (activeTab === "Upcoming") tabMatch = isUpcoming(inv.start_time) && inv.status !== "CANCELLED"
@@ -64,7 +70,18 @@ export default function RecruiterMeetingsPage() {
 
     let searchMatch = inv.candidate?.name.toLowerCase().includes(search.toLowerCase())
 
-    return tabMatch && searchMatch
+    let dateMatch = true
+    if (dateFilter) {
+      const invDate = new Date(inv.date).toISOString().split('T')[0]
+      dateMatch = invDate === dateFilter
+    }
+
+    let panelMatch = true
+    if (panelFilter !== "ALL") {
+      panelMatch = inv.panel?.name === panelFilter
+    }
+
+    return tabMatch && searchMatch && dateMatch && panelMatch
   })
 
   // Calendar logic
@@ -137,11 +154,25 @@ export default function RecruiterMeetingsPage() {
             onChange={(e: any) => setSearch(e.target.value)}
           />
         </div>
-        <div className="w-full sm:w-1/3 text-[#f4ede4] font-mono text-[11px] bg-[#120202] border border-[#2a0d0d] p-3 rounded-[8px]">
-          [Date Filter: Covered by active tab]
+        <div className="w-full sm:w-1/3">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
+          />
         </div>
-        <div className="w-full sm:w-1/3 text-[#f4ede4] font-mono text-[11px] bg-[#120202] border border-[#2a0d0d] p-3 rounded-[8px]">
-          [Panel Filter: Auto-mapped to available]
+        <div className="w-full sm:w-1/3">
+          <select
+            value={panelFilter}
+            onChange={(e) => setPanelFilter(e.target.value)}
+            className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
+          >
+            <option value="ALL">All Panels</option>
+            {uniquePanels.map((p: any) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
         </div>
       </Card>
 

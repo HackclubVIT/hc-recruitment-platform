@@ -1,10 +1,38 @@
-import React from "react"
+"use client"
+
+import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
 import { DiamondIcon } from "@/components/ui/Icons"
 import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 
 export default function PanelDashboard() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/panels/dashboard`)
+        if (res.ok) {
+          const json = await res.json()
+          setData(json)
+        }
+      } catch (e) {
+        console.error("Failed to fetch dashboard data:", e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return <div className="p-8 text-[#bfa8a2] font-mono">LOADING PANEL DASHBOARD...</div>
+  }
+
+  const { stats, todaySchedule } = data || { stats: { todayInterviewsCount: 0, upcomingInterviewsCount: 0, pendingFeedbackCount: 0 }, todaySchedule: [] }
+
   return (
     <div className="flex flex-col gap-10 animate-[fadeIn_0.5s_ease-out]">
       <header className="flex flex-col gap-2">
@@ -24,19 +52,19 @@ export default function PanelDashboard() {
         <Card className="flex flex-col justify-between min-h-[120px] group">
           <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Interviews Today</span>
           <div className="flex items-end justify-between mt-2">
-            <span className="font-display font-black text-[36px] leading-none text-[#d07d22]">3</span>
+            <span className="font-display font-black text-[36px] leading-none text-[#d07d22]">{stats.todayInterviewsCount}</span>
           </div>
         </Card>
         <Card className="flex flex-col justify-between min-h-[120px] group">
           <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Upcoming (Week)</span>
           <div className="flex items-end justify-between mt-2">
-            <span className="font-display font-black text-[36px] leading-none text-[#f4ede4]">12</span>
+            <span className="font-display font-black text-[36px] leading-none text-[#f4ede4]">{stats.upcomingInterviewsCount}</span>
           </div>
         </Card>
         <Card className="flex flex-col justify-between min-h-[120px] group">
           <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Pending Feedback</span>
           <div className="flex items-end justify-between mt-2">
-            <span className="font-display font-black text-[36px] leading-none text-[#ac120c]">2</span>
+            <span className="font-display font-black text-[36px] leading-none text-[#ac120c]">{stats.pendingFeedbackCount}</span>
           </div>
         </Card>
       </div>
@@ -59,26 +87,30 @@ export default function PanelDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2a0d0d]">
-                <tr className="hover:bg-[#1a0606] transition-colors duration-200">
-                  <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">5:00 PM</td>
-                  <td className="p-4 text-[#f4ede4] font-medium">David Miller</td>
-                  <td className="p-4">
-                    <StatusPill status="scheduled">SCHEDULED</StatusPill>
-                  </td>
-                  <td className="p-4">
-                    <Button variant="ghost" className="py-2 px-4 text-xs tracking-wider border-[#2e7d32]/50 text-[#2e7d32] hover:bg-[#2e7d32]/10">JOIN</Button>
-                  </td>
-                </tr>
-                <tr className="hover:bg-[#1a0606] transition-colors duration-200">
-                  <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">5:15 PM</td>
-                  <td className="p-4 text-[#f4ede4] font-medium">Elena Rodriguez</td>
-                  <td className="p-4">
-                    <StatusPill status="scheduled">SCHEDULED</StatusPill>
-                  </td>
-                  <td className="p-4">
-                    <Button variant="ghost" className="py-2 px-4 text-xs tracking-wider border-[#2e7d32]/50 text-[#2e7d32] hover:bg-[#2e7d32]/10">JOIN</Button>
-                  </td>
-                </tr>
+                {todaySchedule.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono">NO INTERVIEWS SCHEDULED TODAY.</td>
+                  </tr>
+                ) : (
+                  todaySchedule.map((interview: any) => (
+                    <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
+                      <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">
+                        {new Date(interview.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="p-4 text-[#f4ede4] font-medium">{interview.candidate.name}</td>
+                      <td className="p-4">
+                        <StatusPill status={interview.status.toLowerCase()}>{interview.status}</StatusPill>
+                      </td>
+                      <td className="p-4">
+                        {interview.meeting_link ? (
+                          <Button variant="ghost" className="py-2 px-4 text-xs tracking-wider border-[#2e7d32]/50 text-[#2e7d32] hover:bg-[#2e7d32]/10" onClick={() => window.open(interview.meeting_link, '_blank')}>JOIN</Button>
+                        ) : (
+                          <span className="text-[#bfa8a2] font-mono text-xs">No Link</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
