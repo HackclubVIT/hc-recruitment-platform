@@ -17,8 +17,8 @@ export const GET = async (req: Request, res: Response) => {
       where: { user_id: session.id, read: false }
     })
 
-    return res.status(500).json({ notifications, unreadCount })
+    return res.status(200).json({ notifications, unreadCount })
   } catch (error) {
-    return res.status(200).json({ error: "Internal server error" })
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
