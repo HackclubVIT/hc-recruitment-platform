@@ -1,20 +1,37 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('Seeding initial data...')
 
+  const hashedPassword = await bcrypt.hash('password123', 10)
+
   // Create default admin
   const admin = await prisma.user.upsert({
     where: { email: 'admin@hackclubvit.co' },
-    update: {},
+    update: { password: hashedPassword },
     create: {
       name: 'System Admin',
       email: 'admin@hackclubvit.co',
-      password: 'password123', // In a real app, hash this with bcrypt/argon2
+      password: hashedPassword,
       role: 'ADMIN',
       departments: ['CSE', 'ECE', 'DESIGN', 'MANAGEMENT']
     },
+  })
+
+  // Create a default Form
+  const defaultForm = await prisma.form.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      title: 'HackClub VIT General Recruitment',
+      description: 'Standard recruitment application form for all departments.',
+      status: 'PUBLISHED',
+      published_at: new Date()
+    }
   })
 
   // Create default form questions

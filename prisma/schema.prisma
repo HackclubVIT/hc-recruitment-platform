@@ -25,6 +25,22 @@ model User {
   @@map("users")
 }
 
+model Form {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?
+  status       String   @default("DRAFT") // DRAFT, PUBLISHED, CLOSED
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  published_at DateTime?
+  closed_at    DateTime?
+
+  questions    FormQuestion[]
+  applications Application[]
+
+  @@map("forms")
+}
+
 model FormQuestion {
   id       Int      @id @default(autoincrement())
   form_id  Int
@@ -32,6 +48,8 @@ model FormQuestion {
   type     String
   required Boolean  @default(true)
   options  String[] // Using String[] for options
+
+  form     Form     @relation(fields: [form_id], references: [id])
 
   @@map("form_questions")
 }
@@ -61,7 +79,9 @@ model Application {
   answers      Json?
 
   candidate    Candidate @relation(fields: [candidate_id], references: [id])
+  form         Form      @relation(fields: [form_id], references: [id])
 
+  @@unique([candidate_id, form_id])
   @@map("applications")
 }
 
@@ -125,6 +145,7 @@ model Feedback {
   interview            Interview   @relation(fields: [interview_id], references: [id])
   panel_member         PanelMember @relation(fields: [panel_member_id], references: [id])
 
+  @@unique([interview_id, panel_member_id])
   @@map("feedback")
 }
 
