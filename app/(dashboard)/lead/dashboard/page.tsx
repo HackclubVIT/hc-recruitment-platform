@@ -700,8 +700,10 @@ export default function LeadDashboard() {
                   feedbackLoading ? (
                     <div className="text-center py-4 text-gray-500">Loading feedback...</div>
                   ) : (
-                    {/* FIXME: [BUG] Unsafe type cast - feedbackApp shape differs from ApplicationDetail */}
-                    <FeedbackSummary feedbacks={(feedbackApp as any).feedbacks || []} />
+                    <>
+                      {/* FIXME: [BUG] Unsafe type cast - feedbackApp shape differs from ApplicationDetail */}
+                      <FeedbackSummary feedbacks={(feedbackApp as any).feedbacks || []} />
+                    </>
                   )
                 ) : (
                   <button

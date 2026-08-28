@@ -192,9 +192,9 @@ return (
         </div>
 
         {/* Application Table with bulk selection support */}
+        {/* Show department filter for LEAD/ADMIN only */}
         <ApplicationTable<ApplicationDetail>
           onRowClick={handleRowClick}
-          {/* Show department filter for LEAD/ADMIN only */}
           showDepartmentFilter={user?.role === "LEAD" || user?.role === "ADMIN"}
           selectedIds={bulkIds}
           onSelectionChange={setBulkIds}
