@@ -16,12 +16,26 @@ export const GET = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
 
+    let includeClause: any = {
+      form: { include: { questions: true } }
+    }
+
+    if (session.role === "PANEL_MEMBER") {
+      includeClause.candidate = {
+        select: {
+          id: true,
+          name: true,
+          department: true,
+          registration_number: true
+        }
+      }
+    } else {
+      includeClause.candidate = true
+    }
+
     const application = await prisma.application.findUnique({
       where: { id },
-      include: {
-        candidate: true,
-        form: { include: { questions: true } }
-      }
+      include: includeClause
     })
 
     if (!application) {
@@ -30,7 +44,7 @@ export const GET = async (req: Request, res: Response) => {
 
     // Authorization
     if (session.role === "RECRUITER") {
-      if (!session.departments?.includes(application.candidate.department)) {
+      if (!session.departments?.includes((application.candidate as any).department)) {
         return res.status(403).json({ error: "Forbidden" })
       }
     }
@@ -39,7 +53,7 @@ export const GET = async (req: Request, res: Response) => {
       const hasAccess = await prisma.interview.findFirst({
         where: {
           application_id: id,
-          panel: { members: { some: { user_id: session.id } } }
+          panel: { members: { some: { user_id: session.id, active: true } } } // Req 8
         }
       })
       if (!hasAccess) {

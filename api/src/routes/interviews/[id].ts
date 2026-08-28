@@ -103,7 +103,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const existingInterview = await prisma.interview.findUnique({
       where: { id },
-      include: { candidate: true, panel: { include: { members: true } } }
+      include: { candidate: true, panel: { include: { members: { where: { active: true } } } } }
     })
 
     if (!existingInterview) {

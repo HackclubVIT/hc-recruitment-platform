@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/db"
 import { getSession } from "../lib/auth"
+import { toISTDateString } from "../lib/timezone"
 
 export const GET = async (req: Request, res: Response) => {
   try {
@@ -69,7 +70,7 @@ export const GET = async (req: Request, res: Response) => {
     const interviewsByDayRaw: Record<string, number> = {}
     allInterviews.forEach((inv: any) => {
       // Convert to Asia/Kolkata date for grouping (Req 25)
-      const istDate = inv.start_time.toLocaleString("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" })
+      const istDate = toISTDateString(inv.start_time)
       interviewsByDayRaw[istDate] = (interviewsByDayRaw[istDate] || 0) + 1
     })
 

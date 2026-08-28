@@ -12,14 +12,13 @@ export const GET = async (req: Request, res: Response) => {
     let whereClause: any = {}
 
     if (session.role === "PANEL_MEMBER") {
-      // Panel members only see interviews for panels they are part of
-      const userPanels = await prisma.panelMember.findMany({
-        where: { user_id: session.id },
-        select: { panel_id: true }
-      })
-      const panelIds = userPanels.map((p: any) => p.panel_id)
-      
-      whereClause = { panel_id: { in: panelIds } }
+      whereClause = {
+        panel: {
+          members: {
+            some: { user_id: session.id, active: true }
+          }
+        }
+      }
     } else if (session.role === "RECRUITER") {
       // Recruiters see interviews for candidates in their departments
       whereClause = {

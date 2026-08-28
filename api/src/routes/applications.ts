@@ -191,7 +191,7 @@ export const GET = async (req: Request, res: Response) => {
         some: {
           panel: {
             members: {
-              some: { user_id: session.id }
+              some: { user_id: session.id, active: true } // Req 9
             }
           }
         }

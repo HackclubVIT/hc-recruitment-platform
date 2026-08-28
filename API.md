@@ -1,82 +1,75 @@
-# Independent Express API Reference
+# API Architecture and Documentation
 
-The backend operates as an independent Express service listening on the configured port. All requests from the Next.js frontend are directed to this API.
+## Core Architecture
+This project utilizes a strictly separated API architecture:
 
-## Architecture
-- **Frontend**: Next.js application strictly serving UI. Uses `src/api-client.ts` for all backend requests.
-- **Database**: PostgreSQL accessed exclusively by the independent Express API using Prisma.
-- **Independent Express API**: The centralized hub for all business logic, authorization, authentication, scheduling, feedback, and database connections.
+- **Main Website**: Static/informational site (ignored in this document).
+- **Recruitment Frontend**: Built with Next.js, React, and TailwindCSS. Communicates exclusively with the independent Express API using `src/api-client.ts`. It does not use Next.js API routes (`app/api` is strictly forbidden) and has absolutely zero direct access to PostgreSQL.
+- **Independent Express API**: The true backend. Built with Express.js and TypeScript inside the `api/` directory. All database operations, business logic, and authentications happen here.
+- **Database**: PostgreSQL accessed purely via Prisma ORM on the Express API layer.
 
-## Core Services
+The frontend configures its connection via the `NEXT_PUBLIC_API_URL` environment variable.
 
-### Authentication
-- `POST /api/auth/login` - Authenticate a user and issue an httpOnly JWT cookie.
-- `POST /api/auth/logout` - Clear the active session.
-- `GET /api/auth/me` - Retrieve the currently authenticated user session.
+## Authentication & Security
+- **Mechanism**: JWT (JSON Web Tokens) generated via `jose` and issued as `httpOnly` secure cookies. 
+- **Production Safety**: A strong `JWT_SECRET` is strictly required in production; the fallback secret is blocked.
+- **CORS**: Enforced strictly using `ALLOWED_ORIGIN`. Wildcard credentials are blocked.
 
-### Authorization
-All endpoints enforce strictly scoped access.
-- **ADMIN**: Global access across all endpoints.
-- **RECRUITER**: Access scoped strictly to the candidate's applied `department`.
-- **PANEL_MEMBER**: Access scoped strictly to their assigned interview, application, and candidate. Lateral traversal is structurally blocked.
+## Authorization Model
+All endpoints enforce strict role-based data isolation:
+- **ADMIN**: Global access across all departments.
+- **RECRUITER**: Access natively restricted to candidates, applications, and interviews within their explicitly assigned `departments`.
+- **PANEL_MEMBER**: Minimal access strictly governed by their active Panel assignments.
 
-### Recruitment Applications
-- `GET /api/applications` - Retrieve all applications.
-- `GET /api/applications/:id` - Get details of a specific application.
-- `PUT /api/applications/:id` - Update the recruitment workflow status of an application.
-- `POST /api/applications` - Submit a new application form publicly.
+## Panel Membership Lifecycle
+- **Active Rule**: A Panel Member must have `active: true` to view newly scheduled interviews, access dashboards, or receive notifications.
+- **Historical Protection**: When removed from a panel or upon changing roles (e.g., to RECRUITER), their membership is soft-deleted (`active: false`). Their historical feedback, interview associations, and audit logs are permanently preserved.
 
-### Final Decisions
-Final decisions (`SELECTED`, `REJECTED`, `WAITLISTED`, `FURTHER_ROUND`) enforce exact completion workflows.
-- Cannot be applied without a completed interview.
-- Cannot be applied without all required Panel Member feedback successfully submitted.
+## Timezone Centralization
+- **Timezone**: `Asia/Kolkata` is universally applied.
+- **Mechanics**: Timezone boundaries (e.g., "Start of Today", "End of Week") are centralized in `api/src/lib/timezone.ts`. The API safely parses these into UTC for Prisma querying, ensuring Panel Dashboards, Recruiter Analytics, and Application filters are completely timezone-immune.
 
-### Candidates
-- `GET /api/candidates` - Retrieve all candidates.
-- `GET /api/candidates/:id` - Get candidate profile and history.
+## Endpoints
 
-### Interviews & Scheduling
-- `GET /api/interviews` - Fetch scheduled, completed, and pending interviews.
-- `GET /api/interviews/:id` - Fetch specific interview details.
-- `POST /api/interviews/schedule` - Schedule a new interview round (checks for double bookings and candidate overlaps using transactions).
-- `PUT /api/interviews/:id` - Reschedule or update status (enforces strict state machine `SCHEDULED` -> `IN_PROGRESS` -> `COMPLETED`).
+### Forms (`/api/forms`)
+- Supports dynamic question types (`TEXT`, `PARAGRAPH`, `RADIO`, `DROPDOWN`, `CHECKBOX`).
+- Strictly validates answers against options and rejects unknown question IDs.
+- Prevents deletion if applications are attached; supports closing/unpublishing instead.
 
-### Panels
-- `GET /api/panels` - Fetch available interview panels and members.
-- `POST /api/panels` - Create a panel.
-- `DELETE /api/panels/:id` - Soft-delete (deactivate) panels with historical interviews.
+### Applications (`/api/applications`)
+- Duplicate submissions map natively to a `409` conflict.
+- Strictly bounds manual status updates. `INTERVIEW_COMPLETED` cannot be manually forced—it requires full feedback submission natively via the state machine.
+- Highly optimized queries return only the data explicitly needed for Panel Members.
 
-### Forms & Dynamic Questions
-- `GET /api/forms` - List recruitment application forms.
-- `GET /api/forms/:id` - Get dynamic form schema.
-- `POST /api/forms/:id/questions` - Add a question (only while `DRAFT`).
-- `PUT /api/forms/:id/questions/:questionId` - Edit a question.
-- `DELETE /api/forms/:id/questions/:questionId` - Delete a question.
+### Candidates (`/api/candidates`)
+- Enforces data minimization natively in Prisma using single-query relations (e.g., filtering candidates through active interview panels).
 
-### Feedback
-- `POST /api/feedback` - Submit interview feedback. Strict `unique(interview_id, panel_member_id)` guarantees uniqueness.
+### Panels (`/api/panels`)
+- Creation and updates enforce strict Zod validation against `ACTIVE` or `INACTIVE` lifecycles.
+- Assigns Panel Members logically, prioritizing the reactivation of dormant records (`active: false`) over redundant duplication.
+
+### Interviews & Scheduling (`/api/interviews`)
+- **State Machine**: `SCHEDULED` → `IN_PROGRESS` → `COMPLETED` → `FEEDBACK_PENDING` → `FEEDBACK_SUBMITTED`.
+- **Double Booking**: Automatically scans active Panel Members and the candidate for time conflicts. Returns `409` globally.
+- **Rescheduling**: Validates times strictly and re-runs comprehensive active conflict checks.
+
+### Feedback (`/api/feedback`)
+- Requires exact matching of assigned panel members. The system validates whether A, B, and C all submitted (not just 3 random members).
+- Once completed natively, the system transitions the interview to `FEEDBACK_SUBMITTED` and the application to `INTERVIEW_COMPLETED`.
+
+### Final Decisions & Further Rounds
+- **Final Decisions** (`SELECTED`, `WAITLISTED`, `REJECTED`): Blocked until the application successfully reaches `INTERVIEW_COMPLETED`. Records the decider's ID, reason, and exact timestamp.
+- **Further Round**: Seamlessly stages the candidate for a new interview round, wiping intermediate decision metadata and maintaining the active application pipeline.
 
 ### Notifications
-- `GET /api/notifications` - Retrieve all unread notifications.
-- `PUT /api/notifications/read` - Mark specific notifications as read.
+- Dispatched safely within Prisma transactions. 
+- Sent to **active** Panel Members for new schedules.
+- Consolidated feedback notification fires exactly once upon total panel completion.
 
-### Auditing & Analytics
-- `GET /api/analytics` - Retrieve high-level recruitment metrics.
-- `GET /api/audit-logs` - Query historical administrative actions.
+### Analytics & Audit Logs
+- **Analytics**: Calculates and groups metrics using absolute localized `Asia/Kolkata` days.
+- **Audit Logs**: Irreversibly tracks every state mutation, role assignment, and final decision across the platform permanently.
 
-### Health
-- `GET /api/health` - Basic liveness probe.
-
-## Environment Variables
-- `DATABASE_URL`: PostgreSQL connection string (Backend).
-- `JWT_SECRET`: Mandatory in production for signing session cookies (Backend).
-- `ALLOWED_ORIGIN`: Defines acceptable CORS origins for the frontend (Backend).
-- `NEXT_PUBLIC_API_URL`: Points to the independent Express API (Frontend).
-
-## Testing
-- Ensure the API is running locally on port `3001` (or configured).
-- End-to-end tests utilize valid user flows matching the strict state machine requirements and database transactions.
-
-## Notes
-- All backend files are strictly confined to the `api/` directory.
-- `app/api` does not exist; the Next.js API routes have been completely phased out.
+## Testing Strategy
+- **Static Verification**: `tsc --noEmit` and `pnpm build` rigorously prove schema isolation and TypeScript compliance.
+- **E2E Capabilities**: Due to strict `httpOnly` cookie and timezone dependencies, end-to-end integration flows are validated natively using node/fetch simulated transactions directly against the Express server's Prisma core.

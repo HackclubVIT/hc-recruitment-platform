@@ -22,7 +22,7 @@ export const GET = async (req: Request, res: Response) => {
         status: { not: "CANCELLED" },
         panel: {
           members: {
-            some: { user_id: session.id }
+            some: { user_id: session.id, active: true } // Req 5
           }
         }
       }
@@ -38,7 +38,7 @@ export const GET = async (req: Request, res: Response) => {
         status: { not: "CANCELLED" },
         panel: {
           members: {
-            some: { user_id: session.id }
+            some: { user_id: session.id, active: true } // Req 5
           }
         }
       }
@@ -47,6 +47,8 @@ export const GET = async (req: Request, res: Response) => {
     // 3. Pending Feedback
     // Only COMPLETED and FEEDBACK_PENDING interviews count.
     // SCHEDULED interviews are NOT eligible for feedback (Req 12).
+    // Note: We DO NOT filter by `active: true` here because of Req 4: 
+    // Historical pending feedback must still be accessible if they were assigned to it.
     const panelMemberRows = await prisma.panelMember.findMany({
       where: { user_id: session.id }
     })
@@ -80,12 +82,20 @@ export const GET = async (req: Request, res: Response) => {
         status: { not: "CANCELLED" },
         panel: {
           members: {
-            some: { user_id: session.id }
+            some: { user_id: session.id, active: true } // Req 5
           }
         }
       },
       include: {
-        candidate: true
+        candidate: {
+          select: { // Req 3: Data minimization
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            registration_number: true
+          }
+        }
       },
       orderBy: {
         start_time: 'asc'

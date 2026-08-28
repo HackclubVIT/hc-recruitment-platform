@@ -108,6 +108,7 @@ model PanelMember {
   id       Int    @id @default(autoincrement())
   panel_id Int
   user_id  String
+  active   Boolean @default(true)
 
   panel    Panel  @relation(fields: [panel_id], references: [id])
   user     User   @relation(fields: [user_id], references: [id])
