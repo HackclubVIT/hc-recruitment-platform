@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/db"
+import { getSession } from "@/lib/auth"
 import { createNotification } from "@/lib/notify"
 import { logAudit } from "@/lib/audit"
 import { z } from "zod"
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
         
         // 3. Options validation for CHECKBOX (answers could be array or comma-separated string)
         if (q.type === 'CHECKBOX' && q.options.length > 0) {
-          let selected = []
+          let selected: string[] = []
           if (Array.isArray(answer)) selected = answer
           else if (typeof answer === 'string') selected = answer.split(',').map(s => s.trim())
           else selected = [String(answer)]
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // System audit log (use undefined or a fixed nullable user strategy if your DB allows)
+    // System audit log (nullable user_id for system actions)
     await logAudit(undefined, "APPLICATION_SUBMITTED", "Application", application.id)
 
     return NextResponse.json(
@@ -142,6 +143,12 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
+    // TASK 1: Add authentication/authorization
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "10")
@@ -154,28 +161,50 @@ export async function GET(req: Request) {
 
     const where: any = {}
 
-    if (search) {
-      where.candidate = {
-        name: { contains: search, mode: "insensitive" }
+    // TASK 1: Enforce role-based access
+    // Build candidate filter object carefully to avoid overwrite (TASK 10)
+    const candidateFilter: any = {}
+
+    if (session.role === "RECRUITER") {
+      candidateFilter.department = { in: session.departments }
+    } else if (session.role === "PANEL_MEMBER") {
+      // Panel members can only see applications for candidates they have interviews with
+      candidateFilter.interviews = {
+        some: {
+          panel: {
+            members: {
+              some: { user_id: session.id }
+            }
+          }
+        }
       }
+    }
+
+    // Search filter
+    if (search) {
+      candidateFilter.name = { contains: search, mode: "insensitive" }
+    }
+
+    // Department filter (admin only - recruiters already filtered by their departments)
+    if (department && session.role === "ADMIN") {
+      candidateFilter.department = department
+    }
+
+    // Only set where.candidate if we have filters
+    if (Object.keys(candidateFilter).length > 0) {
+      where.candidate = candidateFilter
     }
 
     if (status) {
       where.status = status
     }
 
-    if (department) {
-      where.candidate = {
-        ...where.candidate,
-        department
-      }
-    }
-
+    // TASK 2: Fix date filter to use submitted_at (not created_at which doesn't exist)
     if (date) {
       const startDate = new Date(date)
       const endDate = new Date(date)
       endDate.setDate(endDate.getDate() + 1)
-      where.created_at = {
+      where.submitted_at = {
         gte: startDate,
         lt: endDate
       }
