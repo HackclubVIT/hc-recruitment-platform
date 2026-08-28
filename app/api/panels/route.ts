@@ -6,11 +6,15 @@ import { logAudit } from "@/lib/audit"
 export async function GET(req: Request) {
   try {
     const session = await getSession()
-    if (!session || session.role !== "ADMIN") {
+    if (!session || !["ADMIN", "RECRUITER"].includes(session.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    // Recruiters only see active panels
+    const whereClause = session.role === "RECRUITER" ? { status: "ACTIVE" } : {}
+
     const panels = await prisma.panel.findMany({
+      where: whereClause,
       include: {
         members: {
           include: { user: { select: { name: true, email: true } } }

@@ -8,6 +8,7 @@ const RECRUITER_LINKS = [
   { label: "CANDIDATES", href: "/recruiter/candidates" },
   { label: "SHORTLISTED", href: "/recruiter/shortlisted" },
   { label: "MEETINGS", href: "/recruiter/meetings" },
+  { label: "PANELS", href: "/recruiter/panels" },
 ]
 
 export default function RecruiterLayout({ children }: { children: React.ReactNode }) {
