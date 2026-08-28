@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import prisma from "../lib/db"
+import { getSession } from "../lib/auth"
 
 export const GET = async (req: Request, res: Response) => {
   try {
@@ -9,8 +9,7 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    // TASK 9: Proper pagination
-    const searchParams = new URLSearchParams(req.query as any)
+        const searchParams = new URLSearchParams(req.query as any)
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "20")
     const skip = (page - 1) * limit

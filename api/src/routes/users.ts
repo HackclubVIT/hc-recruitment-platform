@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import prisma from "../lib/db"
+import { getSession } from "../lib/auth"
 import bcrypt from "bcryptjs"
-import { logAudit } from "@/lib/audit"
+import { logAudit } from "../lib/audit"
 
 export const GET = async (req: Request, res: Response) => {
   try {

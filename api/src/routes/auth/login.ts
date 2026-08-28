@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs"
-import prisma from "@/lib/db"
-import { signToken } from "@/lib/auth"
+import prisma from "../../lib/db"
+import { signToken } from "../../lib/auth"
 
 export const POST = async (req: Request, res: Response) => {
   try {

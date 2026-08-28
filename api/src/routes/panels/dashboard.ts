@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import prisma from "../../lib/db"
+import { getSession } from "../../lib/auth"
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
@@ -55,7 +55,7 @@ export const GET = async (req: Request, res: Response) => {
     const panelMemberRows = await prisma.panelMember.findMany({
       where: { user_id: session.id }
     })
-    const panelMemberIds = panelMemberRows.map(pm => pm.id)
+    const panelMemberIds = panelMemberRows.map((pm: any) => pm.id)
 
     const pendingFeedbackCount = await prisma.interview.count({
       where: {

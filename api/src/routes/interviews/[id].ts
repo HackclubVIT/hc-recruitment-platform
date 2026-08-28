@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { Prisma } from "@prisma/client";
+import prisma from "../../lib/db"
+import { getSession } from "../../lib/auth"
 
 const VALID_INTERVIEW_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FEEDBACK_PENDING", "FEEDBACK_SUBMITTED"]
 
@@ -80,7 +81,7 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    // TASK 7: Validate interview status enum
+    // Validate interview status enum
     if (status) {
       if (!VALID_INTERVIEW_STATUSES.includes(status)) {
         return res.status(400).json({ error: `Invalid interview status. Must be one of: ${VALID_INTERVIEW_STATUSES.join(", ")}` })
@@ -112,7 +113,7 @@ export const PUT = async (req: Request, res: Response) => {
     }
 
     // Transactional logic to prevent race conditions during rescheduling
-    const interview = await prisma.$transaction(async (tx) => {
+    const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (date && start_time) {
         // 1. Conflict Detection for Panel (excluding self)
         const conflict = await tx.interview.findFirst({
@@ -165,11 +166,11 @@ export const PUT = async (req: Request, res: Response) => {
     })
 
     // Log audit
-    const { logAudit } = await import("@/lib/audit")
+    const { logAudit } = await import("../../lib/audit")
     await logAudit(session.id, `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
 
     // Notify Panel Members
-    const { createNotification } = await import("@/lib/notify")
+    const { createNotification } = await import("../../lib/notify")
     const action = status === "CANCELLED" ? "cancelled" : "updated"
     for (const pm of interview.panel.members) {
       await createNotification(

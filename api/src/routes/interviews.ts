@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import prisma from "../lib/db"
+import { getSession } from "../lib/auth"
 
 export const GET = async (req: Request, res: Response) => {
   try {

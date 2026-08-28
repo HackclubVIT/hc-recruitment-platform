@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getSession } from "@/lib/auth"
+import { getSession } from "../../lib/auth"
 
 export const GET = async (req: Request, res: Response) => {
   try {

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { logAudit } from "@/lib/audit"
+import prisma from "../../lib/db"
+import { getSession } from "../../lib/auth"
+import { logAudit } from "../../lib/audit"
 
 export const POST = async (req: Request, res: Response) => {
   try {

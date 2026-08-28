@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { logAudit } from "@/lib/audit"
+import { Prisma } from "@prisma/client";
+import prisma from "../../lib/db"
+import { getSession } from "../../lib/auth"
+import { logAudit } from "../../lib/audit"
 
 export const GET = async (req: Request, res: Response) => {
   const params = req.params;

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { logAudit } from "@/lib/audit"
+import prisma from "../../../lib/db"
+import { getSession } from "../../../lib/auth"
+import { logAudit } from "../../../lib/audit"
 
 const VALID_QUESTION_TYPES = ["TEXT", "PARAGRAPH", "RADIO", "DROPDOWN", "CHECKBOX"]
 
@@ -49,7 +49,7 @@ export const POST = async (req: Request, res: Response) => {
         question,
         type,
         required: Boolean(required),
-        options: options || []  // TASK 3: Never insert null into String[]
+        options: options || []  // Never insert null into String[]
       }
     })
 
