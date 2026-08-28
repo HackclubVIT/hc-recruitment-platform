@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../../lib/db"
 import { getSession } from "../../lib/auth"
+import { parseISTDateToUTC } from "../../lib/timezone"
 
 const VALID_INTERVIEW_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FEEDBACK_PENDING", "FEEDBACK_SUBMITTED"]
 
@@ -23,57 +24,43 @@ export const GET = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
 
-    const interview = await prisma.interview.findUnique({
-      where: { id },
-      include: {
-        candidate: {
-          include: { applications: true }
-        },
-        panel: {
-          include: { members: true }
+    let includeClause: any = {
+      panel: {
+        include: { members: { include: { user: { select: { name: true, email: true } } } } }
+      },
+      feedback: true,
+      application: true
+    }
+
+    if (session.role === "PANEL_MEMBER") {
+      includeClause.candidate = {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          department: true,
+          registration_number: true
         }
       }
+    } else {
+      includeClause.candidate = {
+        include: { applications: true }
+      }
+    }
+
+    const interview = await prisma.interview.findUnique({
+      where: { id },
+      include: includeClause
     })
 
     if (!interview) return res.status(404).json({ error: "Not found" })
 
     // Access control
     if (session.role === "PANEL_MEMBER") {
-      const isMember = interview.panel.members.some((m: any) => m.user_id === session.id)
+      const isMember = (interview.panel as any).members.some((m: any) => m.user_id === session.id && m.active === true)
       if (!isMember) return res.status(403).json({ error: "Forbidden" })
-      
-      // Data minimization: only return the exact application for this interview (Req 4)
-      const scopedInterview = await prisma.interview.findUnique({
-        where: { id },
-        include: {
-          candidate: true,
-          panel: {
-            include: { members: { include: { user: { select: { name: true, email: true } } } } }
-          },
-          feedback: true
-        }
-      })
-      
-      if (!scopedInterview) return res.status(404).json({ error: "Not found" })
-      
-      // Attach only the relevant application
-      const relevantApplication = scopedInterview.application_id 
-        ? await prisma.application.findUnique({ where: { id: scopedInterview.application_id } })
-        : null
-      
-      const result = {
-        ...scopedInterview,
-        candidate: {
-          ...scopedInterview.candidate,
-          applications: relevantApplication ? [relevantApplication] : []
-        }
-      }
-      
-      return res.status(200).json({ interview: result })
-    }
-
-    if (session.role === "RECRUITER") {
-      if (!session.departments.includes(interview.candidate.department)) {
+    } else if (session.role === "RECRUITER") {
+      if (!session.departments.includes((interview.candidate as any).department)) {
         return res.status(403).json({ error: "Forbidden" })
       }
     }
@@ -153,7 +140,7 @@ export const PUT = async (req: Request, res: Response) => {
     let targetDate = existingInterview.date
 
     if (date && start_time) {
-      startObj = new Date(`${date}T${start_time}:00+05:30`)
+      startObj = parseISTDateToUTC(date, start_time)
       endObj = new Date(startObj.getTime() + 10 * 60000)
       targetDate = new Date(date)
       

@@ -33,7 +33,7 @@ export const GET = async (req: Request, res: Response) => {
         some: {
           panel: {
             members: {
-              some: { user_id: session.id }
+              some: { user_id: session.id, active: true } // Req 13
             }
           },
           ...(status !== "ALL" ? { application: { status: status } } : {})
@@ -61,35 +61,41 @@ export const GET = async (req: Request, res: Response) => {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10") || 10))
     const skip = (page - 1) * limit
 
+    let includeClause: any = {
+      applications: true,
+      interviews: true
+    }
+
+    if (session.role === "PANEL_MEMBER") {
+      // Req 5: Authorization must happen at the query level. Do not load all and filter in JS.
+      includeClause = {
+        applications: {
+          where: {
+            interviews: {
+              some: {
+                panel: { members: { some: { user_id: session.id, active: true } } }
+              }
+            }
+          }
+        },
+        interviews: {
+          where: {
+            panel: { members: { some: { user_id: session.id, active: true } } }
+          }
+        }
+      }
+    }
+
     const [candidates, total] = await Promise.all([
       prisma.candidate.findMany({
         where: whereClause,
-        include: {
-          applications: true,
-          interviews: true
-        },
+        include: includeClause,
         skip,
         take: limit,
         orderBy: { created_at: 'desc' }
       }),
       prisma.candidate.count({ where: whereClause })
     ])
-
-    if (session.role === "PANEL_MEMBER") {
-      const allowedInterviews = await prisma.interview.findMany({
-        where: {
-          panel: { members: { some: { user_id: session.id } } }
-        },
-        select: { id: true, application_id: true }
-      })
-      const allowedInterviewIds = allowedInterviews.map((i: any) => i.id)
-      const allowedAppIds = allowedInterviews.map((i: any) => i.application_id)
-
-      for (const candidate of candidates) {
-        candidate.applications = candidate.applications.filter((a: any) => allowedAppIds.includes(a.id))
-        candidate.interviews = candidate.interviews.filter((i: any) => allowedInterviewIds.includes(i.id))
-      }
-    }
 
     return res.status(200).json({ 
       candidates, // keeping candidates array for backward compatibility

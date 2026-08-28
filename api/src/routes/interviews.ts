@@ -29,12 +29,27 @@ export const GET = async (req: Request, res: Response) => {
       }
     }
 
+    const includeClause: any = {
+      panel: true,
+    }
+
+    if (session.role === "PANEL_MEMBER") {
+      includeClause.candidate = {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          department: true,
+          registration_number: true,
+        }
+      }
+    } else {
+      includeClause.candidate = true
+    }
+
     const interviews = await prisma.interview.findMany({
       where: whereClause,
-      include: {
-        candidate: true,
-        panel: true,
-      },
+      include: includeClause,
       orderBy: { date: 'asc' }
     })
 
