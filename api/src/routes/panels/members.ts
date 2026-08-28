@@ -16,10 +16,22 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" })
     }
 
-    // Check if user is a panel member role
+    // Verify panel exists and is ACTIVE (Req 36)
+    const panel = await prisma.panel.findUnique({ where: { id: panel_id } })
+    if (!panel) {
+      return res.status(404).json({ error: "Panel not found" })
+    }
+    if (panel.status !== "ACTIVE") {
+      return res.status(400).json({ error: "Cannot add members to an inactive panel" })
+    }
+
+    // Check if user is a panel member role and is active (Req 36)
     const user = await prisma.user.findUnique({ where: { id: user_id } })
     if (!user || user.role !== "PANEL_MEMBER") {
       return res.status(400).json({ error: "User is not a Panel Member" })
+    }
+    if (!user.active) {
+      return res.status(400).json({ error: "Cannot add inactive user to panel" })
     }
 
     // Check if already in panel
