@@ -5,6 +5,17 @@ import { logAudit } from "@/lib/audit"
 import { createNotification } from "@/lib/notify"
 import { z } from "zod"
 
+const VALID_INTERVIEW_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FEEDBACK_PENDING", "FEEDBACK_SUBMITTED"]
+
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  "SCHEDULED": ["IN_PROGRESS", "CANCELLED"],
+  "IN_PROGRESS": ["COMPLETED", "CANCELLED"],
+  "COMPLETED": ["FEEDBACK_PENDING"],
+  "FEEDBACK_PENDING": ["FEEDBACK_SUBMITTED"],
+  "CANCELLED": [],
+  "FEEDBACK_SUBMITTED": []
+}
+
 const scheduleSchema = z.object({
   candidate_id: z.number().int().positive(),
   panel_id: z.number().int().positive(),
@@ -50,8 +61,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Candidate is not eligible for scheduling (Current status: ${appStatus})` }, { status: 400 })
     }
 
+    // TASK 16: Validate panel exists and is active
+    const panel = await prisma.panel.findUnique({ where: { id: panel_id } })
+    if (!panel) {
+      return NextResponse.json({ error: "Panel not found" }, { status: 404 })
+    }
+    if (panel.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Panel is not active" }, { status: 400 })
+    }
+
     const startObj = new Date(`${date}T${start_time}:00Z`)
     const endObj = new Date(startObj.getTime() + 10 * 60000) // 10 minutes default
+
+    // TASK 4: Calculate next round number
+    const lastInterview = await prisma.interview.findFirst({
+      where: { candidate_id, status: { not: "CANCELLED" } },
+      orderBy: { round: 'desc' }
+    })
+    const nextRound = lastInterview ? lastInterview.round + 1 : 1
 
     // Transactional logic to prevent race conditions during scheduling
     const interview = await prisma.$transaction(async (tx) => {
@@ -98,6 +125,7 @@ export async function POST(req: Request) {
           candidate_id,
           panel_id,
           recruiter_id: session.id,
+          round: nextRound,  // TASK 4: Use calculated round
           date: new Date(date),
           start_time: startObj,
           end_time: endObj,
