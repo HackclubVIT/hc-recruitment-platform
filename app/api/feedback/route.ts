@@ -66,23 +66,32 @@ export async function POST(req: Request) {
       }
     })
 
-    // Update Interview Status to FEEDBACK_SUBMITTED if all panel members submitted (simplified logic for now)
-    await prisma.interview.update({
-      where: { id: interview_id },
-      data: { status: "FEEDBACK_SUBMITTED" }
+    // Check if all panel members have submitted feedback
+    const totalMembers = interview.panel.members.length
+    const feedbackCount = await prisma.feedback.count({
+      where: { interview_id }
     })
 
-    // Update Application Status
-    const application = await prisma.application.findFirst({
-      where: { candidate_id: interview.candidate_id },
-      orderBy: { submitted_at: 'desc' }
+    const allSubmitted = feedbackCount >= totalMembers
+
+    await prisma.interview.update({
+      where: { id: interview_id },
+      data: { status: allSubmitted ? "FEEDBACK_SUBMITTED" : "FEEDBACK_PENDING" }
     })
-    
-    if (application) {
-      await prisma.application.update({
-        where: { id: application.id },
-        data: { status: "INTERVIEW_COMPLETED" }
+
+    // Update Application Status if all feedback submitted
+    if (allSubmitted) {
+      const application = await prisma.application.findFirst({
+        where: { candidate_id: interview.candidate_id },
+        orderBy: { submitted_at: 'desc' }
       })
+      
+      if (application) {
+        await prisma.application.update({
+          where: { id: application.id },
+          data: { status: "INTERVIEW_COMPLETED" }
+        })
+      }
     }
 
     await logAudit(session.id, "SUBMITTED_FEEDBACK", "Feedback", feedback.id)
