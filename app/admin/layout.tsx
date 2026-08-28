@@ -4,11 +4,15 @@ import { Sidebar } from "@/components/layout/Sidebar"
 
 const ADMIN_LINKS = [
   { label: "DASHBOARD", href: "/admin/dashboard" },
+  { label: "USERS", href: "/admin/users" },
+  { label: "FORMS", href: "/admin/forms" },
+  { label: "APPLICATIONS", href: "/admin/applications" },
   { label: "CANDIDATES", href: "/admin/candidates" },
   { label: "INTERVIEWS", href: "/admin/interviews" },
   { label: "RECRUITERS", href: "/admin/recruiters" },
   { label: "PANELS", href: "/admin/panels" },
   { label: "ANALYTICS", href: "/admin/analytics" },
+  { label: "AUDIT LOGS", href: "/admin/audit-logs" },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
