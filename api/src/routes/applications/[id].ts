@@ -114,12 +114,17 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Invalid transition from ${currentStatus} to ${status}` })
     }
 
+    // Req 7: Block generic PUT from manually setting INTERVIEW_COMPLETED
+    if (status === "INTERVIEW_COMPLETED") {
+      return res.status(400).json({ error: "Interview completion is controlled by the interview feedback workflow" })
+    }
+
     // Final decisions require full feedback verification
     const finalDecisions = ["SELECTED", "WAITLISTED"]
     const isFinalDecision = finalDecisions.includes(status) || (status === "REJECTED" && currentStatus === "INTERVIEW_COMPLETED")
 
     // FURTHER_ROUND also requires feedback verification but is NOT a final decision
-    const requiresFeedbackVerification = isFinalDecision || status === "FURTHER_ROUND" || status === "INTERVIEW_COMPLETED"
+    const requiresFeedbackVerification = isFinalDecision || status === "FURTHER_ROUND"
 
     if (requiresFeedbackVerification) {
       // Must verify actual workflow, not just application status

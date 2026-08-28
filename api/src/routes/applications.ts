@@ -4,6 +4,7 @@ import { getSession } from "../lib/auth"
 import { createNotification } from "../lib/notify"
 import { logAudit } from "../lib/audit"
 import { z } from "zod"
+import { getISTDateBounds } from "../lib/timezone"
 
 const applicationSchema = z.object({
   name: z.string().min(2),
@@ -211,13 +212,12 @@ export const GET = async (req: Request, res: Response) => {
       where.status = status
     }
 
-        if (date) {
-      const startDate = new Date(date)
-      const endDate = new Date(date)
-      endDate.setDate(endDate.getDate() + 1)
+    if (date) {
+      // Use centralized IST boundaries (Req 17)
+      const { startOfDay, endOfDay } = getISTDateBounds(date)
       where.submitted_at = {
-        gte: startDate,
-        lt: endDate
+        gte: startOfDay,
+        lte: endOfDay
       }
     }
 
