@@ -114,10 +114,14 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Invalid transition from ${currentStatus} to ${status}` })
     }
 
-    const finalDecisions = ["SELECTED", "WAITLISTED", "FURTHER_ROUND"]
+    // Final decisions require full feedback verification
+    const finalDecisions = ["SELECTED", "WAITLISTED"]
     const isFinalDecision = finalDecisions.includes(status) || (status === "REJECTED" && currentStatus === "INTERVIEW_COMPLETED")
 
-    if (isFinalDecision || status === "INTERVIEW_COMPLETED") {
+    // FURTHER_ROUND also requires feedback verification but is NOT a final decision
+    const requiresFeedbackVerification = isFinalDecision || status === "FURTHER_ROUND" || status === "INTERVIEW_COMPLETED"
+
+    if (requiresFeedbackVerification) {
       // Must verify actual workflow, not just application status
       const latestInterview = await prisma.interview.findFirst({
         where: { application_id: id },
@@ -138,7 +142,7 @@ export const PUT = async (req: Request, res: Response) => {
 
       const allSubmitted = requiredMemberIds.length > 0 && 
                            requiredMemberIds.length === submittedFeedbackIds.length && 
-                           requiredMemberIds.every((id: number, index: number) => id === submittedFeedbackIds[index])
+                           requiredMemberIds.every((mid: number, index: number) => mid === submittedFeedbackIds[index])
 
       if (!allSubmitted) {
         return res.status(400).json({ error: "Cannot transition status: Not all exact panel members have submitted feedback." })
@@ -147,11 +151,11 @@ export const PUT = async (req: Request, res: Response) => {
 
     const updateData: any = { status }
 
-    const anyFinal = ["SELECTED", "REJECTED", "WAITLISTED"].includes(status)
-    if (anyFinal) {
+    // Only true final decisions set decided_by/decided_at. FURTHER_ROUND is NOT a final decision.
+    const isTrueFinal = ["SELECTED", "REJECTED", "WAITLISTED"].includes(status)
+    if (isTrueFinal) {
       updateData.decided_by = session.id
       updateData.decided_at = new Date()
-      // If the frontend sent a reason, capture it.
       if (body.reason) {
         updateData.decision_reason = body.reason
       }
