@@ -109,12 +109,9 @@ export const PUT = async (req: Request, res: Response) => {
       "FURTHER_ROUND": ["INTERVIEW_SCHEDULED", "REJECTED"]
     }
 
-    // Admins can bypass transition rules for edge cases, but Recruiters cannot
-    if (session.role !== "ADMIN") {
-      const allowedNext = validTransitions[currentStatus] || []
-      if (!allowedNext.includes(status)) {
-        return res.status(400).json({ error: `Invalid transition from ${currentStatus} to ${status}` })
-      }
+    const allowedNext = validTransitions[currentStatus] || []
+    if (!allowedNext.includes(status)) {
+      return res.status(400).json({ error: `Invalid transition from ${currentStatus} to ${status}` })
     }
 
     const finalDecisions = ["SELECTED", "REJECTED", "WAITLISTED", "FURTHER_ROUND"]
