@@ -13,10 +13,8 @@ export const GET = async (req: Request, res: Response) => {
 
     if (session.role === "PANEL_MEMBER") {
       whereClause = {
-        panel: {
-          members: {
-            some: { user_id: session.id, active: true }
-          }
+        assigned_members: {
+          some: { user_id: session.id }
         }
       }
     } else if (session.role === "RECRUITER") {

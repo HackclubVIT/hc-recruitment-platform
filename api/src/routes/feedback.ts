@@ -45,14 +45,14 @@ export const POST = async (req: Request, res: Response) => {
     // Verify Panel Member is assigned to this interview
     const interview = await prisma.interview.findUnique({
       where: { id: interview_id },
-      include: { panel: { include: { members: true } }, candidate: true }
+      include: { assigned_members: true, candidate: true }
     })
 
     if (!interview) {
       return res.status(404).json({ error: "Interview not found" })
     }
 
-    const panelMember = interview.panel.members.find((m: any) => m.user_id === session.id)
+    const panelMember = interview.assigned_members.find((m: any) => m.user_id === session.id)
     if (!panelMember) {
       return res.status(403).json({ error: "You are not authorized to review this interview." })
     }
@@ -97,7 +97,7 @@ export const POST = async (req: Request, res: Response) => {
       })
 
       // Check if ALL panel members have submitted feedback
-      const expectedMemberIds = interview.panel.members.map((m: any) => m.id).sort()
+      const expectedMemberIds = interview.assigned_members.map((m: any) => m.id).sort()
       const submittedFeedbacks = await tx.feedback.findMany({
         where: { interview_id },
         select: { panel_member_id: true }

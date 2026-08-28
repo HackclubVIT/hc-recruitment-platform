@@ -28,6 +28,7 @@ export const GET = async (req: Request, res: Response) => {
       panel: {
         include: { members: { include: { user: { select: { name: true, email: true } } } } }
       },
+      assigned_members: { include: { user: { select: { name: true, email: true } } } },
       feedback: true,
       application: true
     }
@@ -57,7 +58,7 @@ export const GET = async (req: Request, res: Response) => {
 
     // Access control
     if (session.role === "PANEL_MEMBER") {
-      const isMember = (interview.panel as any).members.some((m: any) => m.user_id === session.id && m.active === true)
+      const isMember = (interview as any).assigned_members.some((m: any) => m.user_id === session.id)
       if (!isMember) return res.status(403).json({ error: "Forbidden" })
     } else if (session.role === "RECRUITER") {
       if (!session.departments.includes((interview.candidate as any).department)) {
@@ -76,13 +77,19 @@ export const PUT = async (req: Request, res: Response) => {
   const params = req.params;
   try {
     const session = await getSession(req)
-    if (!session || (session.role !== "ADMIN" && session.role !== "RECRUITER")) {
+    if (!session || (session.role !== "ADMIN" && session.role !== "RECRUITER" && session.role !== "PANEL_MEMBER")) {
       return res.status(403).json({ error: "Forbidden" })
     }
 
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
     const { status, date, start_time, meeting_link } = req.body
+
+    if (session.role === "PANEL_MEMBER") {
+      if (date || start_time || meeting_link !== undefined) {
+        return res.status(403).json({ error: "Panel members cannot reschedule or change meeting links" })
+      }
+    }
 
     if ((date && !start_time) || (!date && start_time)) {
       return res.status(400).json({ error: "Both date and start_time must be provided together when rescheduling." })
@@ -103,7 +110,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const existingInterview = await prisma.interview.findUnique({
       where: { id },
-      include: { candidate: true, panel: { include: { members: { where: { active: true } } } } }
+      include: { candidate: true, panel: { include: { members: true } }, assigned_members: true }
     })
 
     if (!existingInterview) {
@@ -112,6 +119,13 @@ export const PUT = async (req: Request, res: Response) => {
 
     if (session.role === "RECRUITER" && !session.departments.includes(existingInterview.candidate.department)) {
       return res.status(403).json({ error: "Forbidden" })
+    }
+
+    if (session.role === "PANEL_MEMBER") {
+      const isMember = existingInterview.assigned_members.some(m => m.user_id === session.id)
+      if (!isMember) {
+        return res.status(403).json({ error: "Forbidden: Not an active member of this interview panel" })
+      }
     }
 
     // Validate interview status enum

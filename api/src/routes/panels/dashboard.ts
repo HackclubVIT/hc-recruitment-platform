@@ -20,10 +20,8 @@ export const GET = async (req: Request, res: Response) => {
           lte: endOfToday
         },
         status: { not: "CANCELLED" },
-        panel: {
-          members: {
-            some: { user_id: session.id, active: true } // Req 5
-          }
+        assigned_members: {
+          some: { user_id: session.id }
         }
       }
     })
@@ -36,10 +34,8 @@ export const GET = async (req: Request, res: Response) => {
           lte: endOfWeek
         },
         status: { not: "CANCELLED" },
-        panel: {
-          members: {
-            some: { user_id: session.id, active: true } // Req 5
-          }
+        assigned_members: {
+          some: { user_id: session.id }
         }
       }
     })
@@ -57,10 +53,8 @@ export const GET = async (req: Request, res: Response) => {
     const pendingFeedbackCount = await prisma.interview.count({
       where: {
         status: { in: ["COMPLETED", "FEEDBACK_PENDING"] },
-        panel: {
-          members: {
-            some: { user_id: session.id }
-          }
+        assigned_members: {
+          some: { user_id: session.id }
         },
         NOT: {
           feedback: {
@@ -80,10 +74,8 @@ export const GET = async (req: Request, res: Response) => {
           lte: endOfToday
         },
         status: { not: "CANCELLED" },
-        panel: {
-          members: {
-            some: { user_id: session.id, active: true } // Req 5
-          }
+        assigned_members: {
+          some: { user_id: session.id }
         }
       },
       include: {

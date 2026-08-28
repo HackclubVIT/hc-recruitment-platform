@@ -147,6 +147,8 @@ export const POST = async (req: Request, res: Response) => {
         throw new Error("CANDIDATE_CONFLICT")
       }
 
+      const activePanelMembers = panel.members.filter((m: any) => m.active).map((m: any) => ({ id: m.id }))
+
       const newInterview = await tx.interview.create({
         data: {
           candidate_id,
@@ -158,9 +160,12 @@ export const POST = async (req: Request, res: Response) => {
           start_time: startObj,
           end_time: endObj,
           meeting_link: meeting_link || null,
-          status: "SCHEDULED"
+          status: "SCHEDULED",
+          assigned_members: {
+            connect: activePanelMembers
+          }
         },
-        include: { candidate: true, panel: true }
+        include: { candidate: true, panel: true, assigned_members: true }
       })
 
       await tx.application.update({

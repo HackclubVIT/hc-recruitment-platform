@@ -31,10 +31,8 @@ export const GET = async (req: Request, res: Response) => {
     } else if (session.role === "PANEL_MEMBER") {
       whereClause.interviews = {
         some: {
-          panel: {
-            members: {
-              some: { user_id: session.id, active: true } // Req 13
-            }
+          assigned_members: {
+            some: { user_id: session.id }
           },
           ...(status !== "ALL" ? { application: { status: status } } : {})
         }
@@ -73,14 +71,14 @@ export const GET = async (req: Request, res: Response) => {
           where: {
             interviews: {
               some: {
-                panel: { members: { some: { user_id: session.id, active: true } } }
+                assigned_members: { some: { user_id: session.id } }
               }
             }
           }
         },
         interviews: {
           where: {
-            panel: { members: { some: { user_id: session.id, active: true } } }
+            assigned_members: { some: { user_id: session.id } }
           }
         }
       }
