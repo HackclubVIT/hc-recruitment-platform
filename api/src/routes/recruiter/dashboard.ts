@@ -1,22 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/db"
 import { getSession } from "../../lib/auth"
-
-// Compute IST (Asia/Kolkata = UTC+5:30) date boundaries
-function getISTDateBounds() {
-  const now = new Date()
-  const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-  const istDate = new Date(istString)
-  
-  const year = istDate.getFullYear()
-  const month = istDate.getMonth()
-  const day = istDate.getDate()
-  
-  const startOfToday = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - (5.5 * 60 * 60 * 1000))
-  const endOfToday = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000))
-  
-  return { startOfToday, endOfToday }
-}
+import { getISTDateBounds } from "../../lib/timezone"
 
 export const GET = async (req: Request, res: Response) => {
   try {
@@ -25,7 +10,7 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const { startOfToday, endOfToday } = getISTDateBounds()
+    const { startOfDay: startOfToday, endOfDay: endOfToday } = getISTDateBounds()
     const departments = session.departments || []
 
     const pendingReviewsCount = await prisma.application.count({

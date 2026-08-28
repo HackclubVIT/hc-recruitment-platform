@@ -5,6 +5,7 @@ import { getSession } from "../../lib/auth"
 import { logAudit } from "../../lib/audit"
 import { createNotification } from "../../lib/notify"
 import { z } from "zod"
+import { parseISTDateToUTC } from "../../lib/timezone"
 
 const VALID_INTERVIEW_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FEEDBACK_PENDING", "FEEDBACK_SUBMITTED"]
 
@@ -85,8 +86,7 @@ export const POST = async (req: Request, res: Response) => {
     if (panel.status !== "ACTIVE") {
       return res.status(400).json({ error: "Panel is not active" })
     }
-
-    const startObj = new Date(`${date}T${start_time}:00+05:30`)
+    const startObj = parseISTDateToUTC(date, start_time)
     const endObj = new Date(startObj.getTime() + 10 * 60000) // 10 minutes default
 
     // Calculate next round number based on existing interviews for THIS application
