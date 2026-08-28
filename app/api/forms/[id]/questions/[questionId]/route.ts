@@ -3,15 +3,19 @@ import prisma from "@/lib/db"
 import { getSession } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 
-export async function PUT(req: Request, { params }: { params: { id: string, questionId: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string, questionId: string }> }
+) {
   try {
     const session = await getSession()
     if (!session || session.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const formId = parseInt(params.id)
-    const questionId = parseInt(params.questionId)
+    const resolvedParams = await params
+    const formId = parseInt(resolvedParams.id, 10)
+    const questionId = parseInt(resolvedParams.questionId, 10)
 
     if (isNaN(formId) || isNaN(questionId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
@@ -65,15 +69,19 @@ export async function PUT(req: Request, { params }: { params: { id: string, ques
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string, questionId: string } }) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string, questionId: string }> }
+) {
   try {
     const session = await getSession()
     if (!session || session.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const formId = parseInt(params.id)
-    const questionId = parseInt(params.questionId)
+    const resolvedParams = await params
+    const formId = parseInt(resolvedParams.id, 10)
+    const questionId = parseInt(resolvedParams.questionId, 10)
 
     if (isNaN(formId) || isNaN(questionId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 })

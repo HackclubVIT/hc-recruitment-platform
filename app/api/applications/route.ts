@@ -10,7 +10,7 @@ const applicationSchema = z.object({
   phone: z.string().min(10),
   department: z.string().min(2),
   registration_number: z.string().min(4),
-  resume_url: z.string().url().optional().or(z.literal('')),
+  resume_url: z.string().url().refine(val => val.startsWith('https://'), { message: "resume_url must use HTTPS protocol" }).optional().or(z.literal('')),
   form_id: z.number().int().positive(),
   answers: z.record(z.string(), z.string()).optional()
 })
@@ -121,7 +121,8 @@ export async function POST(req: Request) {
       )
     }
 
-    // System audit log
+    // System audit log (use undefined or a fixed nullable user strategy if your DB allows, 
+    // or just pass a generic non-breaking value. Using a hardcoded ID like 0 if required)
     await logAudit("SYSTEM", "APPLICATION_SUBMITTED", "Application", application.id)
 
     return NextResponse.json(
@@ -137,5 +138,73 @@ export async function POST(req: Request) {
       { error: "Internal server error" },
       { status: 500 }
     )
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "10")
+    const search = searchParams.get("search") || ""
+    const status = searchParams.get("status") || ""
+    const department = searchParams.get("department") || ""
+    const date = searchParams.get("date") || ""
+
+    const skip = (page - 1) * limit
+
+    const where: any = {}
+
+    if (search) {
+      where.candidate = {
+        name: { contains: search, mode: "insensitive" }
+      }
+    }
+
+    if (status) {
+      where.status = status
+    }
+
+    if (department) {
+      where.candidate = {
+        ...where.candidate,
+        department
+      }
+    }
+
+    if (date) {
+      const startDate = new Date(date)
+      const endDate = new Date(date)
+      endDate.setDate(endDate.getDate() + 1)
+      where.created_at = {
+        gte: startDate,
+        lt: endDate
+      }
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.application.findMany({
+        where,
+        include: {
+          candidate: true,
+          form: true,
+        },
+        skip,
+        take: limit,
+        orderBy: { submitted_at: "desc" },
+      }),
+      prisma.application.count({ where })
+    ])
+
+    return NextResponse.json({
+      items,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    })
+  } catch (error) {
+    console.error("Fetch applications error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
