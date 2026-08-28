@@ -3,6 +3,8 @@ import prisma from "@/lib/db"
 import { getSession } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 
+const VALID_QUESTION_TYPES = ["TEXT", "PARAGRAPH", "RADIO", "DROPDOWN", "CHECKBOX"]
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -22,13 +24,34 @@ export async function POST(
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    // Validate question type
+    if (!VALID_QUESTION_TYPES.includes(type)) {
+      return NextResponse.json({ error: `Invalid question type. Must be one of: ${VALID_QUESTION_TYPES.join(", ")}` }, { status: 400 })
+    }
+
+    // Validate options for types that require them
+    if (["RADIO", "DROPDOWN", "CHECKBOX"].includes(type)) {
+      if (!options || !Array.isArray(options) || options.length === 0) {
+        return NextResponse.json({ error: `Options are required for ${type} question type` }, { status: 400 })
+      }
+    }
+
+    // Check form exists and is in DRAFT state
+    const form = await prisma.form.findUnique({ where: { id } })
+    if (!form) {
+      return NextResponse.json({ error: "Form not found" }, { status: 404 })
+    }
+    if (form.status !== "DRAFT") {
+      return NextResponse.json({ error: "Cannot add questions to a non-DRAFT form" }, { status: 400 })
+    }
+
     const formQuestion = await prisma.formQuestion.create({
       data: {
         form_id: id,
         question,
         type,
         required: Boolean(required),
-        options: options || null
+        options: options || []  // TASK 3: Never insert null into String[]
       }
     })
 
