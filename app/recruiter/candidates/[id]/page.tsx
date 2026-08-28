@@ -11,6 +11,8 @@ export default function RecruiterCandidateProfile() {
   const router = useRouter()
   const [candidate, setCandidate] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     fetchCandidate()
@@ -29,6 +31,29 @@ export default function RecruiterCandidateProfile() {
     }
   }
 
+  const updateApplicationStatus = async (appId: number, status: string) => {
+    if (!confirm(`Are you sure you want to mark this application as ${status}?`)) return;
+    
+    setActionLoading(true)
+    setError("")
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications/${appId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || "Failed to update status")
+      }
+      fetchCandidate()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   if (loading) return <div className="p-8 text-center text-[#bfa8a2] font-mono">LOADING PROFILE...</div>
   if (!candidate) return <div className="p-8 text-center text-[#bfa8a2] font-mono">CANDIDATE NOT FOUND.</div>
 
@@ -40,6 +65,12 @@ export default function RecruiterCandidateProfile() {
         </h1>
         <Button variant="ghost" onClick={() => router.back()}>BACK</Button>
       </div>
+
+      {error && (
+        <div className="bg-[#ac120c]/10 border border-[#ac120c]/50 text-[#ac120c] p-4 rounded-lg text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="p-6">
@@ -70,6 +101,31 @@ export default function RecruiterCandidateProfile() {
                   </StatusPill>
                 </div>
                 <p className="text-[12px] text-[#f4ede4]">Answers provided: {Object.keys(app.answers || {}).length}</p>
+                
+                <div className="flex gap-2 flex-wrap border-t border-[#2a0d0d] pt-3 mt-4">
+                  {(app.status === "APPLIED" || app.status === "UNDER_REVIEW") && (
+                    <>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "SHORTLISTED")} disabled={actionLoading} className="text-[#d07d22] border border-[#d07d22] hover:bg-[#d07d22] hover:text-[#0a0202]">Shortlist</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
+                    </>
+                  )}
+                  
+                  {(app.status === "SHORTLISTED" || app.status === "FURTHER_ROUND") && (
+                    <>
+                      <Button variant="primary" onClick={() => router.push(`/recruiter/meetings?scheduleFor=${candidate.id}`)} disabled={actionLoading}>Schedule Interview</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
+                    </>
+                  )}
+                  
+                  {(app.status === "INTERVIEW_COMPLETED" || app.status === "WAITLISTED") && (
+                    <>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "SELECTED")} disabled={actionLoading} className="text-[#2ecc71] border border-[#2ecc71] hover:bg-[#2ecc71] hover:text-[#0a0202]">Select</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "WAITLISTED")} disabled={actionLoading} className="text-[#f1c40f] border border-[#f1c40f] hover:bg-[#f1c40f] hover:text-[#0a0202]">Waitlist</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "FURTHER_ROUND")} disabled={actionLoading} className="text-[#3498db] border border-[#3498db] hover:bg-[#3498db] hover:text-[#0a0202]">Further Round</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
