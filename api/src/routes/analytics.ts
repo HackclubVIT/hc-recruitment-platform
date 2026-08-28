@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import prisma from "../lib/db"
+import { getSession } from "../lib/auth"
 
 export const GET = async (req: Request, res: Response) => {
   try {
@@ -36,14 +36,22 @@ export const GET = async (req: Request, res: Response) => {
       return acc
     }, {})
 
-    // Analytics: Department Distribution
-    const departmentRaw = await prisma.candidate.groupBy({
-      by: ['department'],
-      _count: { department: true }
+    // Analytics: Department Distribution (by applications, not candidates)
+    const departmentsWithApps = await prisma.candidate.findMany({
+      select: {
+        department: true,
+        _count: { select: { applications: true } }
+      }
     })
-    const applicationsByDepartment = departmentRaw.map((d: any) => ({
-      department: d.department,
-      count: d._count.department
+    
+    const deptMap: Record<string, number> = {}
+    for (const d of departmentsWithApps) {
+      deptMap[d.department] = (deptMap[d.department] || 0) + d._count.applications
+    }
+    
+    const applicationsByDepartment = Object.keys(deptMap).map(dept => ({
+      department: dept,
+      count: deptMap[dept]
     }))
 
     // Analytics: Selected vs Rejected
@@ -59,7 +67,7 @@ export const GET = async (req: Request, res: Response) => {
     })
     
     const interviewsByDayRaw: Record<string, number> = {}
-    allInterviews.forEach(inv => {
+    allInterviews.forEach((inv: any) => {
       const day = inv.start_time.toISOString().split('T')[0]
       interviewsByDayRaw[day] = (interviewsByDayRaw[day] || 0) + 1
     })
@@ -68,7 +76,7 @@ export const GET = async (req: Request, res: Response) => {
       .sort()
       .map(date => ({ date, count: interviewsByDayRaw[date] }))
 
-    // TASK 8: Recent activity from audit logs
+    // Recent activity from audit logs
     const recentActivity = await prisma.auditLog.findMany({
       include: {
         user: { select: { name: true, email: true, role: true } }
