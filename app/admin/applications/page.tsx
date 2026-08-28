@@ -15,9 +15,9 @@ export default function AdminApplicationsPage() {
 
   const fetchApplications = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/candidates`, { credentials: "include" })
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/applications`, { credentials: "include" })
       const data = await res.json()
-      setCandidates(data.candidates || [])
+      setCandidates(data.items || []) // Storing applications, keeping variable name 'candidates' to minimize diff
     } catch (err) {
       console.error(err)
     } finally {
@@ -64,20 +64,20 @@ export default function AdminApplicationsPage() {
               ) : candidates.length === 0 ? (
                 <tr><td colSpan={8} className="p-8 text-center text-[#bfa8a2] font-mono">NO APPLICATIONS FOUND.</td></tr>
               ) : (
-                candidates.map((c) => {
-                  const app = c.applications?.[0]
-                  const interview = c.interviews?.[0] // Simplified to show latest
+                candidates.map((app) => {
+                  const c = app.candidate
+                  const interview = app.interviews?.[app.interviews.length - 1] // Show latest interview for this specific application
                   return (
-                    <tr key={c.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                      <td className="p-4 text-[#f4ede4] font-medium">{c.name}</td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">{c.email}</td>
-                      <td className="p-4 text-[#bfa8a2]">{c.department}</td>
+                    <tr key={app.id} className="hover:bg-[#1a0606] transition-colors duration-200">
+                      <td className="p-4 text-[#f4ede4] font-medium">{c?.name || "Unknown"}</td>
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">{c?.email || "-"}</td>
+                      <td className="p-4 text-[#bfa8a2]">{c?.department || "-"}</td>
                       <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
-                        {app ? formatDate(app.submitted_at) : "-"}
+                        {app.submitted_at ? formatDate(app.submitted_at) : "-"}
                       </td>
                       <td className="p-4">
-                        <StatusPill status={app?.status.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
-                          {app?.status || "APPLIED"}
+                        <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
+                          {app.status || "APPLIED"}
                         </StatusPill>
                       </td>
                       <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
@@ -93,7 +93,7 @@ export default function AdminApplicationsPage() {
                         )}
                       </td>
                       <td className="p-4 text-right">
-                        <a href={`/recruiter/candidates/${c.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
+                        <a href={`/recruiter/candidates/${c?.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
                           VIEW PROFILE
                         </a>
                       </td>
