@@ -2,9 +2,24 @@ import { Request, Response } from "express";
 import prisma from "../../lib/db"
 import { getSession } from "../../lib/auth"
 
-const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
-const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
-const addDays = (d: Date, days: number) => new Date(d.getTime() + days * 86400000)
+// Compute IST (Asia/Kolkata = UTC+5:30) date boundaries
+function getISTDateBounds() {
+  const now = new Date()
+  // Get current date string in IST
+  const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  const istDate = new Date(istString)
+  
+  const year = istDate.getFullYear()
+  const month = istDate.getMonth()
+  const day = istDate.getDate()
+  
+  // Start of day in IST = midnight IST = 18:30 UTC previous day
+  const startOfToday = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - (5.5 * 60 * 60 * 1000))
+  const endOfToday = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000))
+  const endOfWeek = new Date(endOfToday.getTime() + 7 * 86400000)
+  
+  return { startOfToday, endOfToday, endOfWeek }
+}
 
 export const GET = async (req: Request, res: Response) => {
   try {
@@ -13,12 +28,9 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const today = new Date()
-    const startOfToday = startOfDay(today)
-    const endOfToday = endOfDay(today)
-    const endOfWeek = addDays(endOfToday, 7)
+    const { startOfToday, endOfToday, endOfWeek } = getISTDateBounds()
 
-    // 1. Interviews Today
+    // 1. Interviews Today (IST)
     const todayInterviewsCount = await prisma.interview.count({
       where: {
         date: {
@@ -34,7 +46,7 @@ export const GET = async (req: Request, res: Response) => {
       }
     })
 
-    // 2. Upcoming (Week)
+    // 2. Upcoming (Week, IST)
     const upcomingInterviewsCount = await prisma.interview.count({
       where: {
         date: {
@@ -51,7 +63,8 @@ export const GET = async (req: Request, res: Response) => {
     })
 
     // 3. Pending Feedback
-    // Interviews that have completed or passed their start time, where this member hasn't submitted feedback
+    // Only COMPLETED and FEEDBACK_PENDING interviews count.
+    // SCHEDULED interviews are NOT eligible for feedback (Req 12).
     const panelMemberRows = await prisma.panelMember.findMany({
       where: { user_id: session.id }
     })
@@ -59,8 +72,7 @@ export const GET = async (req: Request, res: Response) => {
 
     const pendingFeedbackCount = await prisma.interview.count({
       where: {
-        status: { in: ["SCHEDULED", "FEEDBACK_PENDING"] },
-        start_time: { lt: new Date() }, // Past interviews
+        status: { in: ["COMPLETED", "FEEDBACK_PENDING"] },
         panel: {
           members: {
             some: { user_id: session.id }
@@ -76,7 +88,7 @@ export const GET = async (req: Request, res: Response) => {
       }
     })
 
-    // 4. Today's Schedule
+    // 4. Today's Schedule (IST)
     const todaySchedule = await prisma.interview.findMany({
       where: {
         date: {

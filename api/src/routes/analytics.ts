@@ -68,8 +68,9 @@ export const GET = async (req: Request, res: Response) => {
     
     const interviewsByDayRaw: Record<string, number> = {}
     allInterviews.forEach((inv: any) => {
-      const day = inv.start_time.toISOString().split('T')[0]
-      interviewsByDayRaw[day] = (interviewsByDayRaw[day] || 0) + 1
+      // Convert to Asia/Kolkata date for grouping (Req 25)
+      const istDate = inv.start_time.toLocaleString("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" })
+      interviewsByDayRaw[istDate] = (interviewsByDayRaw[istDate] || 0) + 1
     })
 
     const interviewsByDay = Object.keys(interviewsByDayRaw)
