@@ -63,7 +63,7 @@ export const POST = async (req: Request, res: Response) => {
       }
     })
 
-    await logAudit(session.id, "CREATED_USER", "User", undefined)
+    await logAudit(session.id, "CREATED_USER", "User", user.id)
 
     return res.status(201).json({ user })
   } catch (error: any) {
@@ -99,7 +99,7 @@ export const PUT = async (req: Request, res: Response) => {
       select: { id: true, name: true, email: true, role: true, active: true }
     })
 
-    await logAudit(session.id, "UPDATED_USER", "User", undefined)
+    await logAudit(session.id, "UPDATED_USER", "User", user.id)
 
     return res.status(200).json({ user })
   } catch (error: any) {
@@ -130,7 +130,7 @@ export const DELETE = async (req: Request, res: Response) => {
       where: { id }
     })
 
-    await logAudit(session.id, "DELETED_USER", "User", undefined)
+    await logAudit(session.id, "DELETED_USER", "User", id)
 
     return res.status(200).json({ success: true })
   } catch (error: any) {

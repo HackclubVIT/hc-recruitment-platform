@@ -4,7 +4,7 @@ export async function logAudit(
   user_id: string | undefined | null,
   action: string,
   entity: string,
-  entity_id?: number
+  entity_id?: string | number
 ) {
   try {
     await prisma.auditLog.create({
@@ -12,7 +12,7 @@ export async function logAudit(
         user_id,
         action,
         entity,
-        entity_id,
+        entity_id: entity_id !== undefined ? String(entity_id) : null,
       },
     })
   } catch (error) {

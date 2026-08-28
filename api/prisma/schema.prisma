@@ -175,7 +175,7 @@ model AuditLog {
   user_id    String?
   action     String
   entity     String
-  entity_id  Int?
+  entity_id  String?
   timestamp  DateTime @default(now())
 
   user       User?     @relation(fields: [user_id], references: [id])
