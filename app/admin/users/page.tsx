@@ -12,13 +12,14 @@ export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [formData, setFormData] = useState({ 
+    const [formData, setFormData] = useState({ 
     id: "",
     name: "", 
     email: "", 
     password: "",
     role: "PANEL_MEMBER",
-    departments: "CSE"
+    departments: "CSE",
+    active: true
   })
 
   useEffect(() => {
@@ -42,7 +43,8 @@ export default function UsersPage() {
     try {
       const payload = {
         ...formData,
-        departments: formData.departments.split(',').map(d => d.trim())
+        departments: formData.departments.split(',').map(d => d.trim()),
+        active: formData.active
       }
       const method = formData.id ? "PUT" : "POST"
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users`, {
@@ -58,7 +60,7 @@ export default function UsersPage() {
   }
 
   const openCreateModal = () => {
-    setFormData({ id: "", name: "", email: "", password: "", role: "PANEL_MEMBER", departments: "CSE" })
+    setFormData({ id: "", name: "", email: "", password: "", role: "PANEL_MEMBER", departments: "CSE", active: true })
     setIsModalOpen(true)
   }
 
@@ -107,7 +109,13 @@ export default function UsersPage() {
                     <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
                       {user.departments?.join(", ") || "-"}
                     </td>
-                    <td className="p-4 text-[#2e7d32] font-mono text-[11px]">ACTIVE</td>
+                    <td className="p-4">
+                      {user.active ? (
+                        <span className="text-[#2e7d32] font-mono text-[11px]">ACTIVE</span>
+                      ) : (
+                        <span className="text-[#ac120c] font-mono text-[11px]">DISABLED</span>
+                      )}
+                    </td>
                     <td className="p-4 text-right space-x-2">
                       <button 
                         onClick={() => {
@@ -117,7 +125,8 @@ export default function UsersPage() {
                             email: user.email, 
                             password: "",
                             role: user.role, 
-                            departments: user.departments?.join(', ') || '' 
+                            departments: user.departments?.join(', ') || '',
+                            active: user.active
                           })
                           setIsModalOpen(true)
                         }}
@@ -195,6 +204,18 @@ export default function UsersPage() {
               />
             </div>
           )}
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="active"
+              checked={formData.active}
+              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+              className="appearance-none w-4 h-4 border border-[#d07d22] checked:bg-[#ac120c] transition-all rounded-sm cursor-pointer"
+            />
+            <label htmlFor="active" className="font-mono text-[12px] text-[#bfa8a2] uppercase tracking-widest cursor-pointer">
+              Active User Account
+            </label>
+          </div>
           <div className="mt-4 flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>CANCEL</Button>
             <Button type="submit" variant="primary">SAVE</Button>

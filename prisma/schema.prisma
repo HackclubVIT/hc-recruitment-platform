@@ -14,6 +14,7 @@ model User {
   password   String
   role       String   @default("PANEL_MEMBER") // ADMIN, RECRUITER, PANEL_MEMBER
   departments String[] // For RECRUITER role
+  active     Boolean  @default(true) // For disabling user access
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -71,15 +72,19 @@ model Candidate {
 }
 
 model Application {
-  id           Int      @id @default(autoincrement())
-  candidate_id Int
-  form_id      Int
-  status       String   @default("APPLIED")
-  submitted_at DateTime @default(now())
-  answers      Json?
+  id              Int      @id @default(autoincrement())
+  candidate_id    Int
+  form_id         Int
+  status          String   @default("APPLIED")
+  submitted_at    DateTime @default(now())
+  answers         Json?
+  
+  decided_by      String?
+  decided_at      DateTime?
+  decision_reason String?
 
-  candidate    Candidate @relation(fields: [candidate_id], references: [id])
-  form         Form      @relation(fields: [form_id], references: [id])
+  candidate       Candidate @relation(fields: [candidate_id], references: [id])
+  form            Form      @relation(fields: [form_id], references: [id])
 
   @@unique([candidate_id, form_id])
   @@map("applications")

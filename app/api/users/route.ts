@@ -18,6 +18,7 @@ export async function GET(req: Request) {
         email: true,
         role: true,
         departments: true,
+        active: true,
         created_at: true,
       },
       orderBy: { created_at: 'desc' }
@@ -57,7 +58,8 @@ export async function POST(req: Request) {
         id: true,
         name: true,
         email: true,
-        role: true
+        role: true,
+        active: true
       }
     })
 
@@ -80,16 +82,21 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { id, name, email, role, departments } = await req.json()
+    const { id, name, email, role, departments, active } = await req.json()
 
     if (!id || !name || !email || !role) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    const updateData: any = { name, email, role, departments: departments || [] }
+    if (active !== undefined) {
+      updateData.active = active
+    }
+
     const user = await prisma.user.update({
       where: { id },
-      data: { name, email, role, departments: departments || [] },
-      select: { id: true, name: true, email: true, role: true }
+      data: updateData,
+      select: { id: true, name: true, email: true, role: true, active: true }
     })
 
     await logAudit(session.id, "UPDATED_USER", "User", undefined)
