@@ -85,6 +85,7 @@ model Application {
 
   candidate       Candidate @relation(fields: [candidate_id], references: [id])
   form            Form      @relation(fields: [form_id], references: [id])
+  interviews      Interview[]
 
   @@unique([candidate_id, form_id])
   @@map("applications")
@@ -116,21 +117,23 @@ model PanelMember {
 }
 
 model Interview {
-  id           Int      @id @default(autoincrement())
-  candidate_id Int
-  panel_id     Int
-  recruiter_id String
-  round        Int      @default(1)
-  date         DateTime
-  start_time   DateTime
-  end_time     DateTime
-  meeting_link String?
-  status       String   @default("SCHEDULED")
+  id             Int      @id @default(autoincrement())
+  candidate_id   Int
+  application_id Int
+  panel_id       Int
+  recruiter_id   String
+  round          Int      @default(1)
+  date           DateTime
+  start_time     DateTime
+  end_time       DateTime
+  meeting_link   String?
+  status         String   @default("SCHEDULED")
 
-  candidate    Candidate @relation(fields: [candidate_id], references: [id])
-  panel        Panel     @relation(fields: [panel_id], references: [id])
-  recruiter    User      @relation(fields: [recruiter_id], references: [id])
-  feedback     Feedback[]
+  candidate      Candidate   @relation(fields: [candidate_id], references: [id])
+  application    Application @relation(fields: [application_id], references: [id])
+  panel          Panel       @relation(fields: [panel_id], references: [id])
+  recruiter      User        @relation(fields: [recruiter_id], references: [id])
+  feedback       Feedback[]
 
   @@map("interviews")
 }
