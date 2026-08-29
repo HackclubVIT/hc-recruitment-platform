@@ -1,27 +1,64 @@
-export interface BackendApplication {
-  id: number | string;
-  name?: string;
+export interface RecruitmentApplication {
+  id: string;
+  recruitmentId: string;
+  name: string;
+  registerNumber: string;
   email: string;
+  phoneNumber: string | null;
+  domain: string | null;
+  firstPreference: string | null;
+  secondPreference: string | null;
+  firstPrefReason: string | null;
+  secondPrefReason: string | null;
+  yearOfStudy: string;
+  technicalSkills: string[] | null;
+  skillLevel: string | null;
+  github: string | null;
+  linkedin: string | null;
+  portfolio: string | null;
   status: string;
-  firstPreference?: string;
-  secondPreference?: string;
-  domain?: string;
-  registerNumber?: string;
-  yearOfStudy?: string;
-  appliedDate?: string;
-  whyJoin?: string;
-  firstPrefReason?: string;
-  secondPrefReason?: string;
-  phoneNumber?: string;
-  github?: string;
-  linkedin?: string;
-  portfolio?: string;
-  sevenDaysBuild?: string;
-  projectDetails?: string;
-  skillToLearn?: string;
-  whyHackclub?: string;
-  expectations?: string;
-  productiveWebsiteQuestions?: string;
+  appliedDate: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_reason: string | null;
+  formSubmission?: {
+    answers: Array<{ question_id: number; answer: string }>;
+  };
+  interviews?: BackendInterview[];
+}
+
+export interface HCUser {
+  id: string;
+  name: string;
+  email: string;
+  registerNumber: string | null;
+  hcDepartment: string | null;
+  status: string;
+  role: "ADMIN" | "RECRUITER" | "PANEL_MEMBER" | "NONE";
+  departments: string[];
+  active: boolean;
+}
+
+export interface BackendInterview {
+  id: number;
+  application_id: string;
+  panel_id: number;
+  recruiter_id: string | null;
+  round: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  meeting_link: string | null;
+  status: string;
+  application?: RecruitmentApplication;
+  feedback?: Array<{
+    id: number;
+    feedback: string;
+    user_id: string;
+    overall_score: number;
+    recommendation: string;
+    comments: string;
+  }>;
 }
 
 export function getToken() {
@@ -54,6 +91,11 @@ export const fetchApi = async (path: string, options: RequestInit = {}) => {
 };
 
 export const api = {
+  get: async (path: string) => fetchApi(path),
+  post: async (path: string, body: unknown) => fetchApi(path, { method: "POST", body: JSON.stringify(body) }),
+  put: async (path: string, body: unknown) => fetchApi(path, { method: "PUT", body: JSON.stringify(body) }),
+  delete: async (path: string) => fetchApi(path, { method: "DELETE" }),
+
   getMe: async () => {
     const res = await fetchApi("/api/auth/me");
     if (!res.ok) throw new Error("Not logged in");
@@ -70,24 +112,32 @@ export const api = {
   logout: async () => {
     await fetchApi("/api/auth/logout", { method: "POST" });
   },
-  getRecruitmentApplications: async () => {
-    const res = await fetchApi("/api/applications");
-    if (!res.ok) throw new Error("Failed to fetch applications");
-    const json = await res.json();
-    return {
-      items: json.items,
-      page: json.page,
-      limit: json.limit,
-      total: json.total,
-      totalPages: json.totalPages
-    };
-  },
-  updateRecruitmentStatus: async (id: number | string, status: string) => {
-    const res = await fetchApi(`/api/applications/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ status }),
-    });
-    if (!res.ok) throw new Error("Failed to update status");
-    return res.json();
-  }
+
+  // Users
+  getUsers: async () => fetchApi("/api/users").then(res => res.json()),
+  
+  // Applications / Candidates
+  getApplications: async () => fetchApi("/api/applications").then(res => res.json()),
+  getCandidates: async (query: string = "") => fetchApi(`/api/candidates${query}`).then(res => res.json()),
+  
+  // Forms
+  getForms: async () => fetchApi("/api/forms").then(res => res.json()),
+  
+  // Panels
+  getPanels: async () => fetchApi("/api/panels").then(res => res.json()),
+  
+  // Interviews
+  getInterviews: async () => fetchApi("/api/interviews").then(res => res.json()),
+  
+  // Feedback
+  getFeedback: async () => fetchApi("/api/feedback").then(res => res.json()),
+  
+  // Notifications
+  getNotifications: async () => fetchApi("/api/notifications").then(res => res.json()),
+  
+  // Analytics
+  getAnalytics: async () => fetchApi("/api/analytics").then(res => res.json()),
+  
+  // Audit Logs
+  getAuditLogs: async () => fetchApi("/api/audit-logs").then(res => res.json()),
 };

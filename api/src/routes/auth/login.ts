@@ -14,6 +14,7 @@ export const POST = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { email },
+      include: { recruitmentRole: true }
     })
 
     if (!user) {
@@ -21,9 +22,14 @@ export const POST = async (req: Request, res: Response) => {
         { error: "Invalid credentials" })
     }
 
-    if (!user.active) {
+    if (user.status !== "Active") {
       return res.status(403).json(
         { error: "Account is inactive" })
+    }
+
+    if (!user.password) {
+      return res.status(401).json(
+        { error: "Invalid credentials" })
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password)
@@ -33,12 +39,21 @@ export const POST = async (req: Request, res: Response) => {
         { error: "Invalid credentials" })
     }
 
+    const active = user.recruitmentRole?.active ?? true
+    if (!active) {
+      return res.status(403).json(
+        { error: "Recruitment access is inactive" })
+    }
+
+    const recruitmentRole = user.recruitmentRole?.role || "NONE"
+    const departments = user.recruitmentRole?.departments || []
+
     // Generate JWT
     const token = await signToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      departments: user.departments,
+      id: user.id.toString(),
+      email: user.email!,
+      role: recruitmentRole,
+      departments: departments,
     })
 
     // Create response and set cookie
@@ -53,7 +68,7 @@ export const POST = async (req: Request, res: Response) => {
     return res.status(200).json(
       { 
         message: "Logged in successfully",
-        user: { id: user.id, email: user.email, role: user.role }
+        user: { id: user.id.toString(), email: user.email, role: recruitmentRole }
       }
     )
   } catch (error) {

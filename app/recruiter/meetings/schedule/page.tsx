@@ -64,8 +64,8 @@ function ScheduleForm() {
       }
 
       router.push("/recruiter/meetings")
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)))
     } finally {
       setLoading(false)
     }
@@ -118,7 +118,7 @@ function ScheduleForm() {
           <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Candidate</label>
           <select
             value={formData.candidate_id}
-            onChange={e => setFormData({ ...formData, candidate_id: e.target.value, application_id: "" })}
+            onChange={e => setFormData({ ...formData, candidate_id: e.target.value, application_id: e.target.value })}
             className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
             required
           >
@@ -129,25 +129,7 @@ function ScheduleForm() {
           </select>
         </div>
 
-        {formData.candidate_id && (
-          <div className="flex flex-col gap-2">
-            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Application</label>
-            <select
-              value={formData.application_id}
-              onChange={e => setFormData({ ...formData, application_id: e.target.value })}
-              className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
-              required
-            >
-              <option value="" disabled>Select Application</option>
-              {candidates
-                .find(c => c.id === Number(formData.candidate_id))
-                ?.applications?.filter((a: any) => a.status === 'SHORTLISTED' || a.status === 'FURTHER_ROUND')
-                .map((a: any) => (
-                  <option key={a.id} value={a.id}>Application ID: {a.id} - {a.status}</option>
-                ))}
-            </select>
-          </div>
-        )}
+        {/* Application select removed as candidate is the application */}
 
         <div className="flex flex-col gap-2">
           <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Interview Panel</label>

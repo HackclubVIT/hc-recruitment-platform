@@ -7,14 +7,14 @@ export const GET = async (req: Request, res: Response) => {
     const session = await getSession(req)
     if (!session) return res.status(401).json({ error: "Unauthorized" })
 
-    const notifications = await prisma.notification.findMany({
-      where: { user_id: session.id },
+    const notifications = await prisma.recruitmentNotification.findMany({
+      where: { user_id: BigInt(session.id) },
       orderBy: { created_at: 'desc' },
       take: 20
     })
 
-    const unreadCount = await prisma.notification.count({
-      where: { user_id: session.id, read: false }
+    const unreadCount = await prisma.recruitmentNotification.count({
+      where: { user_id: BigInt(session.id), read: false }
     })
 
     return res.status(200).json({ notifications, unreadCount })

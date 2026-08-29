@@ -34,7 +34,7 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid ID" })
     }
 
-    const form = await prisma.form.findUnique({
+    const form = await prisma.recruitmentForm.findUnique({
       where: { id: formId }
     })
 
@@ -55,7 +55,7 @@ export const PUT = async (req: Request, res: Response) => {
     const { question, type, required, options } = parsed.data
 
     // Verify question belongs to form
-    const existingQuestion = await prisma.formQuestion.findFirst({
+    const existingQuestion = await prisma.recruitmentFormQuestion.findFirst({
       where: { id: questionId, form_id: formId }
     })
 
@@ -63,7 +63,7 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Question not found or does not belong to this form" })
     }
 
-    const updatedQuestion = await prisma.formQuestion.update({
+    const updatedQuestion = await prisma.recruitmentFormQuestion.update({
       where: { id: questionId },
       data: {
         question,
@@ -98,7 +98,7 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid ID" })
     }
 
-    const form = await prisma.form.findUnique({
+    const form = await prisma.recruitmentForm.findUnique({
       where: { id: formId }
     })
 
@@ -110,7 +110,7 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Cannot delete questions on a non-DRAFT form" })
     }
 
-    const existingQuestion = await prisma.formQuestion.findFirst({
+    const existingQuestion = await prisma.recruitmentFormQuestion.findFirst({
       where: { id: questionId, form_id: formId }
     })
 
@@ -118,7 +118,7 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Question not found or does not belong to this form" })
     }
 
-    await prisma.formQuestion.delete({
+    await prisma.recruitmentFormQuestion.delete({
       where: { id: questionId }
     })
 

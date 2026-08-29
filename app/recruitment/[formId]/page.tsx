@@ -118,6 +118,26 @@ export default function DynamicRecruitmentPage() {
     )
   }
 
+  // If there's an error and we have NO formInfo, or it's not PUBLISHED, show a fatal error state instead of the form.
+  if (error && (!formInfo || formInfo.status !== "PUBLISHED")) {
+    return (
+      <div className="min-h-screen bg-[#0a0202] flex flex-col items-center justify-center p-6 text-center gap-6">
+        <div className="w-16 h-16 rounded-full bg-[#120202] border border-[#ac120c]/50 flex items-center justify-center shadow-[0_0_40px_rgba(172,18,12,0.4)]">
+          <DiamondIcon className="text-[#ac120c] w-8 h-8" />
+        </div>
+        <h1 className="font-display font-black text-[24px] sm:text-[32px] text-[#f4ede4] tracking-wide uppercase">
+          Form Unavailable
+        </h1>
+        <p className="font-mono text-[#bfa8a2] max-w-md">
+          {error}
+        </p>
+        <Button onClick={() => window.location.reload()} variant="ghost" className="mt-4 border-[#2a0d0d] text-[#d07d22] hover:bg-[#1a0606]">
+          RETRY CONNECTION
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0202] flex items-center justify-center p-6 py-12">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

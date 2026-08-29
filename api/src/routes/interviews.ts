@@ -14,14 +14,14 @@ export const GET = async (req: Request, res: Response) => {
     if (session.role === "PANEL_MEMBER") {
       whereClause = {
         assigned_members: {
-          some: { user_id: session.id }
+          some: { user_id: BigInt(session.id) }
         }
       }
     } else if (session.role === "RECRUITER") {
-      // Recruiters see interviews for candidates in their departments
+      // Recruiters see interviews for applications in their departments
       whereClause = {
-        candidate: {
-          department: { in: session.departments }
+        application: {
+          domain: { in: session.departments }
         }
       }
     }
@@ -31,26 +31,43 @@ export const GET = async (req: Request, res: Response) => {
     }
 
     if (session.role === "PANEL_MEMBER") {
-      includeClause.candidate = {
+      includeClause.application = {
         select: {
           id: true,
           name: true,
           email: true,
-          department: true,
-          registration_number: true,
+          domain: true,
+          registerNumber: true,
         }
       }
     } else {
-      includeClause.candidate = true
+      includeClause.application = true
     }
 
-    const interviews = await prisma.interview.findMany({
+    const interviews = await prisma.recruitmentInterview.findMany({
       where: whereClause,
       include: includeClause,
       orderBy: { date: 'asc' }
     })
 
-    return res.status(200).json({ interviews })
+    // Format response to serialize BigInts
+    const formattedInterviews = interviews.map((i: any) => {
+      const interview = {
+        ...i,
+        application_id: i.application_id.toString(),
+        recruiter_id: i.recruiter_id?.toString() || null,
+      }
+      if (interview.application) {
+         interview.application = {
+           ...interview.application,
+           id: interview.application.id.toString(),
+           decided_by: interview.application.decided_by?.toString() || null,
+         }
+      }
+      return interview;
+    })
+
+    return res.status(200).json({ interviews: formattedInterviews })
   } catch (error) {
     console.error("Error fetching interviews:", error)
     return res.status(500).json({ error: "Internal server error" })

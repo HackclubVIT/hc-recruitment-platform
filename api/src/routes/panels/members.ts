@@ -16,8 +16,10 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" })
     }
 
-    // Verify panel exists and is ACTIVE (Req 36)
-    const panel = await prisma.panel.findUnique({ where: { id: panel_id } })
+    const userIdBigInt = BigInt(user_id)
+
+    // Verify panel exists and is ACTIVE
+    const panel = await prisma.recruitmentPanel.findUnique({ where: { id: panel_id } })
     if (!panel) {
       return res.status(404).json({ error: "Panel not found" })
     }
@@ -25,18 +27,21 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Cannot add members to an inactive panel" })
     }
 
-    // Check if user is a panel member role and is active (Req 36)
-    const user = await prisma.user.findUnique({ where: { id: user_id } })
-    if (!user || user.role !== "PANEL_MEMBER") {
+    // Check if user is a panel member role and is active
+    const roleAssignment = await prisma.recruitmentRoleAssignment.findUnique({ 
+      where: { user_id: userIdBigInt } 
+    })
+    
+    if (!roleAssignment || roleAssignment.role !== "PANEL_MEMBER") {
       return res.status(400).json({ error: "User is not a Panel Member" })
     }
-    if (!user.active) {
+    if (!roleAssignment.active) {
       return res.status(400).json({ error: "Cannot add inactive user to panel" })
     }
 
     // Check if already in panel
-    const existing = await prisma.panelMember.findFirst({
-      where: { panel_id, user_id }
+    const existing = await prisma.recruitmentPanelMember.findFirst({
+      where: { panel_id, user_id: userIdBigInt }
     })
     
     let member;
@@ -44,20 +49,20 @@ export const POST = async (req: Request, res: Response) => {
       if (existing.active) {
         return res.status(409).json({ error: "User already in panel" })
       } else {
-        member = await prisma.panelMember.update({
+        member = await prisma.recruitmentPanelMember.update({
           where: { id: existing.id },
           data: { active: true }
         })
       }
     } else {
-      member = await prisma.panelMember.create({
-        data: { panel_id, user_id }
+      member = await prisma.recruitmentPanelMember.create({
+        data: { panel_id, user_id: userIdBigInt }
       })
     }
 
-    await logAudit(session.id, "ADDED_PANEL_MEMBER", "PanelMember", member.id)
+    await logAudit(BigInt(session.id), "ADDED_PANEL_MEMBER", "PanelMember", member.id.toString())
 
-    return res.status(201).json({ member })
+    return res.status(201).json({ member: { ...member, user_id: member.user_id.toString() } })
   } catch (error) {
     console.error("Add panel member error:", error)
     return res.status(500).json({ error: "Internal server error" })
@@ -77,21 +82,23 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" })
     }
 
-    const member = await prisma.panelMember.findFirst({
-      where: { panel_id, user_id, active: true }
+    const userIdBigInt = BigInt(user_id)
+
+    const member = await prisma.recruitmentPanelMember.findFirst({
+      where: { panel_id, user_id: userIdBigInt, active: true }
     })
 
     if (!member) {
       return res.status(404).json({ error: "Member not found in panel" })
     }
 
-    // Safe historical deletion (Req 10)
-    await prisma.panelMember.update({
+    // Safe historical deletion
+    await prisma.recruitmentPanelMember.update({
       where: { id: member.id },
       data: { active: false }
     })
 
-    await logAudit(session.id, "REMOVED_PANEL_MEMBER", "PanelMember", member.id)
+    await logAudit(BigInt(session.id), "REMOVED_PANEL_MEMBER", "PanelMember", member.id.toString())
 
     return res.status(200).json({ message: "Member removed" })
   } catch (error) {

@@ -13,39 +13,44 @@ export const GET = async (req: Request, res: Response) => {
     const { startOfDay: startOfToday, endOfDay: endOfToday } = getISTDateBounds()
     const departments = session.departments || []
 
-    const pendingReviewsCount = await prisma.application.count({
+    const pendingReviewsCount = await prisma.recruitmentApplication.count({
       where: {
         status: { in: ["APPLIED", "UNDER_REVIEW"] },
-        candidate: { department: { in: departments } }
+        domain: { in: departments }
       }
     })
 
-    const shortlistedCount = await prisma.application.count({
+    const shortlistedCount = await prisma.recruitmentApplication.count({
       where: {
         status: "SHORTLISTED",
-        candidate: { department: { in: departments } }
+        domain: { in: departments }
       }
     })
 
-    const interviewsTodayCount = await prisma.interview.count({
+    const interviewsTodayCount = await prisma.recruitmentInterview.count({
       where: {
         date: {
           gte: startOfToday,
           lte: endOfToday
         },
         status: { not: "CANCELLED" },
-        candidate: { department: { in: departments } }
+        application: { domain: { in: departments } }
       }
     })
 
-    const recentApplications = await prisma.application.findMany({
+    const recentApplications = await prisma.recruitmentApplication.findMany({
       where: {
-        candidate: { department: { in: departments } }
+        domain: { in: departments }
       },
-      include: { candidate: true },
-      orderBy: { submitted_at: 'desc' },
+      orderBy: { id: 'desc' }, // or appliedDate if DateTime, but id descending is close enough
       take: 5
     })
+
+    // return applications as exactly the original types (just stringifying the ID)
+    const serializedApplications = recentApplications.map((app: any) => ({
+      ...app,
+      id: app.id.toString(),
+    }))
 
     return res.status(200).json({
       stats: {
@@ -53,7 +58,7 @@ export const GET = async (req: Request, res: Response) => {
         shortlistedCount,
         interviewsTodayCount
       },
-      recentApplications,
+      recentApplications: serializedApplications,
       departments
     })
   } catch (error) {

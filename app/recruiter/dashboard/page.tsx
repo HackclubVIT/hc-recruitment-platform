@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { api, RecruitmentApplication, fetchApi } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -11,13 +11,17 @@ import { Button } from "@/components/ui/Button"
 
 export default function RecruiterDashboard() {
   const router = useRouter()
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<{
+    stats: { pendingReviewsCount: number, shortlistedCount: number, interviewsTodayCount: number };
+    recentApplications: RecruitmentApplication[];
+    departments: string[];
+  } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetchApi(`/api/recruiter/dashboard`)
+        const res = await fetchApi("/api/recruiter/dashboard")
         if (res.ok) {
           const json = await res.json()
           setData(json)
@@ -99,14 +103,14 @@ export default function RecruiterDashboard() {
                     <td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono">NO RECENT APPLICATIONS.</td>
                   </tr>
                 ) : (
-                  recentApplications.map((app: any) => (
+                  recentApplications.map((app: RecruitmentApplication) => (
                     <tr key={app.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
-                        <p className="text-[#f4ede4] font-medium">{app.candidate.name}</p>
-                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{app.candidate.email}</p>
+                        <p className="text-[#f4ede4] font-medium">{app.name}</p>
+                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{app.domain}</p>
                       </td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">
-                        {new Date(app.submitted_at).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })}
+                      <td className="p-4 text-[#f4ede4] font-medium">
+                        {app.registerNumber}
                       </td>
                       <td className="p-4">
                         <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : app.status.toLowerCase().includes('select') ? 'active' : 'pending'}>
@@ -114,7 +118,7 @@ export default function RecruiterDashboard() {
                         </StatusPill>
                       </td>
                       <td className="p-4">
-                        <Button variant="primary" className="py-2 px-4 text-xs" onClick={() => router.push(`/recruiter/candidates/${app.candidate_id}`)}>REVIEW</Button>
+                        <Button variant="primary" className="py-2 px-4 text-xs" onClick={() => router.push(`/recruiter/applications/${app.id}`)}>REVIEW</Button>
                       </td>
                     </tr>
                   ))

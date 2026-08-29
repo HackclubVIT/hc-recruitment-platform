@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [loginMode, setLoginMode] = useState<"recruitie" | "recruiter" | "admin">("recruitie")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -40,7 +39,10 @@ export default function LoginPage() {
 
       if (data.user.role === "ADMIN") router.push("/admin/dashboard")
       else if (data.user.role === "RECRUITER") router.push("/recruiter/dashboard")
-      else router.push("/panel/dashboard")
+      else if (data.user.role === "PANEL_MEMBER") router.push("/panel/dashboard")
+      else {
+        setError("You do not have recruitment staff permissions.")
+      }
 
     } catch (err: any) {
       setError(err.message)
@@ -85,7 +87,7 @@ export default function LoginPage() {
           <div className="mt-6 flex items-center justify-center space-x-3">
             <span className="h-[2px] w-12 bg-gradient-to-r from-transparent to-accent/50 rounded-full" />
             <span className="font-mono text-[13px] font-bold text-highlight tracking-widest uppercase">
-              {loginMode === "admin" ? "Admin Portal" : loginMode === "recruiter" ? "Recruiter Portal" : "Recruitie Portal"}
+              Recruitment Portal
             </span>
             <span className="h-[2px] w-12 bg-gradient-to-l from-transparent to-accent/50 rounded-full" />
           </div>
@@ -154,40 +156,12 @@ export default function LoginPage() {
                     </svg>
                     Signing In...
                   </>
-                ) : `Sign in as ${loginMode.charAt(0).toUpperCase() + loginMode.slice(1)}`}
+                ) : "Sign In"}
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
             </button>
             
-            <div className="grid grid-cols-2 gap-3 mt-1">
-              {loginMode !== "recruitie" && (
-                <button
-                  type="button"
-                  onClick={() => { setLoginMode("recruitie"); setError(""); }}
-                  className="btn-ghost w-full text-[13px] h-[46px] hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
-                >
-                  Sign in as Recruitie
-                </button>
-              )}
-              {loginMode !== "recruiter" && (
-                <button
-                  type="button"
-                  onClick={() => { setLoginMode("recruiter"); setError(""); }}
-                  className="btn-ghost w-full text-[13px] h-[46px] hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
-                >
-                  Sign in as Recruiter
-                </button>
-              )}
-              {loginMode !== "admin" && (
-                <button
-                  type="button"
-                  onClick={() => { setLoginMode("admin"); setError(""); }}
-                  className="btn-ghost w-full text-[13px] h-[46px] hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
-                >
-                  Sign in as Admin
-                </button>
-              )}
-            </div>
+
 
             <Link 
               href="/"

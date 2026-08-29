@@ -6,9 +6,9 @@ export async function createNotification(
   message: string
 ) {
   try {
-    await prisma.notification.create({
+    await prisma.recruitmentNotification.create({
       data: {
-        user_id,
+        user_id: BigInt(user_id),
         title,
         message,
         read: false,

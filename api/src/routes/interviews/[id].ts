@@ -16,7 +16,6 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
 }
 
 export const GET = async (req: Request, res: Response) => {
-  const params = req.params;
   try {
     const session = await getSession(req)
     if (!session) return res.status(401).json({ error: "Unauthorized" })
@@ -34,22 +33,18 @@ export const GET = async (req: Request, res: Response) => {
     }
 
     if (session.role === "PANEL_MEMBER") {
-      includeClause.candidate = {
+      includeClause.application = {
         select: {
           id: true,
           name: true,
           email: true,
-          department: true,
-          registration_number: true
+          domain: true,
+          registerNumber: true
         }
-      }
-    } else {
-      includeClause.candidate = {
-        include: { applications: true }
       }
     }
 
-    const interview = await prisma.interview.findUnique({
+    const interview = await prisma.recruitmentInterview.findUnique({
       where: { id },
       include: includeClause
     })
@@ -58,10 +53,10 @@ export const GET = async (req: Request, res: Response) => {
 
     // Access control
     if (session.role === "PANEL_MEMBER") {
-      const isMember = (interview as any).assigned_members.some((m: any) => m.user_id === session.id)
+      const isMember = (interview as any).assigned_members.some((m: any) => m.user_id.toString() === session.id)
       if (!isMember) return res.status(403).json({ error: "Forbidden" })
     } else if (session.role === "RECRUITER") {
-      if (!session.departments.includes((interview.candidate as any).department)) {
+      if (!session.departments.includes((interview.application as any).domain)) {
         return res.status(403).json({ error: "Forbidden" })
       }
     }
@@ -69,7 +64,19 @@ export const GET = async (req: Request, res: Response) => {
     if (session.role === "PANEL_MEMBER") {
       delete (interview as any).panel;
     }
-    return res.status(200).json({ interview })
+
+    const formattedInterview = {
+       ...interview,
+       application_id: interview.application_id.toString(),
+       candidate: interview.application ? {
+           id: (interview.application as any).id.toString(),
+           name: (interview.application as any).name,
+           department: (interview.application as any).domain,
+           registration_number: (interview.application as any).registerNumber
+       } : undefined
+    }
+
+    return res.status(200).json({ interview: formattedInterview })
   } catch (error) {
     console.error("Fetch interview error:", error)
     return res.status(500).json({ error: "Internal server error" })
@@ -77,7 +84,6 @@ export const GET = async (req: Request, res: Response) => {
 }
 
 export const PUT = async (req: Request, res: Response) => {
-  const params = req.params;
   try {
     const session = await getSession(req)
     if (!session || (session.role !== "ADMIN" && session.role !== "RECRUITER" && session.role !== "PANEL_MEMBER")) {
@@ -102,7 +108,6 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid time format, use HH:MM (00:00 - 23:59)" })
     }
 
-    // Real calendar date validation (Req 20)
     if (date) {
       const [yr, mo, dy] = date.split('-').map(Number)
       const dateCheck = new Date(yr, mo - 1, dy)
@@ -111,27 +116,26 @@ export const PUT = async (req: Request, res: Response) => {
       }
     }
 
-    const existingInterview = await prisma.interview.findUnique({
+    const existingInterview = await prisma.recruitmentInterview.findUnique({
       where: { id },
-      include: { candidate: true, panel: { include: { members: true } }, assigned_members: true }
+      include: { application: true, panel: { include: { members: true } }, assigned_members: true }
     })
 
     if (!existingInterview) {
       return res.status(404).json({ error: "Interview not found" })
     }
 
-    if (session.role === "RECRUITER" && !session.departments.includes(existingInterview.candidate.department)) {
+    if (session.role === "RECRUITER" && !session.departments.includes(existingInterview.application.domain as string)) {
       return res.status(403).json({ error: "Forbidden" })
     }
 
     if (session.role === "PANEL_MEMBER") {
-      const isMember = existingInterview.assigned_members.some((m: any) => m.user_id === session.id)
+      const isMember = existingInterview.assigned_members.some((m: any) => m.user_id.toString() === session.id)
       if (!isMember) {
         return res.status(403).json({ error: "Forbidden: Not an active member of this interview panel" })
       }
     }
 
-    // Validate interview status enum
     if (status) {
       if (session.role === "PANEL_MEMBER" && !["IN_PROGRESS", "COMPLETED"].includes(status)) {
         return res.status(403).json({ error: "Panel Members may only transition status to IN_PROGRESS or COMPLETED." })
@@ -144,7 +148,6 @@ export const PUT = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Cannot manually transition to feedback states. These are managed automatically." })
       }
 
-      // Validate status transition
       const allowed = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
       if (!allowed.includes(status)) {
         return res.status(400).json({ error: `Invalid status transition from ${existingInterview.status} to ${status}` })
@@ -169,12 +172,10 @@ export const PUT = async (req: Request, res: Response) => {
       updateData.end_time = endObj
     }
 
-    // Transactional logic to prevent race conditions during rescheduling
-    const interview = await prisma.$transaction(async (tx: any) => {
+    const interview = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (date && start_time) {
-        // 1. Conflict Detection for Panel Members (excluding self)
         const memberUserIds = existingInterview.assigned_members.map((m: any) => m.user_id)
-        const conflict = await tx.interview.findFirst({
+        const conflict = await tx.recruitmentInterview.findFirst({
           where: {
             id: { not: id },
             date: targetDate,
@@ -201,11 +202,10 @@ export const PUT = async (req: Request, res: Response) => {
           }
         }
 
-        // 2. Conflict Detection for Candidate (excluding self)
-        const candidateConflict = await tx.interview.findFirst({
+        const candidateConflict = await tx.recruitmentInterview.findFirst({
           where: {
             id: { not: id },
-            candidate_id: existingInterview.candidate_id,
+            application_id: existingInterview.application_id,
             date: targetDate,
             status: { not: "CANCELLED" },
             OR: [
@@ -222,31 +222,29 @@ export const PUT = async (req: Request, res: Response) => {
         }
       }
 
-      const updatedInterview = await tx.interview.update({
+      const updatedInterview = await tx.recruitmentInterview.update({
         where: { id },
         data: updateData,
-        include: { candidate: true, assigned_members: true }
+        include: { application: true, assigned_members: true }
       })
 
       return updatedInterview
     })
 
-    // Log audit
     const { logAudit } = await import("../../lib/audit")
-    await logAudit(session.id, `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
+    await logAudit(BigInt(session.id), `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
 
-    // Notify Panel Members
     const { createNotification } = await import("../../lib/notify")
     const action = status === "CANCELLED" ? "cancelled" : "updated"
     for (const pm of interview.assigned_members) {
       await createNotification(
-        pm.user_id,
+        pm.user_id.toString(),
         `Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
-        `The interview with ${interview.candidate.name} has been ${action}.`
+        `The interview with ${interview.application.name} has been ${action}.`
       )
     }
 
-    return res.status(200).json({ interview })
+    return res.status(200).json({ interview: { ...interview, application_id: interview.application_id.toString() } })
   } catch (error: any) {
     if (error.message === "SLOT_UNAVAILABLE") {
       return res.status(409).json({ error: "Slot unavailable. The panel is already booked for this time." })

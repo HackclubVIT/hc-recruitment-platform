@@ -42,14 +42,20 @@ export async function middleware(request: NextRequest) {
 
   // Role-based protection
   if (pathname.startsWith("/admin") && role !== "ADMIN") {
+    if (role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
+    if (role === "PANEL_MEMBER") return NextResponse.redirect(new URL("/panel/dashboard", request.url))
     return NextResponse.redirect(new URL("/login", request.url))
   }
   
-  if (pathname.startsWith("/recruiter") && !["ADMIN", "RECRUITER"].includes(role)) {
+  if (pathname.startsWith("/recruiter") && role !== "RECRUITER") {
+    if (role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+    if (role === "PANEL_MEMBER") return NextResponse.redirect(new URL("/panel/dashboard", request.url))
     return NextResponse.redirect(new URL("/login", request.url))
   }
   
-  if (pathname.startsWith("/panel") && !["ADMIN", "PANEL_MEMBER"].includes(role)) {
+  if (pathname.startsWith("/panel") && role !== "PANEL_MEMBER") {
+    if (role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+    if (role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
     return NextResponse.redirect(new URL("/login", request.url))
   }
 

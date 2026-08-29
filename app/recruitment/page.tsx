@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/Navbar"
 export const dynamic = "force-dynamic"
 
 export default async function RecruitmentLandingPage() {
-  const publishedForms = await prisma.form.findMany({
+  const publishedForms = await prisma.recruitmentForm.findMany({
     where: { status: "PUBLISHED" },
     orderBy: { created_at: "desc" }
   })

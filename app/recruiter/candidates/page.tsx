@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, RecruitmentApplication } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 
 export default function CandidatesPage() {
-  const [candidates, setCandidates] = useState<any[]>([])
+  const [candidates, setCandidates] = useState<RecruitmentApplication[]>([])
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [departmentFilter, setDepartmentFilter] = useState("ALL")
@@ -33,29 +33,27 @@ export default function CandidatesPage() {
       let filtered = data.candidates || []
       
       if (search) {
-        filtered = filtered.filter((c: any) => 
+        filtered = filtered.filter((c: RecruitmentApplication) => 
           c.name.toLowerCase().includes(search.toLowerCase()) || 
           c.email.toLowerCase().includes(search.toLowerCase()) ||
-          c.registration_number?.toLowerCase().includes(search.toLowerCase())
+          c.registerNumber?.toLowerCase().includes(search.toLowerCase())
         )
       }
       
       if (statusFilter !== "ALL") {
-        filtered = filtered.filter((c: any) => {
-          const latestApp = c.applications?.[c.applications.length - 1]
-          const appStatus = latestApp?.status || "APPLIED"
+        filtered = filtered.filter((c: RecruitmentApplication) => {
+          const appStatus = c.status || "APPLIED"
           return appStatus === statusFilter
         })
       }
       
       if (departmentFilter !== "ALL") {
-        filtered = filtered.filter((c: any) => c.department === departmentFilter)
+        filtered = filtered.filter((c: RecruitmentApplication) => c.domain === departmentFilter)
       }
 
       if (dateFilter) {
-        filtered = filtered.filter((c: any) => {
-          const latestApp = c.applications?.[c.applications.length - 1]
-          const appDate = latestApp?.submitted_at
+        filtered = filtered.filter((c: RecruitmentApplication) => {
+          const appDate = c.appliedDate
           if (!appDate) return false
           return new Date(appDate).toISOString().split('T')[0] === dateFilter
         })
@@ -149,16 +147,15 @@ export default function CandidatesPage() {
                 <tr><td colSpan={5} className="p-8 text-center text-[#bfa8a2] font-mono">NO CANDIDATES FOUND.</td></tr>
               ) : (
                 candidates.map((candidate) => {
-                  const latestApp = candidate.applications?.[candidate.applications.length - 1]
-                  const appStatus = latestApp?.status || "APPLIED"
+                  const appStatus = candidate.status || "APPLIED"
                   return (
                     <tr key={candidate.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                      <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">{candidate.registration_number}</td>
+                      <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">{candidate.registerNumber}</td>
                       <td className="p-4">
                         <p className="text-[#f4ede4] font-medium">{candidate.name}</p>
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{candidate.email}</p>
                       </td>
-                      <td className="p-4 text-[#bfa8a2]">{candidate.department}</td>
+                      <td className="p-4 text-[#bfa8a2]">{candidate.domain}</td>
                       <td className="p-4">
                         <StatusPill status={appStatus.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
                           {appStatus}

@@ -68,8 +68,8 @@ export default function AdminInterviewsPage() {
       
       setRescheduleData(null)
       fetchInterviews()
-    } catch (err: any) {
-      setRescheduleError(err.message)
+    } catch (err: unknown) {
+      setRescheduleError((err instanceof Error ? err.message : String(err)))
     } finally {
       setRescheduling(false)
     }
@@ -167,8 +167,8 @@ export default function AdminInterviewsPage() {
                       </p>
                     </td>
                     <td className="p-4">
-                      <p className="text-[#f4ede4] font-medium">{interview.candidate?.name}</p>
-                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.candidate?.department}</p>
+                      <p className="text-[#f4ede4] font-medium">{interview.application?.name}</p>
+                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.application?.domain}</p>
                     </td>
                     <td className="p-4 text-[#f4ede4] font-medium">
                       {interview.panel?.name}
@@ -233,7 +233,7 @@ export default function AdminInterviewsPage() {
             <Input 
               type="date"
               value={rescheduleData?.date || ""}
-              onChange={(e: any) => setRescheduleData(prev => prev ? { ...prev, date: e.target.value, start_time: "" } : null)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRescheduleData(prev => prev ? { ...prev, date: e.target.value, start_time: "" } : null)}
               required
             />
           </div>
@@ -241,7 +241,7 @@ export default function AdminInterviewsPage() {
             <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Time Slot (10 mins)</label>
             <select
               value={rescheduleData?.start_time || ""}
-              onChange={(e: any) => setRescheduleData(prev => prev ? { ...prev, start_time: e.target.value } : null)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRescheduleData(prev => prev ? { ...prev, start_time: e.target.value } : null)}
               className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
               required
               disabled={!rescheduleData?.date}

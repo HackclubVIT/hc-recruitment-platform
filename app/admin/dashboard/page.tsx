@@ -126,7 +126,7 @@ export default function AdminDashboard() {
             Applications By Department
           </h2>
           <div className="flex flex-col gap-4">
-            {deptApps.map((dept: any) => (
+            {deptApps.map((dept: { department: string, count: number }) => (
               <div key={dept.department} className="flex flex-col gap-1">
                 <div className="flex justify-between font-mono text-[11px] text-[#bfa8a2]">
                   <span>{dept.department}</span>
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
                 <div className="h-2 w-full bg-[#1a0606] rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[#ac120c]" 
-                    style={{ width: `${getPercentage(dept.count, Math.max(...deptApps.map((d:any) => d.count)))}%` }}
+                    style={{ width: `${getPercentage(dept.count, Math.max(...deptApps.map((d: { count: number }) => d.count)))}%` }}
                   ></div>
                 </div>
               </div>
@@ -182,8 +182,8 @@ export default function AdminDashboard() {
           </h2>
           <div className="flex items-end h-[120px] gap-2 border-b border-[#2a0d0d] pb-2">
             {interviewsByDay.length > 0 ? (
-              interviewsByDay.map((day: any) => {
-                const maxInterviews = Math.max(...interviewsByDay.map((d:any) => d.count));
+              interviewsByDay.map((day: { date: string, count: number }) => {
+                const maxInterviews = Math.max(...interviewsByDay.map((d: { count: number }) => d.count));
                 const heightPercentage = getPercentage(day.count, maxInterviews);
                 return (
                   <div key={day.date} className="flex-1 flex flex-col items-center gap-2 group relative">
@@ -229,10 +229,10 @@ export default function AdminDashboard() {
                     <td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono text-sm">NO RECENT ACTIVITY</td>
                   </tr>
                 ) : (
-                  recentLogs.map((log: any) => (
+                  recentLogs.map((log: { id: number, action: string, target_type: string, target_id: string, created_at: string, user: { name: string, email: string, role: string } }) => (
                     <tr key={log.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
-                        <p className="text-[#f4ede4] font-medium">{log.user?.name || log.user_id}</p>
+                        <p className="text-[#f4ede4] font-medium">{log.user?.name || log.user?.email}</p>
                         <p className="text-[#bfa8a2] font-mono text-[10px]">{log.user?.role || "SYSTEM"}</p>
                       </td>
                       <td className="p-4">
@@ -240,8 +240,8 @@ export default function AdminDashboard() {
                           {log.action}
                         </span>
                       </td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{log.entity} #{log.entity_id}</td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{formatTimestamp(log.timestamp)}</td>
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{log.target_type} #{log.target_id}</td>
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{formatTimestamp(log.created_at)}</td>
                     </tr>
                   ))
                 )}

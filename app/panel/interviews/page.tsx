@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, BackendInterview } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -10,7 +10,7 @@ import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 
 export default function PanelInterviewsPage() {
-  const [interviews, setInterviews] = useState<any[]>([])
+  const [interviews, setInterviews] = useState<BackendInterview[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -79,8 +79,8 @@ export default function PanelInterviewsPage() {
                       </p>
                     </td>
                     <td className="p-4">
-                      <p className="text-[#f4ede4] font-medium">{interview.candidate?.name}</p>
-                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.candidate?.department}</p>
+                      <p className="text-[#f4ede4] font-medium">{interview.application?.name}</p>
+                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.application?.domain}</p>
                     </td>
                     <td className="p-4">
                       <StatusPill status={interview.status.toLowerCase() === 'completed' || interview.status === 'FEEDBACK_SUBMITTED' ? 'completed' : 'active'}>

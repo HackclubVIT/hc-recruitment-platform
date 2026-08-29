@@ -10,16 +10,16 @@ export const PUT = async (req: Request, res: Response) => {
     const { id } = req.body || {}
 
     if (id) {
-      const result = await prisma.notification.updateMany({
-        where: { id: parseInt(id, 10), user_id: session.id },
+      const result = await prisma.recruitmentNotification.updateMany({
+        where: { id: parseInt(id, 10), user_id: BigInt(session.id) },
         data: { read: true }
       })
       if (result.count === 0) {
         return res.status(404).json({ error: "Notification not found or unauthorized" })
       }
     } else {
-      await prisma.notification.updateMany({
-        where: { user_id: session.id, read: false },
+      await prisma.recruitmentNotification.updateMany({
+        where: { user_id: BigInt(session.id), read: false },
         data: { read: true }
       })
     }

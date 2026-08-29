@@ -37,7 +37,7 @@ import { POST as addPanelMember, DELETE as removePanelMember } from './routes/pa
 // Recruiter
 import { GET as getRecruiterDashboard } from './routes/recruiter/dashboard.js';
 // Users
-import { GET as getUsers, POST as createUser, PUT as updateUser, DELETE as deleteUser } from './routes/users.js';
+import { GET as getUsers, PUT as updateUser, DELETE as deleteUser } from './routes/users.js';
 
 export const router = Router();
 
@@ -51,7 +51,7 @@ router.get('/auth/me', me);
 
 // Users
 router.get('/users', getUsers);
-router.post('/users', createUser);
+// router.post('/users', createUser);
 router.put('/users', updateUser);
 router.delete('/users', deleteUser);
 

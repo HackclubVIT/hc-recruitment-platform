@@ -69,7 +69,7 @@ export default function RecruiterMeetingsPage() {
     if (activeTab === "Completed") tabMatch = inv.status === "COMPLETED" || inv.status === "FEEDBACK_SUBMITTED"
     if (activeTab === "Cancelled") tabMatch = inv.status === "CANCELLED"
 
-    const searchMatch = inv.candidate?.name.toLowerCase().includes(search.toLowerCase())
+    const searchMatch = inv.application?.name.toLowerCase().includes(search.toLowerCase())
 
     let dateMatch = true
     if (dateFilter) {
@@ -117,8 +117,8 @@ export default function RecruiterMeetingsPage() {
       
       setRescheduleData(null)
       fetchInterviews()
-    } catch (err: any) {
-      setRescheduleError(err.message)
+    } catch (err: unknown) {
+      setRescheduleError((err instanceof Error ? err.message : String(err)))
     } finally {
       setRescheduling(false)
     }
@@ -211,7 +211,7 @@ export default function RecruiterMeetingsPage() {
           <Input 
             placeholder="Search candidate..." 
             value={search}
-            onChange={(e: any) => setSearch(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           />
         </div>
         <div className="w-full sm:w-1/3">
@@ -229,7 +229,7 @@ export default function RecruiterMeetingsPage() {
             className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
           >
             <option value="ALL">All Panels</option>
-            {uniquePanels.map((p: any) => (
+            {uniquePanels.map((p: string) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
@@ -258,8 +258,8 @@ export default function RecruiterMeetingsPage() {
                   filteredInterviews.map((interview) => (
                     <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
-                        <p className="text-[#f4ede4] font-medium">{interview.candidate?.name}</p>
-                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.candidate?.department}</p>
+                        <p className="text-[#f4ede4] font-medium">{interview.application?.name}</p>
+                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.application?.domain}</p>
                       </td>
                       <td className="p-4 text-[#f4ede4] font-medium">
                         {interview.panel?.name}
@@ -340,7 +340,7 @@ export default function RecruiterMeetingsPage() {
                   <div className="flex flex-col gap-1 overflow-y-auto max-h-[80px] custom-scrollbar">
                     {dayInterviews.map(inv => (
                       <div key={inv.id} className="text-[10px] font-mono bg-[#ac120c]/20 text-[#f4ede4] p-1 rounded-sm whitespace-nowrap overflow-hidden text-ellipsis border border-[#ac120c]/30">
-                        {formatTime(inv.start_time)} {inv.candidate?.name}
+                        {formatTime(inv.start_time)} {inv.application?.name}
                       </div>
                     ))}
                   </div>
@@ -364,7 +364,7 @@ export default function RecruiterMeetingsPage() {
             <Input 
               type="date"
               value={rescheduleData?.date || ""}
-              onChange={(e: any) => setRescheduleData(prev => prev ? { ...prev, date: e.target.value, start_time: "" } : null)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRescheduleData(prev => prev ? { ...prev, date: e.target.value, start_time: "" } : null)}
               required
             />
           </div>
@@ -372,7 +372,7 @@ export default function RecruiterMeetingsPage() {
             <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Time Slot (10 mins)</label>
             <select
               value={rescheduleData?.start_time || ""}
-              onChange={(e: any) => setRescheduleData(prev => prev ? { ...prev, start_time: e.target.value } : null)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRescheduleData(prev => prev ? { ...prev, start_time: e.target.value } : null)}
               className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
               required
               disabled={!rescheduleData?.date}

@@ -15,7 +15,7 @@ export const GET = async (req: Request, res: Response) => {
     const skip = (page - 1) * limit
 
     const [items, total] = await Promise.all([
-      prisma.auditLog.findMany({
+      prisma.recruitmentAuditLog.findMany({
         include: {
           user: { select: { name: true, email: true, role: true } }
         },
@@ -23,7 +23,7 @@ export const GET = async (req: Request, res: Response) => {
         skip,
         take: limit
       }),
-      prisma.auditLog.count()
+      prisma.recruitmentAuditLog.count()
     ])
 
     return res.status(200).json({

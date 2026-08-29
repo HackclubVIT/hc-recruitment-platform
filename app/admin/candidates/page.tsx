@@ -106,8 +106,7 @@ export default function AdminCandidatesPage() {
                 <tr><td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono">NO CANDIDATES FOUND.</td></tr>
               ) : (
                 candidates.map((candidate) => {
-                  const latestApp = candidate.applications?.[candidate.applications.length - 1]
-                  const appStatus = latestApp?.status || "APPLIED"
+                  const appStatus = candidate.status || "APPLIED"
                   return (
                     <tr key={candidate.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
