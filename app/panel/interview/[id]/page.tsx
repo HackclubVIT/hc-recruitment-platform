@@ -55,7 +55,7 @@ export default function SingleInterviewPage({ params }: { params: Promise<{ id: 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="font-display font-bold text-[32px] sm:text-[40px] leading-tight text-[#f4ede4]">
-            {interview.candidate?.name}
+            {interview.application?.name}
           </h1>
           <StatusPill status={interview.status.toLowerCase() === 'completed' || interview.status === 'FEEDBACK_SUBMITTED' ? 'completed' : 'active'}>
             {interview.status}
@@ -97,15 +97,15 @@ export default function SingleInterviewPage({ params }: { params: Promise<{ id: 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-mono text-[#d07d22] text-[10px] tracking-widest">DEPARTMENT</p>
-                <p className="text-[#f4ede4] font-medium">{interview.candidate?.department}</p>
+                <p className="text-[#f4ede4] font-medium">{interview.application?.domain}</p>
               </div>
               <div>
                 <p className="font-mono text-[#d07d22] text-[10px] tracking-widest">REG NO</p>
-                <p className="text-[#f4ede4] font-medium">{interview.candidate?.registration_number}</p>
+                <p className="text-[#f4ede4] font-medium">{interview.application?.registerNumber}</p>
               </div>
               <div className="col-span-2">
                 <p className="font-mono text-[#d07d22] text-[10px] tracking-widest">RESUME</p>
-                <a href={interview.candidate?.resume_url} target="_blank" className="text-[#2e7d32] font-medium hover:underline">
+                <a href={interview.application?.portfolio || undefined} target="_blank" className="text-[#2e7d32] font-medium hover:underline">
                   VIEW DOCUMENT
                 </a>
               </div>

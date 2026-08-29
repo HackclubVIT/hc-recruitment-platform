@@ -167,8 +167,8 @@ export default function AdminInterviewsPage() {
                       </p>
                     </td>
                     <td className="p-4">
-                      <p className="text-[#f4ede4] font-medium">{interview.candidate?.name}</p>
-                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.candidate?.department}</p>
+                      <p className="text-[#f4ede4] font-medium">{interview.application?.name}</p>
+                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.application?.domain}</p>
                     </td>
                     <td className="p-4 text-[#f4ede4] font-medium">
                       {interview.panel?.name}

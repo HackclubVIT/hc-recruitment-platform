@@ -69,7 +69,7 @@ export default function RecruiterMeetingsPage() {
     if (activeTab === "Completed") tabMatch = inv.status === "COMPLETED" || inv.status === "FEEDBACK_SUBMITTED"
     if (activeTab === "Cancelled") tabMatch = inv.status === "CANCELLED"
 
-    const searchMatch = inv.candidate?.name.toLowerCase().includes(search.toLowerCase())
+    const searchMatch = inv.application?.name.toLowerCase().includes(search.toLowerCase())
 
     let dateMatch = true
     if (dateFilter) {
@@ -258,8 +258,8 @@ export default function RecruiterMeetingsPage() {
                   filteredInterviews.map((interview) => (
                     <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
-                        <p className="text-[#f4ede4] font-medium">{interview.candidate?.name}</p>
-                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.candidate?.department}</p>
+                        <p className="text-[#f4ede4] font-medium">{interview.application?.name}</p>
+                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.application?.domain}</p>
                       </td>
                       <td className="p-4 text-[#f4ede4] font-medium">
                         {interview.panel?.name}
@@ -340,7 +340,7 @@ export default function RecruiterMeetingsPage() {
                   <div className="flex flex-col gap-1 overflow-y-auto max-h-[80px] custom-scrollbar">
                     {dayInterviews.map(inv => (
                       <div key={inv.id} className="text-[10px] font-mono bg-[#ac120c]/20 text-[#f4ede4] p-1 rounded-sm whitespace-nowrap overflow-hidden text-ellipsis border border-[#ac120c]/30">
-                        {formatTime(inv.start_time)} {inv.candidate?.name}
+                        {formatTime(inv.start_time)} {inv.application?.name}
                       </div>
                     ))}
                   </div>

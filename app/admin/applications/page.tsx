@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi, BackendApplication } from "@/api-client"
+import { fetchApi, RecruitmentApplication } from "@/api-client"
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -8,7 +8,7 @@ import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 
 export default function AdminApplicationsPage() {
-  const [applications, setApplications] = useState<BackendApplication[]>([])
+  const [applications, setApplications] = useState<RecruitmentApplication[]>([])
   const [loading, setLoading] = useState(true)
   
   // Filters & Pagination
@@ -135,14 +135,13 @@ export default function AdminApplicationsPage() {
                 <tr><td colSpan={6} className="p-8 text-center text-[#bfa8a2] font-mono">NO APPLICATIONS FOUND.</td></tr>
               ) : (
                 applications.map((app) => {
-                  const c = app.candidate
                   return (
                     <tr key={app.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                      <td className="p-4 text-[#f4ede4] font-medium">{c?.name || "Unknown"}</td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">{c?.email || "-"}</td>
-                      <td className="p-4 text-[#bfa8a2]">{c?.department || "-"}</td>
+                      <td className="p-4 text-[#f4ede4] font-medium">{app.name || "Unknown"}</td>
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">{app.email || "-"}</td>
+                      <td className="p-4 text-[#bfa8a2]">{app.domain || "-"}</td>
                       <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
-                        {app.submitted_at ? formatDate(app.submitted_at) : "-"}
+                        {app.appliedDate ? formatDate(app.appliedDate) : "-"}
                       </td>
                       <td className="p-4">
                         <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
@@ -150,7 +149,7 @@ export default function AdminApplicationsPage() {
                         </StatusPill>
                       </td>
                       <td className="p-4 text-right">
-                        <a href={`/admin/candidates/${c?.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
+                        <a href={`/admin/applications/${app.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
                           VIEW PROFILE
                         </a>
                       </td>
