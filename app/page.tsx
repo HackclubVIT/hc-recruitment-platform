@@ -11,6 +11,8 @@ import { OpenRoles } from "@/components/landing/OpenRoles"
 import { FAQ } from "@/components/landing/FAQ"
 import { FinalCTA } from "@/components/landing/FinalCTA"
 import { Footer } from "@/components/landing/Footer"
+import { MemorableEvents } from "@/components/landing/MemorableEvents"
+import { Board } from "@/components/landing/Board"
 
 export default function Home() {
   const [launchComplete, setLaunchComplete] = useState(false)
@@ -31,8 +33,10 @@ export default function Home() {
         <Navbar />
         
         <Hero />
-        <WhyJoin />
         <HowItWorks />
+        <MemorableEvents />
+        <Board />
+        <WhyJoin />
         <OpenRoles />
         <FAQ />
         <FinalCTA />
