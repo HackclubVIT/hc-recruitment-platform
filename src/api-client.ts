@@ -1,18 +1,26 @@
-export interface BackendCandidate {
+export interface RecruitmentApplication {
   id: string;
+  recruitmentId: string;
   name: string;
+  registerNumber: string;
   email: string;
-  department: string;
-  registration_number: string;
-}
-
-export interface BackendApplication {
-  id: string;
-  candidate_id: string;
-  form_id: number;
+  phoneNumber: string | null;
+  domain: string | null;
+  firstPreference: string | null;
+  secondPreference: string | null;
+  firstPrefReason: string | null;
+  secondPrefReason: string | null;
+  yearOfStudy: string;
+  technicalSkills: any;
+  skillLevel: string | null;
+  github: string | null;
+  linkedin: string | null;
+  portfolio: string | null;
   status: string;
-  submitted_at: string;
-  candidate: BackendCandidate;
+  appliedDate: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_reason: string | null;
 }
 
 export interface HCUser {
@@ -31,14 +39,14 @@ export interface BackendInterview {
   id: number;
   application_id: string;
   panel_id: number;
+  recruiter_id: string | null;
   round: number;
   date: string;
   start_time: string;
   end_time: string;
   meeting_link: string | null;
   status: string;
-  application?: BackendApplication;
-  candidate?: BackendCandidate;
+  application?: RecruitmentApplication;
 }
 
 export function getToken() {
