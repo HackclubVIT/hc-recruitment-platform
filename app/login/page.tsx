@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [loginMode, setLoginMode] = useState<"user" | "admin">("user")
+  const [loginMode, setLoginMode] = useState<"recruitie" | "recruiter" | "admin">("recruitie")
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,10 +44,7 @@ export default function LoginPage() {
     }
   }
 
-  const toggleAdminMode = () => {
-    setLoginMode(prev => prev === "admin" ? "user" : "admin")
-    setError("")
-  }
+
 
   return (
     <div className="min-h-screen bg-login flex items-center justify-center p-4 sm:p-6">
@@ -94,7 +91,7 @@ export default function LoginPage() {
             marginBottom: "30px"
           }}
         >
-          {loginMode === "admin" ? "ADMIN PORTAL" : "USER PORTAL"}
+          {loginMode === "admin" ? "ADMIN PORTAL" : loginMode === "recruiter" ? "RECRUITER PORTAL" : "RECRUITIE PORTAL"}
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col">
@@ -172,20 +169,7 @@ export default function LoginPage() {
                 {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
               </button>
             </div>
-            
-            <div className="w-full text-right mt-[12px]">
-              <Link 
-                href="/recruitment"
-                className="text-[#d07d22] font-body text-[14px] hover:brightness-125 transition-all"
-                style={{ textDecoration: "none" }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert("Password reset would be integrated here.");
-                }}
-              >
-                Forgot Password?
-              </Link>
-            </div>
+
           </div>
 
           <div className="mt-[28px] flex flex-col gap-[12px]">
@@ -214,52 +198,65 @@ export default function LoginPage() {
                 }
               }}
             >
-              {loading ? "Signing In..." : "Sign In"}
+              {loading ? "Signing In..." : `Sign in as ${loginMode.charAt(0).toUpperCase() + loginMode.slice(1)}`}
             </button>
             
-            <button
-              type="button"
-              onClick={toggleAdminMode}
-              className="w-full flex items-center justify-center text-white font-body transition-all"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(172, 18, 12, 0.3)",
-                height: "50px",
-                borderRadius: "999px"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(172, 18, 12, 0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {loginMode === "admin" ? "Login as user" : "Login as admin"}
-            </button>
+            {loginMode !== "recruitie" && (
+              <button
+                type="button"
+                onClick={() => { setLoginMode("recruitie"); setError(""); }}
+                className="w-full flex items-center justify-center text-white font-body transition-all"
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(172, 18, 12, 0.3)",
+                  height: "50px",
+                  borderRadius: "999px"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(172, 18, 12, 0.1)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+              >
+                Sign in as Recruitie
+              </button>
+            )}
+
+            {loginMode !== "recruiter" && (
+              <button
+                type="button"
+                onClick={() => { setLoginMode("recruiter"); setError(""); }}
+                className="w-full flex items-center justify-center text-white font-body transition-all"
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(172, 18, 12, 0.3)",
+                  height: "50px",
+                  borderRadius: "999px"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(172, 18, 12, 0.1)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+              >
+                Sign in as Recruiter
+              </button>
+            )}
+
+            {loginMode !== "admin" && (
+              <button
+                type="button"
+                onClick={() => { setLoginMode("admin"); setError(""); }}
+                className="w-full flex items-center justify-center text-white font-body transition-all"
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(172, 18, 12, 0.3)",
+                  height: "50px",
+                  borderRadius: "999px"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(172, 18, 12, 0.1)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+              >
+                Sign in as Admin
+              </button>
+            )}
 
             <Link 
-              href="/recruitment"
-              className="w-full flex items-center justify-center font-body transition-all"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                color: "#f4ede4",
-                height: "50px",
-                borderRadius: "999px",
-                textDecoration: "none"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              Create new account (Sign Up)
-            </Link>
-
-            <Link 
-              href="/recruitment"
+              href="/"
               className="w-full flex items-center justify-center font-body transition-all"
               style={{
                 background: "rgba(18, 2, 2, 0.5)",
