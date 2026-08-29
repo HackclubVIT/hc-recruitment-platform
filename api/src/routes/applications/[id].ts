@@ -45,29 +45,11 @@ export const GET = async (req: Request, res: Response) => {
       }
     }
     
-    // Format response to match previous expected shape
+    // Format response to serialize BigInts
     const formattedApp = {
+      ...application,
       id: application.id.toString(),
-      application_id: application.id.toString(),
-      form_id: 1, // dummy
-      status: application.status,
-      submitted_at: application.appliedDate || new Date().toISOString(),
-      answers: {
-        technicalSkills: application.technicalSkills,
-        github: application.github,
-        firstPreference: application.firstPreference,
-        secondPreference: application.secondPreference,
-        yearOfStudy: application.yearOfStudy,
-      },
-      candidate: {
-        id: application.id.toString(),
-        name: application.name,
-        department: application.domain,
-        registration_number: application.registerNumber,
-        email: application.email,
-        phone: application.phoneNumber,
-        resume_url: application.portfolio
-      }
+      decided_by: application.decided_by?.toString() || null,
     };
 
     return res.status(200).json({ application: formattedApp })
@@ -192,19 +174,11 @@ export const PUT = async (req: Request, res: Response) => {
 
     // Create Notification logic can be ignored if the user isn't assigned to the recruitment app natively
     // We notify recruiters 
-    // Format response to match previous expected shape
+    // Format response to serialize BigInts
     const formattedApp = {
+      ...application,
       id: application.id.toString(),
-      application_id: application.id.toString(),
-      form_id: 1, // dummy
-      status: application.status,
-      submitted_at: application.appliedDate || new Date().toISOString(),
-      candidate: {
-        id: application.id.toString(),
-        name: application.name,
-        department: application.domain,
-        registration_number: application.registerNumber,
-      }
+      decided_by: application.decided_by?.toString() || null,
     };
     return res.status(200).json({ application: formattedApp })
   } catch (error) {

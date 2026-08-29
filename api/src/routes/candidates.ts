@@ -79,30 +79,11 @@ export const GET = async (req: Request, res: Response) => {
       prisma.recruitmentApplication.count({ where: whereClause })
     ])
 
-    // Format for frontend compatibility where candidate and application were separate
+    // Format for frontend compatibility - serialize BigInts
     const candidates = applications.map(app => ({
+      ...app,
       id: app.id.toString(),
-      name: app.name,
-      email: app.email,
-      phone: app.phoneNumber,
-      department: app.domain,
-      registration_number: app.registerNumber,
-      resume_url: app.portfolio,
-      created_at: app.appliedDate || new Date().toISOString(),
-      
-      applications: [{
-        id: app.id.toString(),
-        application_id: app.id.toString(),
-        form_id: 1, // dummy mapping
-        status: app.status,
-        submitted_at: app.appliedDate || new Date().toISOString(),
-        answers: {
-           technicalSkills: app.technicalSkills,
-           github: app.github,
-           firstPreference: app.firstPreference,
-           secondPreference: app.secondPreference
-        }
-      }],
+      decided_by: app.decided_by?.toString() || null,
       interviews: app.interviews
     }))
 

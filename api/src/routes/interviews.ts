@@ -50,18 +50,22 @@ export const GET = async (req: Request, res: Response) => {
       orderBy: { date: 'asc' }
     })
 
-    // Format response to match frontend expectations without changing frontend assumptions about candidate shape initially, but frontend needs candidate inside it.
-    const formattedInterviews = interviews.map((i: any) => ({
-      ...i,
-      candidate: i.application ? {
-        id: i.application.id.toString(),
-        name: i.application.name,
-        email: i.application.email,
-        department: i.application.domain,
-        registration_number: i.application.registerNumber
-      } : null,
-      application: undefined
-    }))
+    // Format response to serialize BigInts
+    const formattedInterviews = interviews.map((i: any) => {
+      const interview = {
+        ...i,
+        application_id: i.application_id.toString(),
+        recruiter_id: i.recruiter_id?.toString() || null,
+      }
+      if (interview.application) {
+         interview.application = {
+           ...interview.application,
+           id: interview.application.id.toString(),
+           decided_by: interview.application.decided_by?.toString() || null,
+         }
+      }
+      return interview;
+    })
 
     return res.status(200).json({ interviews: formattedInterviews })
   } catch (error) {

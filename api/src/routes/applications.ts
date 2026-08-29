@@ -79,7 +79,7 @@ export const POST = async (req: Request, res: Response) => {
       }
     }
 
-    let existingApp = await prisma.recruitmentApplication.findFirst({
+    const existingApp = await prisma.recruitmentApplication.findFirst({
       where: {
         OR: [
           { email: data.email },
