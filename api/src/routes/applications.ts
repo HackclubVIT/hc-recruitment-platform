@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import prisma from "../lib/db"
 import { getSession } from "../lib/auth"
 import { createNotification } from "../lib/notify"
@@ -42,9 +43,9 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Form is not active or does not exist." })
     }
 
-    const submittedAnswers: Record<string, any> = data.answers || {}
+    const submittedAnswers: Record<string, unknown> = data.answers || {}
     
-    const validQuestionIds = new Set(form.questions.map((q: any) => q.id.toString()))
+    const validQuestionIds = new Set(form.questions.map((q: { id: number }) => q.id.toString()))
     for (const key in submittedAnswers) {
       if (!validQuestionIds.has(key)) {
         return res.status(400).json({ error: `Unknown question ID submitted: ${key}` })
@@ -124,7 +125,7 @@ export const POST = async (req: Request, res: Response) => {
           create: {
             form_id: form.id,
             answers: {
-              create: form.questions.map((q: any) => ({
+              create: form.questions.map((q: { id: number }) => ({
                 question_id: q.id,
                 answer: String(data.answers?.[q.id] || "")
               }))
@@ -156,7 +157,7 @@ export const POST = async (req: Request, res: Response) => {
 
     return res.status(201).json(
       { message: "Application submitted successfully", applicationId: application.id.toString() })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Application submission error:", error)
     if (error.code === 'P2002') {
       return res.status(409).json({ error: "An application already exists." })
@@ -172,7 +173,7 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const searchParams = new URLSearchParams(req.query as any)
+    const searchParams = new URLSearchParams(req.query as Record<string, string>)
     const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1)
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10") || 10))
     const search = searchParams.get("search") || ""
@@ -183,7 +184,7 @@ export const GET = async (req: Request, res: Response) => {
     
     const skip = (page - 1) * limit
 
-    const where: any = { recruitmentId: "recruitment-2026" }
+    const where: Prisma.RecruitmentApplicationWhereInput = { recruitmentId: "recruitment-2026" }
 
     if (department) {
       if (session.role === "RECRUITER") {

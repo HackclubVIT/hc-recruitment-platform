@@ -15,7 +15,20 @@ export const GET = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = BigInt(resolvedParams.id as string)
 
-    const includeClause: any = {}
+    const includeClause = {
+      formSubmission: {
+        include: {
+          form: { include: { questions: true } },
+          answers: true
+        }
+      },
+      interviews: {
+        include: {
+          assigned_members: true,
+          feedback: true
+        }
+      }
+    }
 
     const application = await prisma.recruitmentApplication.findUnique({
       where: { id },

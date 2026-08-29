@@ -21,6 +21,10 @@ export interface RecruitmentApplication {
   decided_by: string | null;
   decided_at: string | null;
   decision_reason: string | null;
+  formSubmission?: {
+    answers: Array<{ question_id: number; answer: string }>;
+  };
+  interviews?: BackendInterview[];
 }
 
 export interface HCUser {
@@ -47,6 +51,14 @@ export interface BackendInterview {
   meeting_link: string | null;
   status: string;
   application?: RecruitmentApplication;
+  feedback?: Array<{
+    id: number;
+    feedback: string;
+    user_id: string;
+    overall_score: number;
+    recommendation: string;
+    comments: string;
+  }>;
 }
 
 export function getToken() {
@@ -80,8 +92,8 @@ export const fetchApi = async (path: string, options: RequestInit = {}) => {
 
 export const api = {
   get: async (path: string) => fetchApi(path),
-  post: async (path: string, body: any) => fetchApi(path, { method: "POST", body: JSON.stringify(body) }),
-  put: async (path: string, body: any) => fetchApi(path, { method: "PUT", body: JSON.stringify(body) }),
+  post: async (path: string, body: unknown) => fetchApi(path, { method: "POST", body: JSON.stringify(body) }),
+  put: async (path: string, body: unknown) => fetchApi(path, { method: "PUT", body: JSON.stringify(body) }),
   delete: async (path: string) => fetchApi(path, { method: "DELETE" }),
 
   getMe: async () => {
