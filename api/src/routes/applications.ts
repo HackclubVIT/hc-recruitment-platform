@@ -225,20 +225,10 @@ export const GET = async (req: Request, res: Response) => {
       prisma.recruitmentApplication.count({ where })
     ])
     
-    // map to frontend structure
+    // return direct application structure
     const items = applications.map(app => ({
-        id: app.id.toString(),
-        candidate_id: app.id.toString(),
-        form_id: 1,
-        status: app.status,
-        submitted_at: app.appliedDate || new Date().toISOString(),
-        candidate: {
-            id: app.id.toString(),
-            name: app.name,
-            email: app.email,
-            department: app.domain,
-            registration_number: app.registerNumber
-        }
+      ...app,
+      id: app.id.toString()
     }))
 
     return res.status(200).json({

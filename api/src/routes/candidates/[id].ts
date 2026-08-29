@@ -13,6 +13,9 @@ export const GET = async (req: Request, res: Response) => {
     let includeClause: any = {
       interviews: {
         include: { panel: true, feedback: true }
+      },
+      formSubmission: {
+        include: { answers: true }
       }
     }
 
@@ -44,33 +47,12 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const mappedCandidate = {
+    const serializedApplication = {
+      ...application,
       id: application.id.toString(),
-      name: application.name,
-      email: application.email,
-      department: application.domain,
-      registration_number: application.registerNumber,
-      resume_url: application.portfolio,
-      phone: application.phoneNumber,
-      created_at: application.appliedDate || new Date().toISOString(),
-      applications: [{
-        id: application.id.toString(),
-        candidate_id: application.id.toString(),
-        form_id: 1,
-        status: application.status,
-        submitted_at: application.appliedDate || new Date().toISOString(),
-        answers: {
-          technicalSkills: application.technicalSkills,
-          github: application.github,
-          firstPreference: application.firstPreference,
-          secondPreference: application.secondPreference,
-          yearOfStudy: application.yearOfStudy,
-        }
-      }],
-      interviews: (application as any).interviews
-    }
+    };
 
-    return res.status(200).json({ candidate: mappedCandidate })
+    return res.status(200).json(serializedApplication)
   } catch (error) {
     console.error("Fetch candidate error:", error)
     return res.status(500).json({ error: "Internal server error" })

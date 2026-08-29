@@ -46,19 +46,10 @@ export const GET = async (req: Request, res: Response) => {
       take: 5
     })
 
-    // map back to old format
-    const mappedApplications = recentApplications.map((app: any) => ({
+    // return applications as exactly the original types (just stringifying the ID)
+    const serializedApplications = recentApplications.map((app: any) => ({
+      ...app,
       id: app.id.toString(),
-      candidate_id: app.id.toString(),
-      status: app.status,
-      submitted_at: app.appliedDate || new Date().toISOString(),
-      candidate: {
-        id: app.id.toString(),
-        name: app.name,
-        email: app.email,
-        department: app.domain,
-        registration_number: app.registerNumber,
-      }
     }))
 
     return res.status(200).json({
@@ -67,7 +58,7 @@ export const GET = async (req: Request, res: Response) => {
         shortlistedCount,
         interviewsTodayCount
       },
-      recentApplications: mappedApplications,
+      recentApplications: serializedApplications,
       departments
     })
   } catch (error) {
