@@ -12,8 +12,7 @@ export const GET = async (req: Request, res: Response) => {
 
     const { startOfDay: startOfToday, endOfDay: endOfToday, endOfWeek } = getISTDateBounds()
 
-    // 1. Interviews Today (IST)
-    const todayInterviewsCount = await prisma.interview.count({
+    const todayInterviewsCount = await prisma.recruitmentInterview.count({
       where: {
         date: {
           gte: startOfToday,
@@ -21,13 +20,12 @@ export const GET = async (req: Request, res: Response) => {
         },
         status: { not: "CANCELLED" },
         assigned_members: {
-          some: { user_id: session.id }
+          some: { user_id: BigInt(session.id) }
         }
       }
     })
 
-    // 2. Upcoming (Week, IST)
-    const upcomingInterviewsCount = await prisma.interview.count({
+    const upcomingInterviewsCount = await prisma.recruitmentInterview.count({
       where: {
         date: {
           gt: endOfToday,
@@ -35,26 +33,21 @@ export const GET = async (req: Request, res: Response) => {
         },
         status: { not: "CANCELLED" },
         assigned_members: {
-          some: { user_id: session.id }
+          some: { user_id: BigInt(session.id) }
         }
       }
     })
 
-    // 3. Pending Feedback
-    // Only COMPLETED and FEEDBACK_PENDING interviews count.
-    // SCHEDULED interviews are NOT eligible for feedback (Req 12).
-    // Note: We DO NOT filter by `active: true` here because of Req 4: 
-    // Historical pending feedback must still be accessible if they were assigned to it.
-    const panelMemberRows = await prisma.panelMember.findMany({
-      where: { user_id: session.id }
+    const panelMemberRows = await prisma.recruitmentPanelMember.findMany({
+      where: { user_id: BigInt(session.id) }
     })
     const panelMemberIds = panelMemberRows.map((pm: any) => pm.id)
 
-    const pendingFeedbackCount = await prisma.interview.count({
+    const pendingFeedbackCount = await prisma.recruitmentInterview.count({
       where: {
         status: { in: ["COMPLETED", "FEEDBACK_PENDING"] },
         assigned_members: {
-          some: { user_id: session.id }
+          some: { user_id: BigInt(session.id) }
         },
         NOT: {
           feedback: {
@@ -66,8 +59,7 @@ export const GET = async (req: Request, res: Response) => {
       }
     })
 
-    // 4. Today's Schedule (IST)
-    const todaySchedule = await prisma.interview.findMany({
+    const todaySchedule = await prisma.recruitmentInterview.findMany({
       where: {
         date: {
           gte: startOfToday,
@@ -75,17 +67,17 @@ export const GET = async (req: Request, res: Response) => {
         },
         status: { not: "CANCELLED" },
         assigned_members: {
-          some: { user_id: session.id }
+          some: { user_id: BigInt(session.id) }
         }
       },
       include: {
-        candidate: {
-          select: { // Req 3: Data minimization
+        application: {
+          select: {
             id: true,
             name: true,
             email: true,
-            department: true,
-            registration_number: true
+            domain: true,
+            registerNumber: true
           }
         }
       },
@@ -94,13 +86,24 @@ export const GET = async (req: Request, res: Response) => {
       }
     })
 
+    const mappedSchedule = todaySchedule.map((i: any) => ({
+      ...i,
+      candidate: i.application ? {
+        id: i.application.id.toString(),
+        name: i.application.name,
+        email: i.application.email,
+        department: i.application.domain,
+        registration_number: i.application.registerNumber
+      } : undefined
+    }))
+
     return res.status(200).json({
       stats: {
         todayInterviewsCount,
         upcomingInterviewsCount,
         pendingFeedbackCount
       },
-      todaySchedule
+      todaySchedule: mappedSchedule
     })
   } catch (error) {
     console.error("Panel dashboard error:", error)

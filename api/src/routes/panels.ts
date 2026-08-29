@@ -13,7 +13,7 @@ export const GET = async (req: Request, res: Response) => {
     // Recruiters only see active panels
     const whereClause = session.role === "RECRUITER" ? { status: "ACTIVE" } : {}
 
-    const panels = await prisma.panel.findMany({
+    const panels = await prisma.recruitmentPanel.findMany({
       where: whereClause,
       include: {
         members: {
@@ -56,7 +56,7 @@ export const POST = async (req: Request, res: Response) => {
 
     const { name, description } = parsed.data
 
-    const panel = await prisma.panel.create({
+    const panel = await prisma.recruitmentPanel.create({
       data: { name, description },
     })
 
@@ -83,7 +83,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const { id, name, description, status } = parsed.data
 
-    const panel = await prisma.panel.update({
+    const panel = await prisma.recruitmentPanel.update({
       where: { id },
       data: { name, description, status }
     })
@@ -113,7 +113,7 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing panel ID" })
     }
 
-    const panelRelations = await prisma.panel.findUnique({
+    const panelRelations = await prisma.recruitmentPanel.findUnique({
       where: { id },
       include: { interviews: { take: 1 } }
     })
@@ -124,7 +124,7 @@ export const DELETE = async (req: Request, res: Response) => {
 
     if (panelRelations.interviews.length > 0) {
       // Prevent deletion, deactivate instead
-      await prisma.panel.update({
+      await prisma.recruitmentPanel.update({
         where: { id },
         data: { status: "INACTIVE" }
       })
@@ -133,11 +133,11 @@ export const DELETE = async (req: Request, res: Response) => {
     }
 
     // Must delete panel members first due to foreign key
-    await prisma.panelMember.deleteMany({
+    await prisma.recruitmentPanelMember.deleteMany({
       where: { panel_id: id }
     })
 
-    await prisma.panel.delete({
+    await prisma.recruitmentPanel.delete({
       where: { id }
     })
 

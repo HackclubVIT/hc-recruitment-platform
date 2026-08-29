@@ -26,7 +26,7 @@ export const POST = async (req: Request, res: Response) => {
 
     const body = req.body
     
-        const parsed = feedbackSchema.safeParse(body)
+    const parsed = feedbackSchema.safeParse(body)
     if (!parsed.success) {
       return res.status(400).json({ error: "Invalid feedback data", details: parsed.error.format() })
     }
@@ -42,17 +42,16 @@ export const POST = async (req: Request, res: Response) => {
       decision
     } = parsed.data
 
-    // Verify Panel Member is assigned to this interview
-    const interview = await prisma.interview.findUnique({
+    const interview = await prisma.recruitmentInterview.findUnique({
       where: { id: interview_id },
-      include: { assigned_members: true, candidate: true }
+      include: { assigned_members: true, application: true }
     })
 
     if (!interview) {
       return res.status(404).json({ error: "Interview not found" })
     }
 
-    const panelMember = interview.assigned_members.find((m: any) => m.user_id === session.id)
+    const panelMember = interview.assigned_members.find((m: any) => m.user_id.toString() === session.id.toString())
     if (!panelMember) {
       return res.status(403).json({ error: "You are not authorized to review this interview." })
     }
@@ -69,8 +68,7 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(409).json({ error: "All feedback has already been submitted for this interview." })
     }
 
-    // Check for duplicate submissions
-    const existingFeedback = await prisma.feedback.findFirst({
+    const existingFeedback = await prisma.recruitmentFeedback.findFirst({
       where: {
         interview_id,
         panel_member_id: panelMember.id
@@ -81,8 +79,8 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(409).json({ error: "Feedback already submitted for this interview." })
     }
 
-        const feedback = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const newFeedback = await tx.feedback.create({
+    const feedback = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const newFeedback = await tx.recruitmentFeedback.create({
         data: {
           interview_id,
           panel_member_id: panelMember.id,
@@ -96,9 +94,8 @@ export const POST = async (req: Request, res: Response) => {
         }
       })
 
-      // Check if ALL panel members have submitted feedback
       const expectedMemberIds = interview.assigned_members.map((m: any) => m.id).sort()
-      const submittedFeedbacks = await tx.feedback.findMany({
+      const submittedFeedbacks = await tx.recruitmentFeedback.findMany({
         where: { interview_id },
         select: { panel_member_id: true }
       })
@@ -108,16 +105,15 @@ export const POST = async (req: Request, res: Response) => {
                            expectedMemberIds.length === submittedMemberIds.length && 
                            expectedMemberIds.every((id: number, index: number) => id === submittedMemberIds[index])
 
-      await tx.interview.update({
+      await tx.recruitmentInterview.update({
         where: { id: interview_id },
         data: { status: allSubmitted ? "FEEDBACK_SUBMITTED" : "FEEDBACK_PENDING" }
       })
 
-      // Update Application Status if all feedback submitted
       if (allSubmitted) {
         const applicationId = interview.application_id;
         if (applicationId) {
-          await tx.application.update({
+          await tx.recruitmentApplication.update({
             where: { id: applicationId },
             data: { status: "INTERVIEW_COMPLETED" }
           })
@@ -130,14 +126,13 @@ export const POST = async (req: Request, res: Response) => {
     const newFeedback = feedback.newFeedback
     const allSubmitted = feedback.allSubmitted
 
-    await logAudit(session.id, "SUBMITTED_FEEDBACK", "Feedback", newFeedback.id)
+    await logAudit(BigInt(session.id), "SUBMITTED_FEEDBACK", "Feedback", newFeedback.id.toString())
 
-    // Notify Recruiter only when ALL feedback is complete
-    if (allSubmitted) {
+    if (allSubmitted && interview.recruiter_id) {
       await createNotification(
-        interview.recruiter_id,
+        interview.recruiter_id.toString(),
         "Interview Feedback Complete",
-        `All panel members have submitted feedback for ${interview.candidate.name}. The interview is now completed.`
+        `All panel members have submitted feedback for ${interview.application.name}. The interview is now completed.`
       )
     }
 
