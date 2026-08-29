@@ -120,6 +120,7 @@ model RecruitmentApplication {
 
   // Recruitment relations
   interviews                 RecruitmentInterview[]
+  formSubmission             RecruitmentFormSubmission?
 
   @@map("recruitment_applications")
 }
@@ -169,6 +170,7 @@ model RecruitmentForm {
   closed_at    DateTime?
 
   questions    RecruitmentFormQuestion[]
+  submissions  RecruitmentFormSubmission[]
 
   @@map("recruitment_forms")
 }
@@ -182,8 +184,34 @@ model RecruitmentFormQuestion {
   options  String[] // Using String[] for options
 
   form     RecruitmentForm @relation(fields: [form_id], references: [id])
+  answers  RecruitmentFormAnswer[]
 
   @@map("recruitment_form_questions")
+}
+
+model RecruitmentFormSubmission {
+  id              Int      @id @default(autoincrement())
+  application_id  BigInt   @unique
+  form_id         Int
+  submitted_at    DateTime @default(now())
+
+  application     RecruitmentApplication @relation(fields: [application_id], references: [id])
+  form            RecruitmentForm        @relation(fields: [form_id], references: [id])
+  answers         RecruitmentFormAnswer[]
+
+  @@map("recruitment_form_submissions")
+}
+
+model RecruitmentFormAnswer {
+  id              Int      @id @default(autoincrement())
+  submission_id   Int
+  question_id     Int
+  answer          String
+  
+  submission      RecruitmentFormSubmission @relation(fields: [submission_id], references: [id])
+  question        RecruitmentFormQuestion   @relation(fields: [question_id], references: [id])
+
+  @@map("recruitment_form_answers")
 }
 
 model RecruitmentPanel {

@@ -119,7 +119,18 @@ export const POST = async (req: Request, res: Response) => {
         portfolio: data.resume_url || null,
         yearOfStudy: "1",
         status: "APPLIED",
-        appliedDate: new Date().toISOString()
+        appliedDate: new Date().toISOString(),
+        formSubmission: {
+          create: {
+            form_id: form.id,
+            answers: {
+              create: form.questions.map((q: any) => ({
+                question_id: q.id,
+                answer: String(data.answers?.[q.id] || "")
+              }))
+            }
+          }
+        }
       },
     })
 

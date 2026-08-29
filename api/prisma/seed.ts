@@ -17,10 +17,11 @@ async function main() {
   });
 
   if (!user) {
+    if (process.env.ALLOW_USER_CREATION !== 'true') {
+      throw new Error(`CRITICAL ERROR: Bootstrap Admin user ${adminEmail} not found in HC database. Do not silently create HC users. Create the user through HC Main first or set ALLOW_USER_CREATION=true to override.`);
+    }
+    
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
-    // User IDs are BigInt, we might need to generate one if the database doesn't auto-increment.
-    // In HC main, ID is usually created dynamically (like Discord snowflakes), 
-    // but here we just generate a random BigInt if creating a new user, or we can use a timestamp.
     const newId = BigInt(Date.now());
     
     user = await prisma.user.create({
@@ -29,10 +30,10 @@ async function main() {
         name: 'System Admin',
         email: adminEmail,
         password: hashedPassword,
-        role: 'Member', // Keep HC main role unaffected
+        role: 'Member',
       }
     });
-    console.log(`Created new HC user for admin: ${adminEmail}`);
+    console.log(`[WARNING] Created new HC user for admin: ${adminEmail} (ALLOW_USER_CREATION=true)`);
   } else {
     console.log(`Found existing HC user for admin: ${adminEmail}`);
   }
