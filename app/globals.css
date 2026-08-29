@@ -299,3 +299,52 @@
     transition: none !important;
   }
 }
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .animate-fade-out {
+    animation: fadeOut 0.5s ease forwards;
+  }
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+
+@keyframes stars {
+  from { transform: translateY(0); }
+  to { transform: translateY(-1000px); }
+}
+.animate-stars {
+  animation: stars 100s linear infinite;
+}
+.animate-stars-slow {
+  animation: stars 150s linear infinite;
+}
+
+@keyframes hc-bar { 
+  from { transform: scaleY(.55); } 
+  to { transform: scaleY(1); } 
+}

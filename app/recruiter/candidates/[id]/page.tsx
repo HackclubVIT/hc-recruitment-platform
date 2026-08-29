@@ -102,10 +102,26 @@ export default function RecruiterCandidateProfile() {
                     {app.status}
                   </StatusPill>
                 </div>
-                <p className="text-[12px] text-[#f4ede4]">Answers provided: {Object.keys(app.answers || {}).length}</p>
-                
+                <div className="mt-4 flex flex-col gap-3">
+                  {Object.entries(app.answers || {}).length > 0 ? (
+                    Object.entries(app.answers).map(([questionId, answer]: [string, any]) => (
+                      <div key={questionId} className="bg-[#2a0d0d]/30 p-3 rounded">
+                        <div className="font-mono text-[10px] text-[#bfa8a2] mb-1">QUESTION ID: {questionId}</div>
+                        <div className="font-body text-[14px] text-[#f4ede4] whitespace-pre-wrap">{String(answer)}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[12px] text-[#bfa8a2]">No answers provided.</p>
+                  )}
+                </div>
                 <div className="flex gap-2 flex-wrap border-t border-[#2a0d0d] pt-3 mt-4">
-                  {(app.status === "APPLIED" || app.status === "UNDER_REVIEW") && (
+                  {(app.status === "APPLIED") && (
+                    <>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "UNDER_REVIEW")} disabled={actionLoading} className="text-[#3498db] border border-[#3498db] hover:bg-[#3498db] hover:text-[#0a0202]">Mark Under Review</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
+                    </>
+                  )}
+                  {(app.status === "UNDER_REVIEW") && (
                     <>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "SHORTLISTED")} disabled={actionLoading} className="text-[#d07d22] border border-[#d07d22] hover:bg-[#d07d22] hover:text-[#0a0202]">Shortlist</Button>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
