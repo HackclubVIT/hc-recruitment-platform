@@ -48,3 +48,7 @@ next-env.d.ts
 # sqlite database
 *.db
 *.db-journal
+
+# API workspace
+api/node_modules
+api/dist

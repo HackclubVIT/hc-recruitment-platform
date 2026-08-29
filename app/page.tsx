@@ -1,39 +1,47 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/client/auth"
+import React, { useState } from "react"
+import { LaunchScreen } from "@/components/landing/LaunchScreen"
+import { BackgroundEffects } from "@/components/landing/BackgroundEffects"
+import { Navbar } from "@/components/landing/Navbar"
+import { Hero } from "@/components/landing/Hero"
+import { WhyJoin } from "@/components/landing/WhyJoin"
+import { HowItWorks } from "@/components/landing/HowItWorks"
+import { OpenRoles } from "@/components/landing/OpenRoles"
+import { FAQ } from "@/components/landing/FAQ"
+import { FinalCTA } from "@/components/landing/FinalCTA"
+import { Footer } from "@/components/landing/Footer"
+import { MemorableEvents } from "@/components/landing/MemorableEvents"
+import { Board } from "@/components/landing/Board"
 
 export default function Home() {
-  const router = useRouter()
-  const { user, loading } = useAuth()
-
-  useEffect(() => {
-    if (!loading) {
-      if (user) {
-        if (user.role === "LEAD" || user.role === "ADMIN") {
-          router.push("/lead")
-        } else if (user.role === "RECRUITER") {
-          router.push("/recruiter")
-        } else {
-          router.push("/login")
-        }
-      } else {
-        router.push("/login")
-      }
-    }
-  }, [loading, user, router])
+  const [launchComplete, setLaunchComplete] = useState(false)
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950">
-      <div className="text-center">
-        <div className="inline-flex items-center gap-3 mb-4">
-          <span className="text-3xl text-red-600 animate-pulse">◆</span>
-          <span className="font-display font-bold text-3xl tracking-wider text-white">HACKCLUB</span>
-        </div>
-        <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-gray-500">Loading...</p>
+    <main className="relative min-h-[100dvh] bg-[#020000] text-white overflow-x-hidden font-body selection:bg-[#ac120c]/30 selection:text-white">
+      {!launchComplete && (
+        <LaunchScreen onComplete={() => setLaunchComplete(true)} />
+      )}
+      
+      {/* Content fades in after launch screen */}
+      <div 
+        className={`transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+          launchComplete ? "opacity-100" : "opacity-0 pointer-events-none h-[100dvh] overflow-hidden"
+        }`}
+      >
+        <BackgroundEffects />
+        <Navbar />
+        
+        <Hero />
+        <HowItWorks />
+        <MemorableEvents />
+        <Board />
+        <WhyJoin />
+        <OpenRoles />
+        <FAQ />
+        <FinalCTA />
+        <Footer />
       </div>
-    </div>
+    </main>
   )
 }

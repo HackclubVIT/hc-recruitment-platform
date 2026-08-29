@@ -24,6 +24,14 @@ export const metadata: Metadata = {
   description: "Recruitment management system for HackClub VITC",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#020000",
+};
+
 export default function RootLayout({
   children,
 }: {

@@ -1,0 +1,18 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#720907" />
+      <stop offset="100%" stop-color="#ac120c" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="20" fill="url(#bg)" />
+  <text 
+    x="50%" 
+    y="50%" 
+    dominant-baseline="middle" 
+    text-anchor="middle" 
+    fill="white" 
+    font-family="system-ui, sans-serif" 
+    font-weight="900" 
+    font-size="36">h.</text>
+</svg>

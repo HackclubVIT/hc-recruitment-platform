@@ -2,7 +2,6 @@
   "name": "hc-recruitment-website",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "packageManager": "pnpm@11.24.0",
   "scripts": {
     "dev": "next dev",
@@ -17,15 +16,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "jose": "^6.2.10",
+    "next": "16.3.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3",
     "@prisma/client": "^5.22.0",
     "@types/nodemailer": "^8.0.1",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
-    "next": "16.3.2",
-    "nodemailer": "^9.0.5",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "zod": "^4.4.3"
+    "nodemailer": "^9.0.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -38,7 +40,14 @@
     "eslint-config-next": "16.3.2",
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver"
+    ]
   }
 }

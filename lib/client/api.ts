@@ -1,4 +1,11 @@
-const API_BASE = "/api"
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '/api').replace(/\/$/, '');
+
+if (!API_BASE) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_API_URL must be defined in production.");
+  }
+  console.warn("NEXT_PUBLIC_API_URL is not defined! API calls will fail.");
+}
 
 /**
  * Client-side API module
@@ -59,6 +66,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
   })
 
   const text = await response.text()
@@ -96,6 +104,7 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+      credentials: 'include',
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.error || "Login failed")
@@ -266,7 +275,7 @@ export const api = {
     const token = getToken()
     const headers: Record<string, string> = {}
     if (token) headers["Authorization"] = `Bearer ${token}`
-    const response = await fetch(`${API_BASE}/lead/applications/export`, { headers })
+    const response = await fetch(`${API_BASE}/lead/applications/export`, { headers, credentials: 'include' })
     return response.blob()
   },
 
