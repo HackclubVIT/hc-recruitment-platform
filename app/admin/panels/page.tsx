@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, HCUser } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -29,7 +29,7 @@ export default function PanelsPage() {
     try {
       const res = await fetchApi(`/api/users`)
       const data = await res.json()
-      setUsers(data.users?.filter((u: any) => u.role === 'PANEL_MEMBER') || [])
+      setUsers(data.users?.filter((u: HCUser) => u.role === 'PANEL_MEMBER') || [])
     } catch (err) {
       console.error(err)
     }
@@ -77,7 +77,7 @@ export default function PanelsPage() {
     }
   }
 
-  const handleToggleStatus = async (panel: any) => {
+  const handleToggleStatus = async (panel: { id: number, status: string, name: string, description: string }) => {
     try {
       const newStatus = panel.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"
       await fetchApi(`/api/panels`, {  
@@ -201,11 +201,11 @@ export default function PanelsPage() {
                   <p className="text-[#bfa8a2] text-xs font-mono">NO MEMBERS ASSIGNED</p>
                 ) : (
                   <ul className="text-[#f4ede4] text-sm font-medium flex flex-col gap-2">
-                    {panel.members?.map((m: any) => (
+                    {panel.members?.map((m: HCUser) => (
                       <li key={m.id} className="flex justify-between items-center group">
-                        <span>- {m.user.name}</span>
+                        <span>- {m.name}</span>
                         <button 
-                          onClick={() => handleRemoveMember(panel.id, m.user_id)}
+                          onClick={() => handleRemoveMember(panel.id, m.id)}
                           className="text-[#ac120c] font-mono text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           REMOVE
