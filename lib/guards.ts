@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "./prisma"
-import { verifyToken, extractTokenFromHeader, JWTPayload } from "./auth"
-import { Role, ApplicationStatus } from "./status"
+import { verifyToken, extractTokenFromHeader } from "./auth"
+import { Role } from "./status"
 
 /**
  * AuthenticatedUser - Shape of user after token verification

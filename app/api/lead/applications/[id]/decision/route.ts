@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { authenticateRequest, requireRoles, requireApplicationAccess } from "@/lib/guards"
-import { Role, ApplicationStatus, FeedbackRecommendation } from "@/lib/status"
+import { Role, ApplicationStatus } from "@/lib/status"
 import { createNotification } from "@/lib/notifications"
 import { NOTIFICATION_TYPES } from "@/lib/notifications"
 import { sendDecisionEmail } from "@/lib/email"

@@ -22,7 +22,7 @@ export function clearToken() {
   }
 }
 
-async function apiFetch(endpoint: string, options: RequestInit = {}) {
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   });
 
   const text = await response.text();
-  let data: any = {};
+  let data: Record<string, unknown> = {};
   if (text) {
     try {
       data = JSON.parse(text);
@@ -51,12 +51,12 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      throw new Error(data.error || 'You do not have permission to access recruitment management.');
+      throw new Error((data.error as string | undefined) || 'You do not have permission to access recruitment management.');
     }
-    throw new Error(data.error || `Request failed with status ${response.status}`);
+    throw new Error((data.error as string | undefined) || `Request failed with status ${response.status}`);
   }
 
-  return data;
+  return data as T;
 }
 
 export interface BackendApplication {
@@ -91,10 +91,10 @@ export interface BackendApplication {
 }
 
 export const api = {
-  async login(email: string, password: string, role = 'admin') {
-    const data = await apiFetch('/auth/login', {
+  async login(email: string, password: string, role = 'admin'): Promise<{ token: string }> {
+    const data = await apiFetch<{ token: string }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password, role }),
+      body: JSON.stringify({ email, password, role })
     });
     if (data.token) {
       setToken(data.token);
@@ -102,13 +102,15 @@ export const api = {
     return data;
   },
 
+
   async getMe() {
     return apiFetch('/auth/me');
   },
 
   async getRecruitmentApplications(): Promise<BackendApplication[]> {
-    return apiFetch('/recruitment/applications');
+    return apiFetch<BackendApplication[]>('/recruitment/applications');
   },
+
 
   async getRecruitmentStats() {
     return apiFetch('/recruitment/stats');

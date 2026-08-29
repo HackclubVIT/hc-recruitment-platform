@@ -61,7 +61,7 @@ export async function createNotificationsForUsers(
 /**
  * markAsRead - Marks a single notification as read
  */
-export async function markAsRead(notificationId: number, userId: number) {
+export async function markAsRead(notificationId: number) {
   return prisma.notification.update({
     where: { id: notificationId },
     data: { isRead: true },

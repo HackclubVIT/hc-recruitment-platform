@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = { userId: auth.id }
   if (unreadOnly) where.isRead = false
 
-  const [notifications, total, unreadCount] = await Promise.all([
+  const [notifications, total] = await Promise.all([
     prisma.notification.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -22,8 +22,16 @@ export async function GET(request: NextRequest) {
       skip: offset,
     }),
     prisma.notification.count({ where }),
-    prisma.notification.count({ where: { userId: auth.id, isRead: false } }),
   ])
 
-  return NextResponse.json({ notifications, total, unreadCount })
+  const unreadCount = await prisma.notification.count({
+    where: { userId: auth.id, isRead: false }
+  })
+
+  return NextResponse.json({
+    notifications,
+    total,
+    unreadCount,
+    pagination: { limit, offset, total, totalPages: Math.ceil(total / limit) },
+  })
 }

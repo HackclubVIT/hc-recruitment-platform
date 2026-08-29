@@ -3,31 +3,39 @@
   --background: #020000;
   --surface: #120202;
   --secondary: #370b09;
+
   --primary: #720907;
   --accent: #ac120c;
   --highlight: #d07d22;
+
   --text: #f4ede4;
   --text-muted: #bfa8a2;
+
   --border: #2a0d0d;
+  --shadow: rgba(0, 0, 0, 0.55);
+  --overlay: rgba(2, 0, 0, 0.85);
+
   --success: #2e7d32;
   --warning: #d07d22;
   --danger: #ac120c;
   --info: #720907;
+
   --button-primary: #720907;
   --button-hover: #ac120c;
   --button-disabled: #370b09;
   --link: #d07d22;
   --link-hover: #f4ede4;
+
   --input-bg: #120202;
   --input-border: #2a0d0d;
   --input-focus: #ac120c;
-  --sidebar-bg: #020000;
-  --navbar-bg: #120202;
+
   --card-bg: #120202;
+  --navbar-bg: #120202;
+  --sidebar-bg: #020000;
   --table-header: #370b09;
   --table-row-hover: #1a0606;
-  --shadow: rgba(0, 0, 0, 0.55);
-  --overlay: rgba(2, 0, 0, 0.85);
+
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: 'Inter', system-ui, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -498,7 +506,6 @@ label {
   }
 }
 
-
 .panel-section {
   display: grid;
   gap: 20px;
@@ -584,8 +591,6 @@ label {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-/* Generic two-column layout used by forms and side-by-side panels;
-   collapses to one column on tablets/phones via the breakpoints below. */
 .two-col-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -659,9 +664,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="url
   border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
+  font: inherit;
   font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 input[type="text"]:hover, input[type="email"]:hover, input[type="password"]:hover, input[type="url"]:hover, .summary-pill input:hover, .link-card input:hover, .list-item input:hover, .activity-item input:hover, .info-list input:hover, .timeline-item input:hover, .leaderboard-item input:hover, .panel-card input:hover, .cards-grid input:hover, .password-form input:hover {
@@ -1227,7 +1233,6 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   padding: 24px;
 }
 
-/* ============================================================ Mobile menu (hamburger + close button) */
 .mobile-menu-btn,
 .mobile-close-btn {
   display: none;
@@ -1237,7 +1242,6 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   display: none;
 }
 
-/* ============================================================ Tablet: roomy 2-column grids, sidebar still fixed/visible */
 @media (max-width: 1180px) {
   .cards-grid,
   .dashboard-grid,
@@ -1253,7 +1257,6 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   }
 }
 
-/* ============================================================ Phone/narrow tablet: off-canvas drawer nav */
 @media (max-width: 900px) {
   .admin-shell,
   .user-shell {
@@ -1303,8 +1306,6 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
     box-shadow: 30px 0 80px rgba(0, 0, 0, 0.6);
   }
 
-  /* The desktop "minimized" state is irrelevant once the sidebar is an
-     off-canvas drawer — always render it at full width when opened. */
   .admin-sidebar.minimized,
   .user-sidebar.minimized {
     width: min(300px, 82vw);
@@ -1415,8 +1416,6 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   }
 }
 
-/* Data tables keep their column layout (so headers stay meaningful) and
-   scroll horizontally instead of squashing/wrapping content unreadably. */
 .table-card {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -1426,7 +1425,6 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   min-width: max-content;
 }
 
-/* ============================================================ Global Modal & Backdrop Styles */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -1497,5 +1495,3 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
     transform: translateY(0);
   }
 }
-
-

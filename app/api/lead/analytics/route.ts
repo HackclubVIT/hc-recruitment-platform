@@ -50,15 +50,22 @@ export async function GET(request: NextRequest) {
     return acc
   }, {} as Record<string, number>)
 
-  const panelWorkload = panelLoad.map(p => {
-    const assignments = (p as any).panelistAssignments || []
-    const upcoming = assignments.filter((a: any) => 
-      a.interview?.status === "SCHEDULED" || a.interview?.status === "RESCHEDULED"
+  interface PanelistWithAssignments {
+    id: bigint
+    name: string
+    email: string | null
+    panelistAssignments: Array<{ interview: { status: string } | null }>
+  }
+
+  const panelWorkload = panelLoad.map((p: PanelistWithAssignments) => {
+    const assignments = p.panelistAssignments || []
+    const upcoming = assignments.filter(
+      (a) => a.interview?.status === "SCHEDULED" || a.interview?.status === "RESCHEDULED"
     ).length
     return {
       id: Number(p.id),
       name: p.name,
-      email: p.email,
+      email: p.email || "",
       upcomingInterviews: upcoming,
     }
   })

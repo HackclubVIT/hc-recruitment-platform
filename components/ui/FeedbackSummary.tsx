@@ -1,6 +1,6 @@
 "use client"
 
-interface Feedback {
+export interface Feedback {
   interviewId: number
   interviewDate: string
   panelist: { id: number; name: string; email: string }
@@ -11,7 +11,7 @@ interface Feedback {
   submittedAt: string
 }
 
-interface FeedbackSummaryProps {
+export interface FeedbackSummaryProps {
   feedbacks: Feedback[]
 }
 

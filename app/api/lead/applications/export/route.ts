@@ -17,9 +17,8 @@ export async function GET(request: NextRequest) {
   const applications = await prisma.application.findMany({
     where: { departmentId: { in: deptIds } },
     include: {
-      department: true,
-      assignedRecruiter: { select: { name: true, email: true } },
-      interviews: { orderBy: { startTime: "desc" }, take: 1 },
+      department: { select: { id: true, name: true } },
+      assignedRecruiter: { select: { id: true, name: true, email: true } },
     },
     orderBy: { createdAt: "desc" },
   })
@@ -30,14 +29,14 @@ export async function GET(request: NextRequest) {
     "Email",
     "Register Number",
     "Phone",
-    "Year of Study",
-    "Role Applied For",
+    "Year",
+    "Role Applied",
     "Department",
     "Status",
     "Assigned Recruiter",
     "Created At",
-    "Last Interview",
-    "Interview Status",
+    "Technical Skills",
+    "Answers",
   ]
 
   const rows = applications.map(app => [
@@ -50,10 +49,10 @@ export async function GET(request: NextRequest) {
     app.roleAppliedFor,
     app.department.name,
     app.status,
-    app.assignedRecruiter ? `${app.assignedRecruiter.name} (${app.assignedRecruiter.email})` : "",
+    app.assignedRecruiter?.name || "",
     app.createdAt.toISOString(),
-    app.interviews[0]?.startTime.toISOString() || "",
-    app.interviews[0]?.status || "",
+    app.technicalSkills,
+    app.answers,
   ])
 
   const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n")

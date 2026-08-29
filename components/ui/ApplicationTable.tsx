@@ -24,7 +24,7 @@
  * TODO: [INTEGRATION] Add virtualized rows for large datasets
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { api } from "@/lib/client/api"
 import { StatusBadge } from "./StatusBadge"
 import { useAuth } from "@/lib/client/auth"
@@ -76,7 +76,7 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
    * fetchApplications - Calls API with current filters and pagination
    * Resets to page 1 when filters change (handled by onChange handlers)
    */
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     setLoading(true)
     try {
       const params: Record<string, string> = { page: String(page), limit: String(perPage) }
@@ -93,15 +93,14 @@ export function ApplicationTable<T extends BaseApplication = BaseApplication>({
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, search, statusFilter, deptFilter])
 
   // Refetch when pagination or filters change
   useEffect(() => {
-    const load = async () => {
-      await fetchApplications();
-    };
-    load();
-  }, [page, search, statusFilter, deptFilter]);
+    (async () => {
+      await fetchApplications()
+    })()
+  }, [page, search, statusFilter, deptFilter, fetchApplications])
 
   /**
    * toggleSelection - Toggles a single row's selection state

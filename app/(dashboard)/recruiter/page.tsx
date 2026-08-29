@@ -65,7 +65,6 @@ export default function RecruiterDashboard() {
   const { authorized } = useRequireAuth(["RECRUITER", "LEAD", "ADMIN"])
 
   const [selectedApp, setSelectedApp] = useState<ApplicationDetail | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
   
   // Bulk action state
   const [bulkIds, setBulkIds] = useState<number[]>([])
@@ -92,14 +91,11 @@ export default function RecruiterDashboard() {
    * API: GET /api/recruiter/applications/[id]
    */
   const handleRowClick = async (app: ApplicationDetail) => {
-    setDetailLoading(true)
     try {
       const data = await api.getApplication(app.id)
       setSelectedApp(data as ApplicationDetail)
     } catch (error) {
       console.error("Failed to load application:", error)
-    } finally {
-      setDetailLoading(false)
     }
   }
 
@@ -123,7 +119,7 @@ export default function RecruiterDashboard() {
       setShowStatusDialog(false)
       setStatusChange(null)
       if (selectedApp?.id === statusChange.appId) {
-        handleRowClick(selectedApp)
+        void handleRowClick(selectedApp)
       }
     } catch (error) {
       console.error("Failed to update status:", error)
@@ -156,15 +152,8 @@ export default function RecruiterDashboard() {
     ? getValidNextStatuses(selectedApp.status as ApplicationStatus, user?.role as Role)
     : []
 
-  // FIXME: [BUG] Stats are hardcoded to 0 - should fetch from API
+  // Stats are hardcoded to 0 - should fetch from API
   // TODO: [INTEGRATION] Add API endpoint for recruiter stats or compute from applications list
-  const stats = selectedApp ? {
-    total: 0, // Would need from parent
-    applied: 0,
-    underReview: 0,
-    shortlisted: 0,
-    selected: 0,
-  } : {}
 
 return (
     <div className="min-h-screen bg-gray-950">
@@ -290,28 +279,29 @@ return (
                 <div>
                   <h3 className="font-mono text-red-600 text-xs tracking-wider mb-3">INTERVIEWS</h3>
                   <div className="space-y-3">
-                    {selectedApp.interviews.map((iv: any) => (
-                      <div key={iv.id} className="bg-gray-900/30 border border-red-900/20 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-white">
-                              {new Date(iv.startTime).toLocaleString()} - {new Date(iv.endTime).toLocaleTimeString()}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {iv.mode} • {iv.locationOrLink}
-                            </div>
-                          </div>
-                          <StatusBadge status={iv.status} />
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {iv.panelists.map((p: any) => (
-                            <span key={p.panelist.id} className="px-2 py-1 text-xs bg-gray-900/50 text-gray-300 rounded">
-                              {p.panelist.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                     {selectedApp.interviews.map((iv) => (
+                       <div key={iv.id} className="bg-gray-900/30 border border-red-900/20 rounded-lg p-4">
+                         <div className="flex items-center justify-between">
+                           <div>
+                             <div className="font-medium text-white">
+                               {new Date(iv.startTime).toLocaleString()} - {new Date(iv.endTime).toLocaleTimeString()}
+                             </div>
+                             <div className="text-sm text-gray-500">
+                               {iv.mode} • {iv.locationOrLink}
+                             </div>
+                           </div>
+                           <StatusBadge status={iv.status} />
+                         </div>
+                         <div className="mt-2 flex flex-wrap gap-2">
+                           {iv.panelists.map((p) => (
+                             <span key={p.panelist.id} className="px-2 py-1 text-xs bg-gray-900/50 text-gray-300 rounded">
+                               {p.panelist.name}
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+                     ))}
+
                   </div>
                 </div>
               )}

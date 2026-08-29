@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { api } from "@/lib/client/api"
 import { ConfirmDialog } from "./ConfirmDialog"
 import { PanelistPicker } from "./PanelistPicker"
@@ -24,31 +24,34 @@ export function InterviewSchedulerModal({
   departmentId,
   onSuccess,
 }: InterviewSchedulerModalProps) {
+  const now = useMemo(() => {
+    const n = new Date()
+    n.setMinutes(n.getMinutes() - n.getMinutes() % 15)
+    return n
+  }, [])
+
+  const defaultStartTime = useMemo(() => {
+    const defaultStart = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+    defaultStart.setHours(10, 0, 0, 0)
+    return defaultStart.toISOString().slice(0, 16)
+  }, [now])
+
   const [panelistIds, setPanelistIds] = useState<number[]>([])
-  const [startTime, setStartTime] = useState("")
-  const [endTime, setEndTime] = useState("")
+  const [startTime, setStartTime] = useState(defaultStartTime)
+  const [endTime, setEndTime] = useState(() => {
+    if (defaultStartTime) {
+      const defaultEnd = new Date(new Date(defaultStartTime).getTime() + 60 * 60 * 1000)
+      return defaultEnd.toISOString().slice(0, 16)
+    }
+    return ""
+  })
   const [mode, setMode] = useState<"ONLINE" | "OFFLINE">("ONLINE")
   const [locationOrLink, setLocationOrLink] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [conflictError, setConflictError] = useState<any>(null)
+  const [conflictError, setConflictError] = useState<Error | null>(null)
   const [showConflictDialog, setShowConflictDialog] = useState(false)
-
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getMinutes() % 15)
   const minDateTime = now.toISOString().slice(0, 16)
-
-  useEffect(() => {
-    if (!startTime) {
-      const defaultStart = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-      defaultStart.setHours(10, 0, 0, 0)
-      setStartTime(defaultStart.toISOString().slice(0, 16))
-    }
-    if (!endTime && startTime) {
-      const defaultEnd = new Date(new Date(startTime).getTime() + 60 * 60 * 1000)
-      setEndTime(defaultEnd.toISOString().slice(0, 16))
-    }
-  }, [startTime])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,12 +87,12 @@ export function InterviewSchedulerModal({
       })
       onSuccess()
       onClose()
-    } catch (err: any) {
-      if (err.message?.includes("conflict") || err.message?.includes("409")) {
-        setConflictError(err.message)
+    } catch (err) {
+      if (err instanceof Error && (err.message?.includes("conflict") || err.message?.includes("409"))) {
+        setConflictError(err)
         setShowConflictDialog(true)
       } else {
-        setError(err.message || "Failed to schedule interview")
+        setError(err instanceof Error ? err.message : "Failed to schedule interview")
       }
     } finally {
       setLoading(false)

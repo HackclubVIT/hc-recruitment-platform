@@ -64,7 +64,7 @@ export function verifyToken(token: string): JWTPayload | null {
       role: mappedRole as Role,
       deptIds: Array.isArray(payload.deptIds) ? payload.deptIds.map(Number) : [],
     }
-  } catch (e) {
+  } catch (e: unknown) {
     return null
   }
 }

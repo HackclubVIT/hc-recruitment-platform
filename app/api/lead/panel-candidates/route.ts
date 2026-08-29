@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     panelists: panelists.map(p => {
-      // Find the department object if needed by the frontend
       const deptObj = depts.find(d => d.name === p.department)
       return {
         id: Number(p.id),

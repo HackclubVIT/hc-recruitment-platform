@@ -12,7 +12,10 @@ export async function PATCH(
   const { id } = await params
   const notificationId = parseInt(id, 10)
 
-  const notification = await prisma.notification.findUnique({ where: { id: notificationId } })
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  })
+
   if (!notification || notification.userId !== BigInt(auth.id)) {
     return NextResponse.json({ error: "Notification not found" }, { status: 404 })
   }

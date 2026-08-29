@@ -16,25 +16,19 @@ export async function GET(request: NextRequest) {
   const deptNames = depts.map(d => d.name)
 
   const recruiters = await prisma.user.findMany({
-    where: { 
-      role: Role.RECRUITER, 
-      department: { in: deptNames } 
-    },
+    where: { role: Role.RECRUITER, department: { in: deptNames } },
     include: {
       _count: { select: { assignedApps: { where: { status: { notIn: ["SELECTED", "REJECTED"] } } } } },
     },
   })
 
   return NextResponse.json({
-    recruiters: recruiters.map(r => {
-      const deptObj = depts.find(d => d.name === r.department)
-      return {
-        id: Number(r.id),
-        name: r.name,
-        email: r.email,
-        departments: deptObj ? [deptObj] : [],
-        activeApplications: r._count.assignedApps,
-      }
-    }),
+    recruiters: recruiters.map(r => ({
+      id: Number(r.id),
+      name: r.name,
+      email: r.email,
+      activeApplications: r._count.assignedApps,
+      departments: r.department ? depts.filter(d => d.name === r.department) : [],
+    })),
   })
 }

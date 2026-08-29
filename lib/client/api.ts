@@ -75,7 +75,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     if (response.status === 401 || response.status === 403) {
       clearToken()
       if (typeof window !== "undefined") {
-        window.location.href = "/login"
+        window.location.replace("/login")
       }
     }
     const error = (data as { error?: string }).error || `API Request failed with status ${response.status}`
@@ -103,8 +103,9 @@ export const api = {
     return data
   },
 
-  /** logout - Clears local token (server-side cookie cleared by API) */
+  /** logout - Clears local token and server-side session cookie */
   async logout() {
+    await apiFetch("/auth/logout", { method: "POST" })
     clearToken()
   },
 
@@ -128,14 +129,35 @@ export const api = {
     return apiFetch(`/recruiter/applications?${searchParams.toString()}`)
   },
 
+  async getLeadApplications(params?: { status?: string; search?: string; roleAppliedFor?: string; page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params?.status) searchParams.set("status", params.status)
+    if (params?.search) searchParams.set("search", params.search)
+    if (params?.roleAppliedFor) searchParams.set("roleAppliedFor", params.roleAppliedFor)
+    if (params?.page) searchParams.set("page", String(params.page))
+    if (params?.limit) searchParams.set("limit", String(params.limit))
+    return apiFetch(`/lead/applications?${searchParams.toString()}`)
+  },
+
   /** getApplication - Fetches full application detail with nested relations */
   async getApplication(id: number) {
     return apiFetch(`/recruiter/applications/${id}`)
   },
 
+  async getLeadApplication(id: number) {
+    return apiFetch(`/lead/applications/${id}`)
+  },
+
   /** updateApplicationStatus - Changes application status */
   async updateApplicationStatus(id: number, status: string, reason?: string) {
     return apiFetch(`/recruiter/applications/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, reason }),
+    })
+  },
+
+  async updateLeadApplicationStatus(id: number, status: string, reason?: string) {
+    return apiFetch(`/lead/applications/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status, reason }),
     })
@@ -152,6 +174,13 @@ export const api = {
   /** bulkUpdateStatus - Updates status for multiple applications */
   async bulkUpdateStatus(applicationIds: number[], status: string, reason?: string) {
     return apiFetch("/recruiter/applications/bulk-status", {
+      method: "POST",
+      body: JSON.stringify({ applicationIds, status, reason }),
+    })
+  },
+
+  async bulkUpdateLeadStatus(applicationIds: number[], status: string, reason?: string) {
+    return apiFetch("/lead/applications/bulk-status", {
       method: "POST",
       body: JSON.stringify({ applicationIds, status, reason }),
     })

@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { api } from "@/lib/client/api"
-import { getPanelistAvailability } from "@/lib/conflict"
 
 interface Panelist {
   id: number
@@ -24,7 +23,7 @@ export function PanelistPicker({ selectedIds, onChange, startTime, endTime, depa
   const [panelists, setPanelists] = useState<Panelist[]>([])
   const [loading, setLoading] = useState(false)
 
-  const fetchPanelists = async () => {
+  const fetchPanelists = useCallback(async () => {
     if (!startTime || !endTime) return
     setLoading(true)
     try {
@@ -40,11 +39,13 @@ export function PanelistPicker({ selectedIds, onChange, startTime, endTime, depa
     } finally {
       setLoading(false)
     }
-  }
+  }, [startTime, endTime, departmentId])
 
   useEffect(() => {
-    fetchPanelists()
-  }, [startTime, endTime, departmentId])
+    (async () => {
+      await fetchPanelists()
+    })()
+  }, [fetchPanelists])
 
   const togglePanelist = (id: number) => {
     if (selectedIds.includes(id)) {

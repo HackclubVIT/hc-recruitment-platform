@@ -10,7 +10,7 @@ export async function GET(
   const auth = await authenticateRequest(request)
   if (auth instanceof NextResponse) return auth
 
-  const roleCheck = requireRoles(Role.RECRUITER, Role.LEAD, Role.ADMIN)(auth)
+  const roleCheck = requireRoles(Role.LEAD, Role.ADMIN, Role.RECRUITER)(auth)
   if (roleCheck) return roleCheck
 
   const { id } = await params

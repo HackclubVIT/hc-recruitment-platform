@@ -79,7 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth on mount
   useEffect(() => {
-    refreshUser()
+    (async () => {
+      await refreshUser()
+    })()
   }, [])
 
   return (

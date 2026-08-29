@@ -37,8 +37,8 @@ beforeAll(async () => {
   })
 
   // Helper to generate bigints
-  let nextId = 100n;
-  const getId = () => { nextId += 1n; return nextId; }
+  let nextId = 100n
+  const getId = () => { nextId += 1n; return nextId }
 
   leadA = await prisma.user.create({
     data: { id: getId(), name: "Lead A", email: "leadA@test.com", password: "Hackclub@2026", role: Role.LEAD, department: deptA.name },

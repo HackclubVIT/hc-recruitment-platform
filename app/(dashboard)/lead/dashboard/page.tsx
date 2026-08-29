@@ -2,7 +2,7 @@
 
 /**
  * Lead Dashboard - Main control center for Department Leads
- * 
+ *
  * FUNCTIONALITY:
  * - Multi-tab interface: Overview, Applications, Recruiters, Scheduling, Analytics
  * - Real-time application detail modal with full candidate info
@@ -10,13 +10,13 @@
  * - Interview scheduling integration
  * - Feedback review and final decision making
  * - CSV export of applications
- * 
+ *
  * INTEGRATION POINTS:
  * - Uses api.getLeadDashboard(), getLeadRecruiters(), getAnalytics() from client API
  * - Relies on getValidNextStatuses() from lib/status for transition validation
  * - InterviewSchedulerModal handles scheduling workflow
  * - NotesThread and StatusHistoryTimeline are reusable components
- * 
+ *
  * TODO: [INTEGRATION] Connect to real-time updates via WebSocket/SSE for live dashboard refresh
  * TODO: [INTEGRATION] Add pagination for recentActivity (currently hardcoded to 10)
  * FIXME: [BUG] Tab state syncs with URL but not with Shell sidebar navigation
@@ -31,7 +31,7 @@ import { StatusHistoryTimeline } from "@/components/ui/StatusHistoryTimeline"
 import { StatusBadge } from "@/components/ui/StatusBadge"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { InterviewSchedulerModal } from "@/components/ui/InterviewSchedulerModal"
-import { FeedbackSummary } from "@/components/ui/FeedbackSummary"
+import { FeedbackSummary, type Feedback } from "@/components/ui/FeedbackSummary"
 import { api } from "@/lib/client/api"
 import { useAuth, useRequireAuth } from "@/lib/client/auth"
 import { getValidNextStatuses, ApplicationStatus, Role } from "@/lib/status"
@@ -89,18 +89,6 @@ interface DashboardData {
 }
 
 /**
- * Recruiter - Recruiter info with department assignments and workload
- * Fetched from /api/lead/recruiters
- */
-interface Recruiter {
-  id: number
-  name: string
-  email: string
-  departments: { id: number; name: string }[]
-  activeApplications: number
-}
-
-/**
  * AnalyticsData - Analytics tab data
  * Fetched from /api/lead/analytics
  */
@@ -122,20 +110,19 @@ export default function LeadDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [recruiters, setRecruiters] = useState<Array<{ id: number; name: string; email: string; departments: { id: number; name: string }[]; activeApplications: number }>>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  
+
   // Selected application detail modal state
   const [selectedApp, setSelectedApp] = useState<ApplicationDetail | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-  
+
   // Tab state - derived from URL pathname for deep linking
   // TODO: [INTEGRATION] Sync with Shell sidebar navigation component
   const pathname = usePathname()
-  const initialTab = pathname.includes("/applications") ? "applications" 
+  const initialTab = pathname.includes("/applications") ? "applications"
     : pathname.includes("/recruiters") ? "recruiters"
     : pathname.includes("/scheduling") || pathname.includes("/interviews") ? "scheduling"
     : pathname.includes("/analytics") ? "analytics"
     : "overview"
-    
+
   const [activeTab, setActiveTab] = useState<"overview" | "applications" | "recruiters" | "scheduling" | "analytics">(initialTab)
 
   // Interview scheduler modal state
@@ -143,7 +130,7 @@ export default function LeadDashboard() {
   const [schedulerApp, setSchedulerApp] = useState<ApplicationDetail | null>(null)
 
   // Feedback modal state
-  const [feedbackApp, setFeedbackApp] = useState<ApplicationDetail | null>(null)
+  const [feedbackApp, setFeedbackApp] = useState<(ApplicationDetail & { feedbacks: Feedback[] }) | null>(null)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
 
   // Final decision dialog state
@@ -155,7 +142,7 @@ export default function LeadDashboard() {
 
   // Export state
   const [exportLoading, setExportLoading] = useState(false)
-  
+
   // Status change dialog state
   const [statusChange, setStatusChange] = useState<{ appId: number; fromStatus: string; toStatus: string; reason: string } | null>(null)
   const [showStatusDialog, setShowStatusDialog] = useState(false)
@@ -210,9 +197,11 @@ export default function LeadDashboard() {
   // Load all data when authorized
   useEffect(() => {
     if (authorized && user) {
-      loadDashboard()
-      loadRecruiters()
-      loadAnalytics()
+      (async () => {
+        await loadDashboard()
+        await loadRecruiters()
+        await loadAnalytics()
+      })()
     }
   }, [authorized, user, loadDashboard, loadRecruiters, loadAnalytics])
 
@@ -222,14 +211,11 @@ export default function LeadDashboard() {
    * API: GET /api/recruiter/applications/[id]
    */
   const handleRowClick = async (app: ApplicationDetail) => {
-    setDetailLoading(true)
     try {
       const data = await api.getApplication(app.id)
       setSelectedApp(data as ApplicationDetail)
     } catch (error) {
       console.error("Failed to load application:", error)
-    } finally {
-      setDetailLoading(false)
     }
   }
 
@@ -249,19 +235,56 @@ export default function LeadDashboard() {
   const handleScheduleSuccess = () => {
     setSchedulerOpen(false)
     setSchedulerApp(null)
-    loadDashboard()
+    void loadDashboard()
   }
 
   /**
    * openFeedback - Fetches and opens feedback summary for an application
    * API: GET /api/lead/applications/[id]/feedback
-   * FIXME: [BUG] Unsafe type cast on line 177 - should use proper type guards
    */
+interface FeedbackData {
+  feedbacks: Array<{
+    panelist: { id: number; name: string; email: string };
+    ratings: Record<string, number>;
+    overall: number;
+    recommendation: string;
+    comments: string | null;
+    submittedAt: string;
+  }>;
+  interviews: Array<{
+    id: number
+    startTime: string
+    endTime: string
+    mode: string
+    locationOrLink: string
+    status: string
+    panelists: Array<{ panelist: { id: number; name: string; email: string } }>
+    feedbacks: Array<{
+      panelist: { id: number; name: string; email: string }
+      ratings: Record<string, number>
+      overall: number
+      recommendation: string
+      comments: string | null
+    }>
+  }>
+}
+
   const openFeedback = async (app: ApplicationDetail) => {
     setFeedbackLoading(true)
     try {
       const data = await api.getFeedback(app.id)
-      setFeedbackApp({ ...app, ...(data as { feedbacks: Array<{ interviewId: number; interviewDate: string; panelist: { id: number; name: string; email: string }; ratings: Record<string, number>; overall: number; recommendation: string; comments: string | null; submittedAt: string }>; interviews: any[] }) })
+      const feedbackData = data as FeedbackData
+      const feedbacksWithInterviewInfo = feedbackData.feedbacks.map(fb => {
+        const interview = feedbackData.interviews.find(iv =>
+          iv.feedbacks.some(ivFb => ivFb.panelist.id === fb.panelist.id)
+        )
+        return {
+          ...fb,
+          interviewId: interview?.id || 0,
+          interviewDate: interview?.startTime || new Date().toISOString()
+        }
+      })
+      setFeedbackApp({ ...app, ...feedbackData, feedbacks: feedbacksWithInterviewInfo })
     } catch (error) {
       console.error("Failed to load feedback:", error)
     } finally {
@@ -303,7 +326,7 @@ export default function LeadDashboard() {
       setShowStatusDialog(false)
       setStatusChange(null)
       if (selectedApp?.id === statusChange.appId) {
-        handleRowClick(selectedApp)
+        void handleRowClick(selectedApp)
       }
     } catch (error) {
       console.error("Failed to update status:", error)
@@ -323,7 +346,7 @@ export default function LeadDashboard() {
       await api.makeDecision(decisionApp.id, decisionStatus, decisionReason, decisionOverride)
       setShowDecisionDialog(false)
       setDecisionApp(null)
-      loadDashboard()
+      void loadDashboard()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to make decision")
     }
@@ -379,7 +402,7 @@ export default function LeadDashboard() {
         </div>
       </div>
 
-      {/* 
+      {/*
          Tabs are now handled by the Shell navigation sidebar, so we can hide this redundant tablist.
          FIXME: [BUG] activeTab state doesn't sync with Shell sidebar - they're independent
          TODO: [INTEGRATION] Use Shell's activeTab context or URL-based routing for tab state
@@ -503,7 +526,8 @@ export default function LeadDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-gray-900/50 border border-red-900/20 rounded-lg p-4">
                 <h4 className="font-medium text-white mb-2">Shortlisted Candidates</h4>
-                <p className="text-sm text-gray-500">Filter applications by "Shortlisted" status to see candidates ready for interview scheduling.</p>
+                     <p className="text-sm text-gray-500">Filter applications by &quot;Shortlisted&quot; status to see candidates ready for interview scheduling.</p>
+
               </div>
               <div className="bg-gray-900/50 border border-red-900/20 rounded-lg p-4">
                 <h4 className="font-medium text-white mb-2">Panel Availability</h4>
@@ -681,7 +705,7 @@ export default function LeadDashboard() {
                         <div className="mt-3 p-3 bg-green-900/20 border border-green-600/30 rounded">
                           <div className="text-xs text-green-400 mb-1">Feedback Submitted</div>
                           <div className="text-sm text-green-300">
-                            {iv.feedbacks.map((f: any) => `${f.panelist.name}: ${f.recommendation} (${f.overall}/100)`).join("; ")}
+                            {iv.feedbacks.map((f) => `${f.panelist.name}: ${f.recommendation} (${f.overall}/100)`).join("; ")}
                           </div>
                         </div>
                       )}
@@ -697,14 +721,16 @@ export default function LeadDashboard() {
               <div>
                 <h3 className="font-mono text-red-600 text-xs tracking-wider mb-3">FEEDBACK SUMMARY</h3>
                 {feedbackApp && feedbackApp.id === selectedApp.id ? (
-                  feedbackLoading ? (
-                    <div className="text-center py-4 text-gray-500">Loading feedback...</div>
-                  ) : (
-                    <>
-                      {/* FIXME: [BUG] Unsafe type cast - feedbackApp shape differs from ApplicationDetail */}
-                      <FeedbackSummary feedbacks={(feedbackApp as any).feedbacks || []} />
-                    </>
-                  )
+                     feedbackLoading ? (
+                      <div className="text-center py-4 text-gray-500">Loading feedback...</div>
+                    ) : (
+                      <>
+
+<FeedbackSummary feedbacks={feedbackApp?.feedbacks || []} />
+
+
+                      </>
+                    )
                 ) : (
                   <button
                     onClick={() => openFeedback(selectedApp!)}
@@ -753,7 +779,8 @@ export default function LeadDashboard() {
               <button onClick={() => setFeedbackApp(null)} className="text-gray-400 hover:text-white text-2xl" aria-label="Close">✕</button>
             </div>
             <div className="p-6">
-              <FeedbackSummary feedbacks={(feedbackApp as any).feedbacks || []} />
+<FeedbackSummary feedbacks={feedbackApp?.feedbacks || []} />
+
             </div>
           </div>
         </div>

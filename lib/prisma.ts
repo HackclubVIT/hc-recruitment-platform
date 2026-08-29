@@ -2,8 +2,13 @@ import { PrismaClient } from "@prisma/client"
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | null }
 
-// Fix for "Do not know how to serialize a BigInt" in NextResponse.json()
-;(BigInt.prototype as any).toJSON = function () {
+declare global {
+  interface BigInt {
+    toJSON(): number
+  }
+}
+
+(BigInt.prototype as bigint).toJSON = function () {
   return Number(this)
 }
 

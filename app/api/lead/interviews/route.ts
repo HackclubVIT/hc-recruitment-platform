@@ -3,9 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { authenticateRequest, requireRoles, requireDeptAccess } from "@/lib/guards"
 import { Role, InterviewStatus, InterviewMode } from "@/lib/status"
 import { hasSchedulingConflict } from "@/lib/conflict"
-import { createNotification } from "@/lib/notifications"
 import { NOTIFICATION_TYPES } from "@/lib/notifications"
-import { sendInterviewScheduledEmail, sendInterviewRescheduledEmail, sendInterviewCancelledEmail } from "@/lib/email"
+import { sendInterviewScheduledEmail } from "@/lib/email"
 
 const VALID_MODES: InterviewMode[] = ["ONLINE", "OFFLINE"]
 
