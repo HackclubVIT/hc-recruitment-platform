@@ -16,7 +16,7 @@ export const GET = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
 
-    let includeClause: any = {
+    const includeClause: any = {
       form: { include: { questions: true } }
     }
 

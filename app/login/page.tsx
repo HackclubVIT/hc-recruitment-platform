@@ -1,7 +1,7 @@
 "use client"
 import { fetchApi } from "@/api-client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { EyeIcon, EyeOffIcon } from "@/components/ui/Icons"
 import Link from "next/link"
@@ -13,7 +13,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [loginMode, setLoginMode] = useState<"user" | "admin">("user")
+  const [loginMode, setLoginMode] = useState<"recruitie" | "recruiter" | "admin">("recruitie")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,79 +49,60 @@ export default function LoginPage() {
     }
   }
 
-  const toggleAdminMode = () => {
-    setLoginMode(prev => prev === "admin" ? "user" : "admin")
-    setError("")
-  }
+  // Prevent hydration mismatch
+  if (!mounted) return null
 
   return (
-    <div className="min-h-screen bg-login flex items-center justify-center p-4 sm:p-6">
-      <div 
-        className="w-full max-w-[520px] animate-[rise_0.6s_cubic-bezier(0.2,0.8,0.2,1)]"
-        style={{
-          background: "rgba(18, 2, 2, 0.97)",
-          border: "1px solid rgba(172, 18, 12, 0.25)",
-          borderRadius: "24px",
-          boxShadow: "0 24px 60px rgba(0, 0, 0, 0.45)",
-          padding: "40px"
-        }}
-      >
+    <div className="relative min-h-screen bg-login flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      {/* Background Animated Elements */}
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full blur-[120px] animate-aurora-1 opacity-40 pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[700px] h-[700px] rounded-full blur-[150px] animate-aurora-2 opacity-30 pointer-events-none" />
+      
+      <div className="card-glass w-full max-w-[480px] z-10 animate-fade-in-up" style={{ animationDuration: '0.6s' }}>
         
         {/* HackClub Logo */}
-        <div 
-          className="flex items-center justify-center font-black text-white"
-          style={{
-            width: "64px",
-            height: "64px",
-            borderRadius: "20px",
-            background: "linear-gradient(135deg, #720907, #ac120c)",
-            fontSize: "36px",
-            marginBottom: "32px"
-          }}
-        >
-          h.
-        </div>
-        
-        <h1 
-          className="font-display font-black text-[#f4ede4]"
-          style={{
-            fontSize: "clamp(2rem, 5vw, 2.75rem)",
-            lineHeight: "52px"
-          }}
-        >
-          HackClub VIT Chennai
-        </h1>
-        
-        <div 
-          className="font-body font-bold text-[#f4ede4] uppercase tracking-wider"
-          style={{
-            marginTop: "32px",
-            marginBottom: "30px"
-          }}
-        >
-          {loginMode === "admin" ? "ADMIN PORTAL" : "USER PORTAL"}
+        <div className="flex flex-col items-center justify-center mb-8 text-center animate-fade-in-up" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+          <div 
+            className="flex items-center justify-center font-black text-white shadow-[0_0_40px_rgba(172,18,12,0.5)] transition-transform hover:scale-105 hover:rotate-3 duration-300"
+            style={{
+              width: "72px",
+              height: "72px",
+              borderRadius: "22px",
+              background: "linear-gradient(135deg, #720907, #ac120c)",
+              fontSize: "40px",
+              marginBottom: "24px"
+            }}
+          >
+            h.
+          </div>
+          <h1 className="font-display font-black text-[#f4ede4] text-3xl sm:text-4xl leading-tight mb-1 tracking-tight">
+            HackClub
+          </h1>
+          <h2 className="font-display font-bold text-accent text-xl sm:text-2xl opacity-90 tracking-wide">
+            VIT Chennai
+          </h2>
+          
+          <div className="mt-6 flex items-center justify-center space-x-3">
+            <span className="h-[2px] w-12 bg-gradient-to-r from-transparent to-accent/50 rounded-full" />
+            <span className="font-mono text-[13px] font-bold text-highlight tracking-widest uppercase">
+              {loginMode === "admin" ? "Admin Portal" : loginMode === "recruiter" ? "Recruiter Portal" : "Recruitie Portal"}
+            </span>
+            <span className="h-[2px] w-12 bg-gradient-to-l from-transparent to-accent/50 rounded-full" />
+          </div>
         </div>
 
-        <form onSubmit={handleLogin} className="flex flex-col">
+        <form onSubmit={handleLogin} className="flex flex-col gap-5 animate-fade-in-up" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
           {error && (
-            <div 
-              className="mb-6 p-4 text-sm font-medium"
-              style={{
-                background: "rgba(172, 18, 12, 0.10)",
-                border: "1px solid rgba(172, 18, 12, 0.5)",
-                color: "#ffb4ab",
-                borderRadius: "12px",
-                fontFamily: "var(--font-body)"
-              }}
-            >
-              {error}
+            <div className="p-4 text-[14px] font-medium bg-[rgba(172,18,12,0.15)] border border-[rgba(172,18,12,0.4)] text-[#ffb4ab] rounded-xl animate-fade-in-up flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>{error}</span>
             </div>
           )}
           
-          <div className="flex flex-col mb-[28px]">
-            <label 
-              className="font-body text-[14px] text-[#bfa8a2] mb-[8px]"
-            >
+          <div className="flex flex-col gap-2 group">
+            <label className="font-body text-[14px] text-text-muted font-medium ml-1 transition-colors group-focus-within:text-white">
               Email address
             </label>
             <input 
@@ -125,23 +111,12 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@vitstudent.ac.in"
               required
-              className="w-full focus:outline-none placeholder:text-[#bfa8a2]"
-              style={{
-                height: "45px",
-                borderRadius: "14px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "#f4ede4",
-                padding: "0 16px",
-                fontFamily: "var(--font-body)"
-              }}
+              className="input-glass text-[15px] h-[50px] px-4"
             />
           </div>
 
-          <div className="flex flex-col relative">
-            <label 
-              className="font-body text-[14px] text-[#bfa8a2] mb-[8px]"
-            >
+          <div className="flex flex-col gap-2 group">
+            <label className="font-body text-[14px] text-text-muted font-medium ml-1 transition-colors group-focus-within:text-white">
               Password
             </label>
             <div className="relative w-full">
@@ -151,134 +126,79 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
                 required
-                className="w-full focus:outline-none placeholder:text-[#bfa8a2]"
-                style={{
-                  height: "45px",
-                  borderRadius: "14px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#f4ede4",
-                  padding: "0 45px 0 16px",
-                  fontFamily: "var(--font-body)"
-                }}
+                className="input-glass text-[15px] h-[50px] pl-4 pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-0 top-0 h-[45px] px-3 flex items-center justify-center text-gray-400 hover:text-gray-300"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-text-muted hover:text-white transition-colors rounded-full hover:bg-white/5"
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                style={{ background: "transparent", border: "none" }}
               >
                 {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
               </button>
             </div>
-            
-            <div className="w-full text-right mt-[12px]">
-              <Link 
-                href="/recruitment"
-                className="text-[#d07d22] font-body text-[14px] hover:brightness-125 transition-all"
-                style={{ textDecoration: "none" }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert("Password reset would be integrated here.");
-                }}
-              >
-                Forgot Password?
-              </Link>
-            </div>
           </div>
 
-          <div className="mt-[28px] flex flex-col gap-[12px]">
+          <div className="mt-6 flex flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full flex items-center justify-center text-white font-body font-bold transition-all"
-              style={{
-                background: "#720907",
-                height: "48px",
-                borderRadius: "999px",
-                boxShadow: "0 18px 40px rgba(172, 18, 12, 0.3)",
-                border: "none",
-                transform: loading ? "none" : undefined
-              }}
-              onMouseEnter={(e) => {
-                if(!loading) {
-                  e.currentTarget.style.background = "#AC120C";
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if(!loading) {
-                  e.currentTarget.style.background = "#720907";
-                  e.currentTarget.style.transform = "none";
-                }
-              }}
+              className="btn-primary w-full flex items-center justify-center text-[16px] h-[54px] relative overflow-hidden group shadow-[0_10px_30px_rgba(172,18,12,0.3)] transition-all hover:shadow-[0_15px_40px_rgba(172,18,12,0.4)] disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {loading ? "Signing In..." : "Sign In"}
+              <span className="relative z-10 flex items-center gap-2">
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Signing In...
+                  </>
+                ) : `Sign in as ${loginMode.charAt(0).toUpperCase() + loginMode.slice(1)}`}
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
             </button>
             
-            <button
-              type="button"
-              onClick={toggleAdminMode}
-              className="w-full flex items-center justify-center text-white font-body transition-all"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(172, 18, 12, 0.3)",
-                height: "50px",
-                borderRadius: "999px"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(172, 18, 12, 0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {loginMode === "admin" ? "Login as user" : "Login as admin"}
-            </button>
+            <div className="grid grid-cols-2 gap-3 mt-1">
+              {loginMode !== "recruitie" && (
+                <button
+                  type="button"
+                  onClick={() => { setLoginMode("recruitie"); setError(""); }}
+                  className="btn-ghost w-full text-[13px] h-[46px] hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
+                >
+                  Sign in as Recruitie
+                </button>
+              )}
+              {loginMode !== "recruiter" && (
+                <button
+                  type="button"
+                  onClick={() => { setLoginMode("recruiter"); setError(""); }}
+                  className="btn-ghost w-full text-[13px] h-[46px] hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
+                >
+                  Sign in as Recruiter
+                </button>
+              )}
+              {loginMode !== "admin" && (
+                <button
+                  type="button"
+                  onClick={() => { setLoginMode("admin"); setError(""); }}
+                  className="btn-ghost w-full text-[13px] h-[46px] hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
+                >
+                  Sign in as Admin
+                </button>
+              )}
+            </div>
 
             <Link 
-              href="/recruitment"
-              className="w-full flex items-center justify-center font-body transition-all"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                color: "#f4ede4",
-                height: "50px",
-                borderRadius: "999px",
-                textDecoration: "none"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
+              href="/"
+              className="mt-2 flex items-center justify-center text-[14px] font-medium text-text-muted hover:text-white transition-all py-3 rounded-full hover:bg-white/5 group"
             >
-              Create new account (Sign Up)
-            </Link>
-
-            <Link 
-              href="/recruitment"
-              className="w-full flex items-center justify-center font-body transition-all"
-              style={{
-                background: "rgba(18, 2, 2, 0.5)",
-                border: "1px solid rgba(172, 18, 12, 0.2)",
-                color: "#bfa8a2",
-                height: "50px",
-                borderRadius: "999px",
-                textDecoration: "none"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(172, 18, 12, 0.1)";
-                e.currentTarget.style.color = "#f4ede4";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(18, 2, 2, 0.5)";
-                e.currentTarget.style.color = "#bfa8a2";
-              }}
-            >
-              Back to Landing Page
+              <span className="flex items-center transform group-hover:-translate-x-1 transition-transform">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Landing Page
+              </span>
             </Link>
           </div>
         </form>

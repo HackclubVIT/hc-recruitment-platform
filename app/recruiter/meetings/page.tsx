@@ -69,7 +69,7 @@ export default function RecruiterMeetingsPage() {
     if (activeTab === "Completed") tabMatch = inv.status === "COMPLETED" || inv.status === "FEEDBACK_SUBMITTED"
     if (activeTab === "Cancelled") tabMatch = inv.status === "CANCELLED"
 
-    let searchMatch = inv.candidate?.name.toLowerCase().includes(search.toLowerCase())
+    const searchMatch = inv.candidate?.name.toLowerCase().includes(search.toLowerCase())
 
     let dateMatch = true
     if (dateFilter) {

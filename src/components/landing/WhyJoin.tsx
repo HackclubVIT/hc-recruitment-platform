@@ -1,10 +1,12 @@
 "use client"
 
 import React from "react"
+import { ScrollReveal } from "@/components/ui/ScrollReveal"
 
 export function WhyJoin() {
   return (
     <section id="why-join" className="relative py-24 px-6 max-w-[1000px] mx-auto">
+      <ScrollReveal>
       
       <div className="flex flex-col items-center mb-16 text-center">
         <div className="inline-flex items-center gap-2 mb-4 font-mono text-[11.5px] tracking-[0.26em] text-[#ac120c] uppercase">
@@ -34,7 +36,9 @@ export function WhyJoin() {
         </div>
 
         {/* Right: Info Panel */}
-        <div className="flex flex-col gap-4 border border-[#2a0d0d] rounded-[10px] bg-[rgba(18,2,2,0.6)] p-6 font-mono text-[13px] self-start w-full">
+        <div className="group flex flex-col gap-4 border border-[#2a0d0d] rounded-[10px] bg-[rgba(18,2,2,0.6)] p-6 font-mono text-[13px] self-start w-full transition-all duration-500 hover:border-[#ac120c]/60 hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(172,18,12,0.15)] relative overflow-hidden">
+          
+          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#ac120c]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
           <div className="flex flex-col gap-1 text-[#f4ede4]">
             <span className="text-[#ac120c] text-[11px] tracking-[0.12em] uppercase">// domains</span>
             web · app · ml · hardware · systems
@@ -64,7 +68,7 @@ export function WhyJoin() {
         </div>
 
       </div>
-
+      </ScrollReveal>
     </section>
   )
 }

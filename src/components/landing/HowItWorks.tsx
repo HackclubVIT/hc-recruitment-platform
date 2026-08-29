@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { ScrollReveal } from "@/components/ui/ScrollReveal"
 
 const steps = [
   {
@@ -28,6 +29,7 @@ const steps = [
 export function HowItWorks() {
   return (
     <section id="process" className="relative py-24 bg-[#0a0101] border-y border-[#2a0d0d]">
+      <ScrollReveal delay={200}>
       <div className="max-w-[1200px] mx-auto px-6">
         <div className="flex flex-col items-center mb-16 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full border border-[#ac120c]/30 bg-[rgba(172,18,12,0.1)] text-[#ac120c] font-mono text-[11px] tracking-[0.1em] uppercase">
@@ -67,6 +69,7 @@ export function HowItWorks() {
           ))}
         </div>
       </div>
+      </ScrollReveal>
     </section>
   )
 }

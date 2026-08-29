@@ -293,11 +293,16 @@
   95% { transform: translate(3px, -2px); clip-path: inset(58% 0 28% 0); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-  }
+@keyframes colorShift {
+  0% { background-color: rgba(172, 18, 12, 0.4); }
+  50% { background-color: rgba(208, 125, 34, 0.3); }
+  100% { background-color: rgba(172, 18, 12, 0.4); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(2deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
 }
 
 @layer utilities {
@@ -308,7 +313,13 @@
     animation: fadeOut 0.5s ease forwards;
   }
   .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-aurora-1 {
+    animation: colorShift 15s ease-in-out infinite alternate, float 20s ease-in-out infinite;
+  }
+  .animate-aurora-2 {
+    animation: colorShift 20s ease-in-out infinite alternate-reverse, float 25s ease-in-out infinite reverse;
   }
 }
 
@@ -348,3 +359,4 @@ html {
   from { transform: scaleY(.55); } 
   to { transform: scaleY(1); } 
 }
+

@@ -14,7 +14,7 @@ export const GET = async (req: Request, res: Response) => {
     const status = searchParams.get("status") || "ALL"
     const department = searchParams.get("department")
 
-    let whereClause: any = {}
+    const whereClause: any = {}
     
     if (department) {
       if (session.role === "RECRUITER") {

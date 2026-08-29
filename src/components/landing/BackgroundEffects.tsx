@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useMemo } from "react"
-import { useReducedMotion } from "@/lib/hooks/useReducedMotion"
 
 function generateStars(count: number) {
   let shadow = ""
@@ -14,7 +13,6 @@ function generateStars(count: number) {
 }
 
 export function BackgroundEffects() {
-  const prefersReducedMotion = useReducedMotion()
   
   // Memoize static box-shadows so they don't re-render and cause hydration mismatches
   const { stars1, stars2 } = useMemo(() => {
@@ -33,8 +31,8 @@ export function BackgroundEffects() {
     <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#020000]">
       
       {/* CSS Starfield */}
-      {mounted && !prefersReducedMotion && (
-        <div className="absolute inset-0 opacity-40">
+      {mounted && (
+        <div className="absolute inset-0 opacity-40 mix-blend-screen">
           <div 
             className="w-[1px] h-[1px] bg-transparent animate-stars"
             style={{ boxShadow: stars1 }}
@@ -46,24 +44,21 @@ export function BackgroundEffects() {
         </div>
       )}
 
-      {/* Radial glow top left */}
+      {/* Radial glow top left - Aurora Effect 1 */}
       <div 
-        className="absolute w-[800px] h-[800px] rounded-full opacity-30 mix-blend-screen animate-pulse-slow"
+        className="absolute w-[800px] h-[800px] rounded-full mix-blend-screen opacity-50 blur-[60px] animate-aurora-1"
         style={{
           top: "-300px",
-          left: "-200px",
-          background: "radial-gradient(circle, rgba(172, 18, 12, 0.4) 0%, transparent 70%)"
+          left: "-200px"
         }}
       />
       
-      {/* Radial glow bottom right */}
+      {/* Radial glow bottom right - Aurora Effect 2 */}
       <div 
-        className="absolute w-[900px] h-[900px] rounded-full opacity-25 mix-blend-screen animate-pulse-slow"
+        className="absolute w-[900px] h-[900px] rounded-full mix-blend-screen opacity-40 blur-[80px] animate-aurora-2"
         style={{
           bottom: "-400px",
-          right: "-300px",
-          background: "radial-gradient(circle, rgba(208, 125, 34, 0.25) 0%, transparent 65%)",
-          animationDelay: "1s"
+          right: "-300px"
         }}
       />
       

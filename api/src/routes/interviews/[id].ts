@@ -24,7 +24,7 @@ export const GET = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
 
-    let includeClause: any = {
+    const includeClause: any = {
       panel: {
         include: { members: { include: { user: { select: { name: true, email: true } } } } }
       },
