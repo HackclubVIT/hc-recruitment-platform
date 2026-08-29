@@ -27,7 +27,7 @@ export default function AnalyticsPage() {
   }
 
   if (loading) return <div className="p-8 text-[#bfa8a2] font-mono">CALCULATING METRICS...</div>
-  if (!data) return <div className="p-8 text-[#ac120c] font-mono">ERROR FETCHING DATA</div>
+  if (!data || data.error || !data.applicationsByStatus) return <div className="p-8 text-[#ac120c] font-mono">ERROR FETCHING DATA: {data?.error || "Invalid Response"}</div>
 
   const totalSelectionsAndRejections = (data.selectedVsRejected?.SELECTED || 0) + (data.selectedVsRejected?.REJECTED || 0)
   const maxInterviews = data.interviewsByDay ? Math.max(...data.interviewsByDay.map((d: any) => d.count), 1) : 1

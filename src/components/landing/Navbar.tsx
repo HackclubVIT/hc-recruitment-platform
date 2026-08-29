@@ -46,15 +46,12 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Link href="/login" className="hidden sm:block text-[#f4ede4] hover:text-white font-mono text-[12px] uppercase tracking-widest transition-colors duration-200">
-            Login
-          </Link>
           <Link 
             href="/login" 
             className="btn-primary py-2 px-5 text-[12px] font-mono uppercase tracking-widest"
             style={{ textDecoration: "none" }}
           >
-            Apply Now
+            LOGIN
           </Link>
           
           {/* Mobile Toggle */}
