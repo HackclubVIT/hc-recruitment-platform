@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { DiamondIcon, BellIcon } from "@/components/ui/Icons"
 import { fetchApi } from "@/api-client"
 
@@ -8,6 +9,7 @@ export const Navbar = () => {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     fetchNotifications()
@@ -44,6 +46,15 @@ export const Navbar = () => {
       setUnreadCount(prev => Math.max(0, prev - 1))
       setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))
     } catch (err) {}
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetchApi("/api/auth/logout", { method: "POST" })
+      router.push("/login")
+    } catch (err) {
+      console.error("Logout failed", err)
+    }
   }
 
   return (
@@ -97,10 +108,17 @@ export const Navbar = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2 px-4 py-1.5 border border-[#2a0d0d] rounded-[6px] font-mono text-[11px] tracking-[1.5px] text-[#bfa8a2]">
+        <div className="flex items-center gap-2 px-4 py-1.5 border border-[#2a0d0d] rounded-[6px] font-mono text-[11px] tracking-[1.5px] text-[#bfa8a2] hidden sm:flex">
           <span className="w-2 h-2 bg-[#2e7d32] rounded-full animate-pulse"></span>
           SYSTEM ONLINE
         </div>
+
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-1.5 border border-[#ac120c]/30 bg-[#1a0606] hover:bg-[#ac120c]/20 rounded-[6px] font-mono text-[11px] tracking-[1.5px] text-[#ac120c] transition-colors"
+        >
+          LOGOUT
+        </button>
       </div>
     </nav>
   )

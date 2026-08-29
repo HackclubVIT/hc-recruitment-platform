@@ -1,7 +1,6 @@
 "use client"
 import { fetchApi } from "@/api-client"
 
-
 import React, { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card } from "@/components/ui/Card"
@@ -16,6 +15,7 @@ function ScheduleForm() {
 
   const [panels, setPanels] = useState<any[]>([])
   const [candidates, setCandidates] = useState<any[]>([])
+  const [existingInterviews, setExistingInterviews] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -29,13 +29,14 @@ function ScheduleForm() {
   })
 
   useEffect(() => {
-    // Fetch dependencies
     Promise.all([
       fetchApi(`/api/panels`).then(r => r.json()),
-      fetchApi(`/api/candidates?status=SHORTLISTED`).then(r => r.json())
-    ]).then(([panelData, candidateData]) => {
+      fetchApi(`/api/candidates?status=SHORTLISTED`).then(r => r.json()),
+      fetchApi(`/api/interviews`).then(r => r.json())
+    ]).then(([panelData, candidateData, interviewData]) => {
       setPanels(panelData.panels || [])
       setCandidates(candidateData.candidates || [])
+      setExistingInterviews(interviewData.interviews || [])
     })
   }, [])
 
@@ -69,6 +70,40 @@ function ScheduleForm() {
       setLoading(false)
     }
   }
+
+  // Generate 10-minute slots from 10:00 to 18:00
+  const generateSlots = () => {
+    const slots = []
+    for (let h = 10; h <= 17; h++) {
+      for (let m = 0; m < 60; m += 10) {
+        const hh = h.toString().padStart(2, '0')
+        const mm = m.toString().padStart(2, '0')
+        slots.push(`${hh}:${mm}`)
+      }
+    }
+    return slots
+  }
+  
+  const allSlots = generateSlots()
+
+  // Get occupied slots for selected panel and date
+  const getOccupiedSlots = () => {
+    if (!formData.panel_id || !formData.date) return new Set()
+    
+    const occupied = new Set()
+    existingInterviews.forEach(inv => {
+      if (inv.panel_id.toString() === formData.panel_id.toString()) {
+        const invDate = new Date(inv.date).toISOString().split('T')[0]
+        if (invDate === formData.date) {
+          const invTime = new Date(inv.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
+          occupied.add(invTime)
+        }
+      }
+    })
+    return occupied
+  }
+
+  const occupiedSlots = getOccupiedSlots()
 
   return (
     <Card className="p-8 max-w-2xl">
@@ -118,7 +153,7 @@ function ScheduleForm() {
           <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Interview Panel</label>
           <select
             value={formData.panel_id}
-            onChange={e => setFormData({ ...formData, panel_id: e.target.value })}
+            onChange={e => setFormData({ ...formData, panel_id: e.target.value, start_time: "" })}
             className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
             required
           >
@@ -129,25 +164,37 @@ function ScheduleForm() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-2">
             <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Date</label>
             <Input 
               type="date"
               value={formData.date}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, date: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, date: e.target.value, start_time: "" })}
               required
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Time (10-min slots)</label>
-            <Input 
-              type="time"
-              step="600"
+            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Time Slot (10 mins)</label>
+            <select
               value={formData.start_time}
               onChange={e => setFormData({ ...formData, start_time: e.target.value })}
+              className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
               required
-            />
+              disabled={!formData.date || !formData.panel_id}
+            >
+              <option value="" disabled>
+                {!formData.date || !formData.panel_id ? "Select Panel & Date first" : "Select Slot"}
+              </option>
+              {allSlots.map(slot => {
+                const isOccupied = occupiedSlots.has(slot)
+                return (
+                  <option key={slot} value={slot} disabled={isOccupied}>
+                    {slot} {isOccupied ? "(Occupied)" : "(Available)"}
+                  </option>
+                )
+              })}
+            </select>
           </div>
         </div>
 
@@ -174,7 +221,7 @@ function ScheduleForm() {
 
 export default function SchedulePage() {
   return (
-    <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out]">
+    <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out] pb-10">
       <header className="flex flex-col gap-2">
         <div className="flex items-center gap-3 text-[#d07d22] font-mono text-[11.5px] uppercase tracking-[0.2em]">
           <DiamondIcon />

@@ -1,20 +1,25 @@
+"use client"
+
 import React from "react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 export const Sidebar = ({ 
-  links, 
-  activePath 
+  links 
 }: { 
   links: { label: string; href: string; icon?: React.ReactNode }[]
-  activePath: string 
 }) => {
+  const pathname = usePathname()
+
   return (
-    <aside className="hidden lg:flex flex-col w-[280px] h-[calc(100vh-64px)] bg-[#020000] border-r border-[#2a0d0d] p-6 shrink-0 sticky top-[64px]">
+    <aside className="hidden lg:flex flex-col w-[280px] h-[calc(100vh-64px)] bg-[#020000] border-r border-[#2a0d0d] p-6 shrink-0 sticky top-[64px] overflow-y-auto">
       <div className="flex flex-col gap-2">
         {links.map((link) => {
-          const isActive = activePath === link.href
+          // Exact match or active sub-route logic (e.g. /admin/candidates/123 highlights CANDIDATES)
+          const isActive = pathname === link.href || (pathname.startsWith(link.href + "/") && link.href !== "/")
           return (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               className={cn(
@@ -25,7 +30,7 @@ export const Sidebar = ({
               )}
             >
               {link.label}
-            </a>
+            </Link>
           )
         })}
       </div>
