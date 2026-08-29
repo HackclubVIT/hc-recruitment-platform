@@ -10,7 +10,7 @@ export const GET = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
 
-    const form = await prisma.form.findUnique({
+    const form = await prisma.recruitmentForm.findUnique({
       where: { id },
       include: { questions: { orderBy: { id: 'asc' } } }
     })
@@ -58,7 +58,7 @@ export const PUT = async (req: Request, res: Response) => {
     }
     const { status, title, description } = parsed.data
 
-    const existingForm = await prisma.form.findUnique({ where: { id } })
+    const existingForm = await prisma.recruitmentForm.findUnique({ where: { id } })
     if (!existingForm) {
       return res.status(404).json({ error: "Form not found" })
     }
@@ -84,7 +84,7 @@ export const PUT = async (req: Request, res: Response) => {
       if (status === "CLOSED") updateData.closed_at = new Date()
     }
 
-    const form = await prisma.form.update({
+    const form = await prisma.recruitmentForm.update({
       where: { id },
       data: updateData,
       include: { questions: true }
@@ -110,18 +110,17 @@ export const DELETE = async (req: Request, res: Response) => {
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
 
-    const applicationCount = await prisma.application.count({
-      where: { form_id: id }
-    })
+    const form = await prisma.recruitmentForm.findUnique({ where: { id } })
+    if (!form) return res.status(404).json({ error: "Form not found" })
 
-    if (applicationCount > 0) {
-      return res.status(409).json({ error: "This form cannot be deleted because applications already exist. Close the form instead." })
+    if (form.status !== "DRAFT") {
+      return res.status(409).json({ error: "This form cannot be deleted because it has been published. Close the form instead." })
     }
 
     // Ensure we delete form questions first
     await prisma.$transaction([
-      prisma.formQuestion.deleteMany({ where: { form_id: id } }),
-      prisma.form.delete({ where: { id } })
+      prisma.recruitmentFormQuestion.deleteMany({ where: { form_id: id } }),
+      prisma.recruitmentForm.delete({ where: { id } })
     ])
 
     await logAudit(session.id, `DELETED_FORM`, "Form", id)

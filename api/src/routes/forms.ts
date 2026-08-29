@@ -10,7 +10,7 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const forms = await prisma.form.findMany({
+    const forms = await prisma.recruitmentForm.findMany({
       include: { questions: true },
       orderBy: { created_at: 'desc' }
     })
@@ -43,7 +43,7 @@ export const POST = async (req: Request, res: Response) => {
 
     const { title, description } = parsed.data
 
-    const form = await prisma.form.create({
+    const form = await prisma.recruitmentForm.create({
       data: {
         title,
         description,

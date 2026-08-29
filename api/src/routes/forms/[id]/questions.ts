@@ -38,7 +38,7 @@ export const POST = async (req: Request, res: Response) => {
     const { question, type, required, options } = parsed.data
 
     // Check form exists and is in DRAFT state
-    const form = await prisma.form.findUnique({ where: { id } })
+    const form = await prisma.recruitmentForm.findUnique({ where: { id } })
     if (!form) {
       return res.status(404).json({ error: "Form not found" })
     }
@@ -46,7 +46,7 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Cannot add questions to a non-DRAFT form" })
     }
 
-    const formQuestion = await prisma.formQuestion.create({
+    const formQuestion = await prisma.recruitmentFormQuestion.create({
       data: {
         form_id: id,
         question,
