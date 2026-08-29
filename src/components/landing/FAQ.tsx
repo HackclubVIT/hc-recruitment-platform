@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { ScrollReveal } from "@/components/ui/ScrollReveal"
 
 const faqs = [
   {
@@ -38,6 +39,7 @@ export function FAQ() {
 
   return (
     <section id="faq" className="relative py-24 bg-[#0a0101] border-t border-[#2a0d0d]">
+      <ScrollReveal>
       <div className="max-w-[800px] mx-auto px-6">
         <div className="flex flex-col items-center mb-16 text-center">
           <h2 className="font-display font-bold text-[32px] sm:text-[40px] text-[#f4ede4] mb-4">
@@ -85,6 +87,8 @@ export function FAQ() {
           })}
         </div>
       </div>
+      </ScrollReveal>
     </section>
   )
 }
+
