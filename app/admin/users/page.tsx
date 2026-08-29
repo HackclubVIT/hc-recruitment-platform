@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, api } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -29,8 +29,7 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetchApi(`/api/users`)
-      const data = await res.json()
+      const data = await api.getUsers()
       setUsers(data.users || [])
     } catch (err) {
       console.error(err)

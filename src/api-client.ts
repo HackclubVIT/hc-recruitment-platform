@@ -79,6 +79,11 @@ export const fetchApi = async (path: string, options: RequestInit = {}) => {
 };
 
 export const api = {
+  get: async (path: string) => fetchApi(path),
+  post: async (path: string, body: any) => fetchApi(path, { method: "POST", body: JSON.stringify(body) }),
+  put: async (path: string, body: any) => fetchApi(path, { method: "PUT", body: JSON.stringify(body) }),
+  delete: async (path: string) => fetchApi(path, { method: "DELETE" }),
+
   getMe: async () => {
     const res = await fetchApi("/api/auth/me");
     if (!res.ok) throw new Error("Not logged in");
@@ -95,24 +100,32 @@ export const api = {
   logout: async () => {
     await fetchApi("/api/auth/logout", { method: "POST" });
   },
-  getRecruitmentApplications: async () => {
-    const res = await fetchApi("/api/applications");
-    if (!res.ok) throw new Error("Failed to fetch applications");
-    const json = await res.json();
-    return {
-      items: json.items,
-      page: json.page,
-      limit: json.limit,
-      total: json.total,
-      totalPages: json.totalPages
-    };
-  },
-  updateRecruitmentStatus: async (id: number | string, status: string) => {
-    const res = await fetchApi(`/api/applications/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ status }),
-    });
-    if (!res.ok) throw new Error("Failed to update status");
-    return res.json();
-  }
+
+  // Users
+  getUsers: async () => fetchApi("/api/users").then(res => res.json()),
+  
+  // Applications / Candidates
+  getApplications: async () => fetchApi("/api/applications").then(res => res.json()),
+  getCandidates: async (query: string = "") => fetchApi(`/api/candidates${query}`).then(res => res.json()),
+  
+  // Forms
+  getForms: async () => fetchApi("/api/forms").then(res => res.json()),
+  
+  // Panels
+  getPanels: async () => fetchApi("/api/panels").then(res => res.json()),
+  
+  // Interviews
+  getInterviews: async () => fetchApi("/api/interviews").then(res => res.json()),
+  
+  // Feedback
+  getFeedback: async () => fetchApi("/api/feedback").then(res => res.json()),
+  
+  // Notifications
+  getNotifications: async () => fetchApi("/api/notifications").then(res => res.json()),
+  
+  // Analytics
+  getAnalytics: async () => fetchApi("/api/analytics").then(res => res.json()),
+  
+  // Audit Logs
+  getAuditLogs: async () => fetchApi("/api/audit-logs").then(res => res.json()),
 };
