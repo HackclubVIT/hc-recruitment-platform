@@ -1,27 +1,44 @@
-export interface BackendApplication {
-  id: number | string;
-  name?: string;
+export interface BackendCandidate {
+  id: string;
+  name: string;
   email: string;
+  department: string;
+  registration_number: string;
+}
+
+export interface BackendApplication {
+  id: string;
+  candidate_id: string;
+  form_id: number;
   status: string;
-  firstPreference?: string;
-  secondPreference?: string;
-  domain?: string;
-  registerNumber?: string;
-  yearOfStudy?: string;
-  appliedDate?: string;
-  whyJoin?: string;
-  firstPrefReason?: string;
-  secondPrefReason?: string;
-  phoneNumber?: string;
-  github?: string;
-  linkedin?: string;
-  portfolio?: string;
-  sevenDaysBuild?: string;
-  projectDetails?: string;
-  skillToLearn?: string;
-  whyHackclub?: string;
-  expectations?: string;
-  productiveWebsiteQuestions?: string;
+  submitted_at: string;
+  candidate: BackendCandidate;
+}
+
+export interface HCUser {
+  id: string;
+  name: string;
+  email: string;
+  registerNumber: string | null;
+  hcDepartment: string | null;
+  status: string;
+  role: "ADMIN" | "RECRUITER" | "PANEL_MEMBER" | "NONE";
+  departments: string[];
+  active: boolean;
+}
+
+export interface BackendInterview {
+  id: number;
+  application_id: string;
+  panel_id: number;
+  round: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  meeting_link: string | null;
+  status: string;
+  application?: BackendApplication;
+  candidate?: BackendCandidate;
 }
 
 export function getToken() {
