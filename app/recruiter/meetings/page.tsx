@@ -117,8 +117,8 @@ export default function RecruiterMeetingsPage() {
       
       setRescheduleData(null)
       fetchInterviews()
-    } catch (err: any) {
-      setRescheduleError(err.message)
+    } catch (err: unknown) {
+      setRescheduleError((err instanceof Error ? err.message : String(err)))
     } finally {
       setRescheduling(false)
     }
@@ -211,7 +211,7 @@ export default function RecruiterMeetingsPage() {
           <Input 
             placeholder="Search candidate..." 
             value={search}
-            onChange={(e: any) => setSearch(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           />
         </div>
         <div className="w-full sm:w-1/3">
@@ -229,7 +229,7 @@ export default function RecruiterMeetingsPage() {
             className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
           >
             <option value="ALL">All Panels</option>
-            {uniquePanels.map((p: any) => (
+            {uniquePanels.map((p: string) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
@@ -364,7 +364,7 @@ export default function RecruiterMeetingsPage() {
             <Input 
               type="date"
               value={rescheduleData?.date || ""}
-              onChange={(e: any) => setRescheduleData(prev => prev ? { ...prev, date: e.target.value, start_time: "" } : null)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRescheduleData(prev => prev ? { ...prev, date: e.target.value, start_time: "" } : null)}
               required
             />
           </div>
@@ -372,7 +372,7 @@ export default function RecruiterMeetingsPage() {
             <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Time Slot (10 mins)</label>
             <select
               value={rescheduleData?.start_time || ""}
-              onChange={(e: any) => setRescheduleData(prev => prev ? { ...prev, start_time: e.target.value } : null)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRescheduleData(prev => prev ? { ...prev, start_time: e.target.value } : null)}
               className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
               required
               disabled={!rescheduleData?.date}

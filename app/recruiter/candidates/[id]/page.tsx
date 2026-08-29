@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, RecruitmentApplication, BackendInterview } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button"
 export default function RecruiterCandidateProfile() {
   const { id } = useParams()
   const router = useRouter()
-  const [candidate, setCandidate] = useState<any>(null)
+  const [candidate, setCandidate] = useState<RecruitmentApplication | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState("")
@@ -33,7 +33,7 @@ export default function RecruiterCandidateProfile() {
     }
   }
 
-  const updateApplicationStatus = async (appId: number, status: string) => {
+  const updateApplicationStatus = async (appId: string, status: string) => {
     if (!confirm(`Are you sure you want to mark this application as ${status}?`)) return;
     
     setActionLoading(true)
@@ -49,8 +49,8 @@ export default function RecruiterCandidateProfile() {
         throw new Error(d.error || "Failed to update status")
       }
       fetchCandidate()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)))
     } finally {
       setActionLoading(false)
     }
@@ -79,13 +79,13 @@ export default function RecruiterCandidateProfile() {
           <h2 className="text-[#d07d22] font-mono text-[14px] uppercase mb-4">Contact Information</h2>
           <div className="flex flex-col gap-3 text-[#f4ede4]">
             <p><span className="text-[#bfa8a2] font-mono mr-2">EMAIL:</span> {candidate.email}</p>
-            <p><span className="text-[#bfa8a2] font-mono mr-2">PHONE:</span> {candidate.phone}</p>
-            <p><span className="text-[#bfa8a2] font-mono mr-2">REG NO:</span> {candidate.registration_number}</p>
-            <p><span className="text-[#bfa8a2] font-mono mr-2">DEPT:</span> {candidate.department}</p>
-            {candidate.resume_url && (
+            <p><span className="text-[#bfa8a2] font-mono mr-2">PHONE:</span> {candidate.phoneNumber}</p>
+            <p><span className="text-[#bfa8a2] font-mono mr-2">REG NO:</span> {candidate.registerNumber}</p>
+            <p><span className="text-[#bfa8a2] font-mono mr-2">DEPT:</span> {candidate.domain}</p>
+            {candidate.portfolio && (
               <p>
                 <span className="text-[#bfa8a2] font-mono mr-2">RESUME:</span>
-                <a href={candidate.resume_url} target="_blank" rel="noreferrer" className="text-[#d07d22] underline">View Resume</a>
+                <a href={candidate.portfolio} target="_blank" rel="noreferrer" className="text-[#d07d22] underline">View Resume</a>
               </p>
             )}
           </div>
@@ -94,7 +94,7 @@ export default function RecruiterCandidateProfile() {
         <Card className="p-6">
           <h2 className="text-[#d07d22] font-mono text-[14px] uppercase mb-4">Applications</h2>
           <div className="flex flex-col gap-4">
-            {[candidate].map((app: any) => (
+            {[candidate].map((app: RecruitmentApplication) => (
               <div key={app.id} className="bg-[#1a0606] p-4 rounded border border-[#2a0d0d]">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-mono text-[#bfa8a2] text-[12px]">Application #{app.id}</span>
@@ -103,8 +103,8 @@ export default function RecruiterCandidateProfile() {
                   </StatusPill>
                 </div>
                 <div className="mt-4 flex flex-col gap-3">
-                  {app.formSubmission?.answers?.length > 0 ? (
-                    app.formSubmission.answers.map((ans: any) => (
+                  {(app.formSubmission?.answers?.length ?? 0) > 0 ? (
+                    (app.formSubmission?.answers || []).map((ans: { question_id: number, answer: string }) => (
                       <div key={ans.question_id} className="bg-[#2a0d0d]/30 p-3 rounded">
                         <div className="font-mono text-[10px] text-[#bfa8a2] mb-1">QUESTION ID: {ans.question_id}</div>
                         <div className="font-body text-[14px] text-[#f4ede4] whitespace-pre-wrap">{String(ans.answer)}</div>
@@ -156,7 +156,7 @@ export default function RecruiterCandidateProfile() {
           <p className="text-[#bfa8a2] font-mono">No interviews scheduled.</p>
         ) : (
           <div className="flex flex-col gap-6">
-            {candidate.interviews?.map((interview: any, i: number) => (
+            {candidate.interviews?.map((interview: BackendInterview, i: number) => (
               <div key={interview.id} className="bg-[#1a0606] p-4 rounded border border-[#2a0d0d] flex flex-col gap-4">
                 <div className="flex justify-between border-b border-[#2a0d0d] pb-2">
                   <h3 className="text-[#f4ede4] font-medium">Round {i + 1} - {new Date(interview.date).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })}</h3>
@@ -173,7 +173,7 @@ export default function RecruiterCandidateProfile() {
                 {interview.feedback && interview.feedback.length > 0 && (
                   <div className="mt-2">
                     <h4 className="text-[#d07d22] font-mono text-[12px] uppercase mb-2">Feedback</h4>
-                    {interview.feedback.map((fb: any) => (
+                    {interview.feedback.map((fb: { id: number, feedback: string, user_id: string, overall_score: number, recommendation: string, comments: string }) => (
                       <div key={fb.id} className="bg-[#2a0d0d]/30 p-3 rounded mb-2 text-sm text-[#f4ede4]">
                         <p><span className="text-[#bfa8a2]">Score:</span> {fb.overall_score} / 25</p>
                         <p><span className="text-[#bfa8a2]">Recommendation:</span> {fb.recommendation}</p>
