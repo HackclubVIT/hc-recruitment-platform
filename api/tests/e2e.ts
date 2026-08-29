@@ -55,11 +55,17 @@ async function runTests() {
   await prisma.user.deleteMany({ where: { email: { endsWith: '@test.com' } } });
 
   
-  // Seed basic users
-  const admin = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Admin', email: 'admin@test.com', role: 'ADMIN', password: 'pw' } })
-  const recruiter = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Recruiter', email: 'recruiter@test.com', role: 'RECRUITER', departments: ['Engineering'], password: 'pw' } })
-  const panelMemberA = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_A', email: 'a@test.com', role: 'PANEL_MEMBER', password: 'pw' } })
-  const panelMemberB = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_B', email: 'b@test.com', role: 'PANEL_MEMBER', password: 'pw' } })
+  // Seed basic users as standard HC Members
+  const admin = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Admin', email: 'admin@test.com', role: 'Member', password: 'pw' } })
+  const recruiter = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Recruiter', email: 'recruiter@test.com', role: 'Member', password: 'pw' } })
+  const panelMemberA = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_A', email: 'a@test.com', role: 'Member', password: 'pw' } })
+  const panelMemberB = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_B', email: 'b@test.com', role: 'Member', password: 'pw' } })
+  
+  // Assign Recruitment Roles
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: admin.id, role: 'ADMIN', departments: [], active: true } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: recruiter.id, role: 'RECRUITER', departments: ['Engineering'], active: true } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: panelMemberA.id, role: 'PANEL_MEMBER', departments: [], active: true } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: panelMemberB.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   
   // Create Panel A and Panel B
   const panelA = await prisma.recruitmentPanel.create({ data: { name: 'Panel A', status: 'ACTIVE' } })
