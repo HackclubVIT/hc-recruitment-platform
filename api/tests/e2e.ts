@@ -1,7 +1,15 @@
 import { PrismaClient } from '@prisma/client'
 import { signToken } from '../src/lib/auth.js'
 
-const prisma = new PrismaClient()
+
+if (!process.env.TEST_DATABASE_URL) {
+  console.error('CRITICAL ERROR: E2E tests MUST use an isolated TEST_DATABASE_URL to prevent destroying HC data.');
+  process.exit(1);
+}
+const prisma = new PrismaClient({
+  datasources: { db: { url: process.env.TEST_DATABASE_URL } }
+})
+
 const API_URL = "http://localhost:3001/api"
 
 async function makeRequest(path: string, method: string, payload?: any, role: string = 'ADMIN', userId: string = 'admin-1', departments: string[] = []) {
@@ -28,17 +36,20 @@ async function runTests() {
   console.log("Starting Security and Consistency E2E Test Pass...")
   
   // 1. Clean DB (Safe cleanup for local test)
-  await prisma.auditLog.deleteMany({})
-  await prisma.feedback.deleteMany({})
-  await prisma.interview.deleteMany({})
-  await prisma.panelMember.deleteMany({})
-  await prisma.panel.deleteMany({})
-  await prisma.application.deleteMany({})
-  await prisma.candidate.deleteMany({})
-  await prisma.formQuestion.deleteMany({})
-  await prisma.form.deleteMany({})
-  await prisma.notification.deleteMany({})
-  await prisma.user.deleteMany({})
+  
+  // Safe scoped cleanup for local test namespace
+  await prisma.recruitmentAuditLog.deleteMany({});
+  await prisma.recruitmentNotification.deleteMany({});
+  await prisma.recruitmentFeedback.deleteMany({});
+  await prisma.recruitmentInterview.deleteMany({});
+  await prisma.recruitmentPanelMember.deleteMany({});
+  await prisma.recruitmentPanel.deleteMany({ where: { name: { contains: 'Panel' } } });
+  await prisma.recruitmentApplication.deleteMany({ where: { email: { endsWith: '@test.com' } } });
+  await prisma.recruitmentFormQuestion.deleteMany({});
+  await prisma.recruitmentForm.deleteMany({});
+  await prisma.recruitmentRoleAssignment.deleteMany({});
+  await prisma.user.deleteMany({ where: { email: { endsWith: '@test.com' } } });
+
   
   // Seed basic users
   const admin = await prisma.user.create({ data: { name: 'Admin', email: 'admin@test.com', role: 'ADMIN', active: true, password: 'pw' } })
@@ -47,12 +58,12 @@ async function runTests() {
   const panelMemberB = await prisma.user.create({ data: { name: 'PM_B', email: 'b@test.com', role: 'PANEL_MEMBER', active: true, password: 'pw' } })
   
   // Create Panel A and Panel B
-  const panelA = await prisma.panel.create({ data: { name: 'Panel A', status: 'ACTIVE' } })
-  const panelB = await prisma.panel.create({ data: { name: 'Panel B', status: 'ACTIVE' } })
+  const panelA = await prisma.recruitmentPanel.create({ data: { name: 'Panel A', status: 'ACTIVE' } })
+  const panelB = await prisma.recruitmentPanel.create({ data: { name: 'Panel B', status: 'ACTIVE' } })
   
   // Create memberships
-  await prisma.panelMember.create({ data: { panel_id: panelA.id, user_id: panelMemberA.id, active: true } })
-  await prisma.panelMember.create({ data: { panel_id: panelA.id, user_id: panelMemberB.id, active: true } }) // Both in Panel A
+  await prisma.recruitmentPanelMember.create({ data: { panel_id: panelA.id, user_id: panelMemberA.id, active: true } })
+  await prisma.recruitmentPanelMember.create({ data: { panel_id: panelA.id, user_id: panelMemberB.id, active: true } }) // Both in Panel A
   
   // 2. FORM TEST (Req 43)
   const formRes = await makeRequest('/forms', 'POST', { title: 'Test Form', description: 'desc', status: 'PUBLISHED' }, 'ADMIN', admin.id)
@@ -153,8 +164,8 @@ async function runTests() {
   const appB = (await applyResB.json()).applicationId
   
   // Get Candidates directly
-  const candA = await prisma.candidate.findFirst({ where: { email: 'candA@test.com' } })
-  const candB = await prisma.candidate.findFirst({ where: { email: 'candB@test.com' } })
+  const candA = await prisma.recruitmentApplication.findFirst({ where: { email: 'candA@test.com' } })
+  const candB = await prisma.recruitmentApplication.findFirst({ where: { email: 'candB@test.com' } })
 
   const urResA = await makeRequest(`/applications/${appA}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
   if (urResA.status !== 200) throw new Error("Recruiter UNDER_REVIEW failed: " + JSON.stringify(urResA.data))
@@ -184,7 +195,7 @@ async function runTests() {
     })
   })
   const appC = (await applyResC.json()).applicationId
-  const candC = await prisma.candidate.findFirst({ where: { email: 'candC@test.com' } })
+  const candC = await prisma.recruitmentApplication.findFirst({ where: { email: 'candC@test.com' } })
   await makeRequest(`/applications/${appC}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
   await makeRequest(`/applications/${appC}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
 
@@ -205,10 +216,10 @@ async function runTests() {
   // NEW PANEL MEMBER TEST (Req 6)
   // Interview 1 has A and B assigned. We add a new member D to the live panel A.
   const pmD = await prisma.user.create({ data: { name: 'PM_D', email: 'd@test.com', role: 'PANEL_MEMBER', active: true, password: 'pw' } })
-  await prisma.panelMember.create({ data: { user_id: pmD.id, panel_id: panelA.id, active: true } })
+  await prisma.recruitmentPanelMember.create({ data: { user_id: pmD.id, panel_id: panelA.id, active: true } })
   
   // Verify D is NOT added to assigned_members
-  const intACheckMembers = await prisma.interview.findUnique({ where: { id: intA.id }, include: { assigned_members: true } })
+  const intACheckMembers = await prisma.recruitmentInterview.findUnique({ where: { id: intA.id }, include: { assigned_members: true } })
   if (intACheckMembers!.assigned_members.length !== 2) throw new Error("New panel member was improperly assigned to a historical interview!")
   
   // Verify D cannot submit feedback for Interview A
@@ -219,7 +230,7 @@ async function runTests() {
   if (fD.status !== 403) throw new Error("Unassigned live panel member submitted feedback! Status: " + fD.status)
 
   // Clean up D so they don't get assigned to future Panel A interviews in this test script
-  await prisma.panelMember.deleteMany({ where: { user_id: pmD.id } })
+  await prisma.recruitmentPanelMember.deleteMany({ where: { user_id: pmD.id } })
 
   
   // Panel Member A CANNOT access Application B
@@ -243,7 +254,7 @@ async function runTests() {
   if (f1.status !== 201) throw new Error("Feedback submission A failed: " + JSON.stringify(f1.data))
 
   // Check interview status -> should still be FEEDBACK_PENDING since B hasn't submitted
-  const intACheck = await prisma.interview.findUnique({ where: { id: intA.id } })
+  const intACheck = await prisma.recruitmentInterview.findUnique({ where: { id: intA.id } })
   if (intACheck!.status !== 'FEEDBACK_PENDING') throw new Error("Interview prematurely submitted: " + intACheck!.status)
   
   // B submits feedback
@@ -255,11 +266,11 @@ async function runTests() {
   if (f2.status !== 201) throw new Error("Feedback submission B failed: " + JSON.stringify(f2.data))
 
   // Check interview status -> should be FEEDBACK_SUBMITTED
-  const intAFin = await prisma.interview.findUnique({ where: { id: intA.id } })
+  const intAFin = await prisma.recruitmentInterview.findUnique({ where: { id: intA.id } })
   if (intAFin!.status !== 'FEEDBACK_SUBMITTED') throw new Error("Interview not marked FEEDBACK_SUBMITTED")
   
   // Check application -> INTERVIEW_COMPLETED
-  const appAFin = await prisma.application.findUnique({ where: { id: appA } })
+  const appAFin = await prisma.recruitmentApplication.findUnique({ where: { id: appA } })
   if (appAFin!.status !== 'INTERVIEW_COMPLETED') throw new Error("Application not marked INTERVIEW_COMPLETED")
 
   // FINAL DECISION TEST (Req 40)
@@ -267,7 +278,7 @@ async function runTests() {
   if (decisionRes.status !== 200) throw new Error("Final decision failed: " + JSON.stringify(decisionRes.data))
   
   // Verify audit logs and decided_by
-  const decApp = await prisma.application.findUnique({ where: { id: appA } })
+  const decApp = await prisma.recruitmentApplication.findUnique({ where: { id: appA } })
   if (decApp!.decided_by !== recruiter.id) throw new Error("decided_by not set")
   
   // FURTHER ROUND TEST (Req 41)
@@ -304,16 +315,16 @@ async function runTests() {
   }, 'PANEL_MEMBER', panelMemberB.id)
   if (fb2.status !== 201) throw new Error("Feedback B2 failed: " + JSON.stringify(fb2.data))
 
-  const intBFin = await prisma.interview.findUnique({ where: { id: intB.id } })
+  const intBFin = await prisma.recruitmentInterview.findUnique({ where: { id: intB.id } })
   if (intBFin!.status !== 'FEEDBACK_SUBMITTED') throw new Error("Interview B not marked FEEDBACK_SUBMITTED")
   
-  const appBFin = await prisma.application.findUnique({ where: { id: appB } })
+  const appBFin = await prisma.recruitmentApplication.findUnique({ where: { id: appB } })
   if (appBFin!.status !== 'INTERVIEW_COMPLETED') throw new Error("Application B not marked INTERVIEW_COMPLETED")
 
   const frRes = await makeRequest(`/applications/${appB}`, 'PUT', { status: 'FURTHER_ROUND' }, 'ADMIN', admin.id)
   if (frRes.status !== 200) throw new Error("Further round transition failed: " + JSON.stringify(frRes.data))
   
-  const frApp = await prisma.application.findUnique({ where: { id: appB } })
+  const frApp = await prisma.recruitmentApplication.findUnique({ where: { id: appB } })
   if (frApp!.decided_by !== null) throw new Error("decided_by should be null for FURTHER_ROUND")
   
   // Schedule next round
@@ -328,7 +339,7 @@ async function runTests() {
   // Panel A currently has A and B (Wait, it actually has A and B, we added them at line 48).
   // Let's add C to Panel A.
   const pmC = await prisma.user.create({ data: { name: 'PM_C', email: 'c@test.com', role: 'PANEL_MEMBER', active: true, password: 'pw' } })
-  const panelMemberC = await prisma.panelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id, active: true } })
+  const panelMemberC = await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id, active: true } })
   
   // Create Cand D
   const applyResD = await fetch(`${API_URL}/applications`, {
@@ -340,7 +351,7 @@ async function runTests() {
     })
   })
   const appD = (await applyResD.json()).applicationId
-  const candD = await prisma.candidate.findFirst({ where: { email: 'candD@test.com' } })
+  const candD = await prisma.recruitmentApplication.findFirst({ where: { email: 'candD@test.com' } })
   await makeRequest(`/applications/${appD}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
   await makeRequest(`/applications/${appD}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
 
@@ -353,10 +364,10 @@ async function runTests() {
   const intD = schedDRes.data.interview
 
   // Remove C from Panel A
-  await prisma.panelMember.update({ where: { id: panelMemberC.id }, data: { active: false } })
+  await prisma.recruitmentPanelMember.update({ where: { id: panelMemberC.id }, data: { active: false } })
   
   // Add C to Panel B
-  await prisma.panelMember.create({ data: { user_id: pmC.id, panel_id: panelB.id, active: true } })
+  await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelB.id, active: true } })
 
   // Schedule Int E for Panel B at same time as Int D
   // Create Cand E
@@ -369,7 +380,7 @@ async function runTests() {
     })
   })
   const appG = (await applyResG.json()).applicationId
-  const candG = await prisma.candidate.findFirst({ where: { email: 'candG@test.com' } })
+  const candG = await prisma.recruitmentApplication.findFirst({ where: { email: 'candG@test.com' } })
   await makeRequest(`/applications/${appG}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
   await makeRequest(`/applications/${appG}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
 
@@ -402,7 +413,7 @@ async function runTests() {
   if (decDSuccess.status !== 200) throw new Error("Final decision failed after C feedback: " + JSON.stringify(decDSuccess.data))
   
   // Req 6: Active Membership Security
-  await prisma.panelMember.updateMany({
+  await prisma.recruitmentPanelMember.updateMany({
     where: { user_id: panelMemberA.id },
     data: { active: false }
   })
@@ -438,7 +449,7 @@ async function runTests() {
   if (candDGetByD.status !== 403 && candDGetByD.status !== 404) throw new Error("Unassigned Member D improperly accessed candD: " + candDGetByD.status)
   
   // SAME PANEL CONFLICT TEST (Req 9)
-  const emptyPanel = await prisma.panel.create({ data: { name: 'Empty Panel', status: 'ACTIVE' } })
+  const emptyPanel = await prisma.recruitmentPanel.create({ data: { name: 'Empty Panel', status: 'ACTIVE' } })
   
   // Create fresh candidate E2 for conflict test
   const applyResE2 = await fetch(`${API_URL}/applications`, {
@@ -450,7 +461,7 @@ async function runTests() {
     })
   })
   const appE2 = (await applyResE2.json()).applicationId
-  const candE2 = await prisma.candidate.findFirst({ where: { email: 'candE2@test.com' } })
+  const candE2 = await prisma.recruitmentApplication.findFirst({ where: { email: 'candE2@test.com' } })
   
   // Transition E2 to SHORTLISTED so it can be scheduled
   await makeRequest(`/applications/${appE2}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
@@ -472,7 +483,7 @@ async function runTests() {
     })
   })
   const appH = (await applyResH.json()).applicationId
-  const candH = await prisma.candidate.findFirst({ where: { email: 'candH@test.com' } })
+  const candH = await prisma.recruitmentApplication.findFirst({ where: { email: 'candH@test.com' } })
   await makeRequest(`/applications/${appH}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
   await makeRequest(`/applications/${appH}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
 
@@ -518,7 +529,7 @@ async function runTests() {
     })
   })
   const appI = (await applyResI.json()).applicationId
-  const candI = await prisma.candidate.findFirst({ where: { email: 'candI@test.com' } })
+  const candI = await prisma.recruitmentApplication.findFirst({ where: { email: 'candI@test.com' } })
   await makeRequest(`/applications/${appI}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
   await makeRequest(`/applications/${appI}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
 
@@ -530,7 +541,7 @@ async function runTests() {
   const intI = schedIRes.data.interview
 
   // Verify B is NOT in assigned_members
-  const verifyI = await prisma.interview.findUnique({ where: { id: intI.id }, include: { assigned_members: true } })
+  const verifyI = await prisma.recruitmentInterview.findUnique({ where: { id: intI.id }, include: { assigned_members: true } })
   if (verifyI!.assigned_members.some((m: any) => m.user_id === panelMemberB.id)) {
     throw new Error("Globally deactivated User B was improperly assigned to new interview!")
   }
@@ -547,7 +558,7 @@ async function runTests() {
     })
   })
   const appJ = (await applyResJ.json()).applicationId
-  const candJ = await prisma.candidate.findFirst({ where: { email: 'candJ@test.com' } })
+  const candJ = await prisma.recruitmentApplication.findFirst({ where: { email: 'candJ@test.com' } })
   await makeRequest(`/applications/${appJ}`, 'PUT', { status: 'UNDER_REVIEW' }, 'RECRUITER', recruiter.id, ['Engineering'])
   await makeRequest(`/applications/${appJ}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id, ['Engineering'])
 
@@ -559,7 +570,7 @@ async function runTests() {
   const intJ = schedJRes.data.interview
 
   // Verify B IS in assigned_members
-  const verifyJ = await prisma.interview.findUnique({ where: { id: intJ.id }, include: { assigned_members: true } })
+  const verifyJ = await prisma.recruitmentInterview.findUnique({ where: { id: intJ.id }, include: { assigned_members: true } })
   if (!verifyJ!.assigned_members.some((m: any) => m.user_id === panelMemberB.id)) {
     throw new Error("Reactivated User B was improperly excluded from new interview!")
   }
