@@ -11,7 +11,7 @@ export interface RecruitmentApplication {
   firstPrefReason: string | null;
   secondPrefReason: string | null;
   yearOfStudy: string;
-  technicalSkills: any;
+  technicalSkills: string[] | null;
   skillLevel: string | null;
   github: string | null;
   linkedin: string | null;

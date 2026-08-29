@@ -94,7 +94,7 @@ export default function AdminCandidateProfile() {
         <Card className="p-6">
           <h2 className="text-[#d07d22] font-mono text-[14px] uppercase mb-4">Applications</h2>
           <div className="flex flex-col gap-4">
-            {candidate.applications?.map((app: any) => (
+            {[candidate].map((app: any) => (
               <div key={app.id} className="bg-[#1a0606] p-4 rounded border border-[#2a0d0d]">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-mono text-[#bfa8a2] text-[12px]">Application #{app.id}</span>
@@ -103,11 +103,11 @@ export default function AdminCandidateProfile() {
                   </StatusPill>
                 </div>
                 <div className="mt-4 flex flex-col gap-3">
-                  {Object.entries(app.answers || {}).length > 0 ? (
-                    Object.entries(app.answers).map(([questionId, answer]: [string, any]) => (
-                      <div key={questionId} className="bg-[#2a0d0d]/30 p-3 rounded">
-                        <div className="font-mono text-[10px] text-[#bfa8a2] mb-1">QUESTION ID: {questionId}</div>
-                        <div className="font-body text-[14px] text-[#f4ede4] whitespace-pre-wrap">{String(answer)}</div>
+                  {app.formSubmission?.answers?.length > 0 ? (
+                    app.formSubmission.answers.map((ans: any) => (
+                      <div key={ans.question_id} className="bg-[#2a0d0d]/30 p-3 rounded">
+                        <div className="font-mono text-[10px] text-[#bfa8a2] mb-1">QUESTION ID: {ans.question_id}</div>
+                        <div className="font-body text-[14px] text-[#f4ede4] whitespace-pre-wrap">{String(ans.answer)}</div>
                       </div>
                     ))
                   ) : (
