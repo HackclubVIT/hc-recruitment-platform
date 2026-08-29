@@ -13,39 +13,53 @@ export const GET = async (req: Request, res: Response) => {
     const { startOfDay: startOfToday, endOfDay: endOfToday } = getISTDateBounds()
     const departments = session.departments || []
 
-    const pendingReviewsCount = await prisma.application.count({
+    const pendingReviewsCount = await prisma.recruitmentApplication.count({
       where: {
         status: { in: ["APPLIED", "UNDER_REVIEW"] },
-        candidate: { department: { in: departments } }
+        domain: { in: departments }
       }
     })
 
-    const shortlistedCount = await prisma.application.count({
+    const shortlistedCount = await prisma.recruitmentApplication.count({
       where: {
         status: "SHORTLISTED",
-        candidate: { department: { in: departments } }
+        domain: { in: departments }
       }
     })
 
-    const interviewsTodayCount = await prisma.interview.count({
+    const interviewsTodayCount = await prisma.recruitmentInterview.count({
       where: {
         date: {
           gte: startOfToday,
           lte: endOfToday
         },
         status: { not: "CANCELLED" },
-        candidate: { department: { in: departments } }
+        application: { domain: { in: departments } }
       }
     })
 
-    const recentApplications = await prisma.application.findMany({
+    const recentApplications = await prisma.recruitmentApplication.findMany({
       where: {
-        candidate: { department: { in: departments } }
+        domain: { in: departments }
       },
-      include: { candidate: true },
-      orderBy: { submitted_at: 'desc' },
+      orderBy: { id: 'desc' }, // or appliedDate if DateTime, but id descending is close enough
       take: 5
     })
+
+    // map back to old format
+    const mappedApplications = recentApplications.map((app: any) => ({
+      id: app.id.toString(),
+      candidate_id: app.id.toString(),
+      status: app.status,
+      submitted_at: app.appliedDate || new Date().toISOString(),
+      candidate: {
+        id: app.id.toString(),
+        name: app.name,
+        email: app.email,
+        department: app.domain,
+        registration_number: app.registerNumber,
+      }
+    }))
 
     return res.status(200).json({
       stats: {
@@ -53,7 +67,7 @@ export const GET = async (req: Request, res: Response) => {
         shortlistedCount,
         interviewsTodayCount
       },
-      recentApplications,
+      recentApplications: mappedApplications,
       departments
     })
   } catch (error) {

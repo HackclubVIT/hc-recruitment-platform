@@ -1,15 +1,16 @@
 import prisma from "./db"
 
 export async function logAudit(
-  user_id: string | undefined | null,
+  user_id: bigint | string | undefined | null,
   action: string,
   entity: string,
   entity_id?: string | number
 ) {
   try {
-    await prisma.auditLog.create({
+    const parsedUserId = user_id ? BigInt(user_id.toString()) : null;
+    await prisma.recruitmentAuditLog.create({
       data: {
-        user_id,
+        user_id: parsedUserId,
         action,
         entity,
         entity_id: entity_id !== undefined ? String(entity_id) : null,

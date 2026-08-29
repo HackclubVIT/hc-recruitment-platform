@@ -10,25 +10,25 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    // Basic metrics aggregation for dashboard
-    const totalApplications = await prisma.application.count()
-    const totalCandidates = await prisma.candidate.count()
-    const totalInterviews = await prisma.interview.count()
-    const totalRecruiters = await prisma.user.count({ where: { role: 'RECRUITER' } })
-    const totalPanels = await prisma.panel.count()
-
-    const shortlisted = await prisma.application.count({ where: { status: 'SHORTLISTED' } })
-    const scheduledInterviews = await prisma.application.count({ where: { status: 'INTERVIEW_SCHEDULED' } })
-    const completedInterviews = await prisma.application.count({ where: { status: 'INTERVIEW_COMPLETED' } })
-    const selectedCandidates = await prisma.application.count({ where: { status: 'SELECTED' } })
-    const rejectedCandidates = await prisma.application.count({ where: { status: 'REJECTED' } })
+    const totalApplications = await prisma.recruitmentApplication.count()
+    const totalCandidates = await prisma.recruitmentApplication.count()
+    const totalInterviews = await prisma.recruitmentInterview.count()
     
-    // In our system, feedback pending can be determined by interviews without sufficient feedback or specific application status.
-    // For simplicity, we just count applications that are waitlisted or require review
-    const pendingFeedback = await prisma.interview.count({ where: { status: 'FEEDBACK_PENDING' } })
+    // total recruiters
+    const totalRecruiters = await prisma.recruitmentRoleAssignment.count({ 
+      where: { role: 'RECRUITER', active: true } 
+    })
+    const totalPanels = await prisma.recruitmentPanel.count()
 
-    // Analytics: Applications by status
-    const applicationsByStatusRaw = await prisma.application.groupBy({
+    const shortlisted = await prisma.recruitmentApplication.count({ where: { status: 'SHORTLISTED' } })
+    const scheduledInterviews = await prisma.recruitmentApplication.count({ where: { status: 'INTERVIEW_SCHEDULED' } })
+    const completedInterviews = await prisma.recruitmentApplication.count({ where: { status: 'INTERVIEW_COMPLETED' } })
+    const selectedCandidates = await prisma.recruitmentApplication.count({ where: { status: 'SELECTED' } })
+    const rejectedCandidates = await prisma.recruitmentApplication.count({ where: { status: 'REJECTED' } })
+    
+    const pendingFeedback = await prisma.recruitmentInterview.count({ where: { status: 'FEEDBACK_PENDING' } })
+
+    const applicationsByStatusRaw = await prisma.recruitmentApplication.groupBy({
       by: ['status'],
       _count: { status: true }
     })
@@ -37,39 +37,28 @@ export const GET = async (req: Request, res: Response) => {
       return acc
     }, {})
 
-    // Analytics: Department Distribution (by applications, not candidates)
-    const departmentsWithApps = await prisma.candidate.findMany({
-      select: {
-        department: true,
-        _count: { select: { applications: true } }
-      }
+    // department grouping
+    const departmentsWithApps = await prisma.recruitmentApplication.groupBy({
+      by: ['domain'],
+      _count: { id: true }
     })
     
-    const deptMap: Record<string, number> = {}
-    for (const d of departmentsWithApps) {
-      deptMap[d.department] = (deptMap[d.department] || 0) + d._count.applications
-    }
-    
-    const applicationsByDepartment = Object.keys(deptMap).map(dept => ({
-      department: dept,
-      count: deptMap[dept]
+    const applicationsByDepartment = departmentsWithApps.map((d: any) => ({
+      department: d.domain || "Unknown",
+      count: d._count.id
     }))
 
-    // Analytics: Selected vs Rejected
     const selectedVsRejected = {
       SELECTED: selectedCandidates,
       REJECTED: rejectedCandidates
     }
 
-    // Analytics: Interviews by day
-    // We will fetch all interviews and group them in memory since Prisma doesn't natively group by Date cast easily in raw JS
-    const allInterviews = await prisma.interview.findMany({
+    const allInterviews = await prisma.recruitmentInterview.findMany({
       select: { start_time: true }
     })
     
     const interviewsByDayRaw: Record<string, number> = {}
     allInterviews.forEach((inv: any) => {
-      // Convert to Asia/Kolkata date for grouping (Req 25)
       const istDate = toISTDateString(inv.start_time)
       interviewsByDayRaw[istDate] = (interviewsByDayRaw[istDate] || 0) + 1
     })
@@ -78,14 +67,17 @@ export const GET = async (req: Request, res: Response) => {
       .sort()
       .map(date => ({ date, count: interviewsByDayRaw[date] }))
 
-    // Recent activity from audit logs
-    const recentActivity = await prisma.auditLog.findMany({
-      include: {
-        user: { select: { name: true, email: true, role: true } }
-      },
+    const recentActivity = await prisma.recruitmentAuditLog.findMany({
       orderBy: { timestamp: 'desc' },
       take: 10
     })
+
+    // Formatting BigInts for recent activity
+    const formattedActivity = recentActivity.map((a: any) => ({
+       ...a,
+       id: a.id.toString(),
+       user_id: a.user_id ? a.user_id.toString() : null
+    }))
 
     return res.status(200).json({
       metrics: {
@@ -105,7 +97,7 @@ export const GET = async (req: Request, res: Response) => {
       applicationsByDepartment,
       selectedVsRejected,
       interviewsByDay,
-      recentActivity
+      recentActivity: formattedActivity
     })
   } catch (error) {
     console.error("Fetch analytics error:", error)
