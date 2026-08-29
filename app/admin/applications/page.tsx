@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, BackendApplication } from "@/api-client"
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -8,7 +8,7 @@ import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 
 export default function AdminApplicationsPage() {
-  const [applications, setApplications] = useState<any[]>([])
+  const [applications, setApplications] = useState<BackendApplication[]>([])
   const [loading, setLoading] = useState(true)
   
   // Filters & Pagination

@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, BackendInterview } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -10,7 +10,7 @@ import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 
 export default function PanelInterviewsPage() {
-  const [interviews, setInterviews] = useState<any[]>([])
+  const [interviews, setInterviews] = useState<BackendInterview[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

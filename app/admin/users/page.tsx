@@ -18,7 +18,6 @@ export default function UsersPage() {
     id: "",
     name: "", 
     email: "", 
-    password: "",
     role: "PANEL_MEMBER",
     departments: "CSE",
     active: true
@@ -48,7 +47,7 @@ export default function UsersPage() {
         departments: formData.departments.split(',').map(d => d.trim()),
         active: formData.active
       }
-      const method = formData.id ? "PUT" : "POST"
+      const method = "PUT"
       await fetchApi(`/api/users`, {  
         method,
         headers: { "Content-Type": "application/json" },
@@ -61,10 +60,8 @@ export default function UsersPage() {
     }
   }
 
-  const openCreateModal = () => {
-    setFormData({ id: "", name: "", email: "", password: "", role: "PANEL_MEMBER", departments: "CSE", active: true })
-    setIsModalOpen(true)
-  }
+  // Create user functionality is disabled because Recruitment uses existing HC users.
+  // Admins only assign roles to existing members via the EDIT action.
 
   return (
     <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out]">
@@ -78,7 +75,6 @@ export default function UsersPage() {
             User Management
           </h1>
         </div>
-        <Button variant="cta" onClick={openCreateModal}>CREATE USER</Button>
       </header>
 
       <Card className="p-0 overflow-hidden">
@@ -121,11 +117,10 @@ export default function UsersPage() {
                     <td className="p-4 text-right space-x-2">
                       <button 
                         onClick={() => {
-                          setFormData({ 
+                          setFormData({
                             id: user.id,
                             name: user.name, 
                             email: user.email, 
-                            password: "",
                             role: user.role, 
                             departments: user.departments?.join(', ') || '',
                             active: user.active
@@ -137,15 +132,9 @@ export default function UsersPage() {
                         EDIT
                       </button>
                       <button 
-                        onClick={async () => {
-                          if (confirm("Are you sure you want to delete this user?")) {
-                            await fetchApi(`/api/users`, {   method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: user.id }) })
-                            fetchUsers()
-                          }
-                        }}
                         className="text-[#ac120c] font-mono text-[10px] uppercase hover:underline ml-2"
                       >
-                        DELETE
+                        REVOKE ACCESS
                       </button>
                     </td>
                   </tr>
@@ -157,31 +146,23 @@ export default function UsersPage() {
       </Card>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <h2 className="font-display font-bold text-[24px] text-[#f4ede4] mb-6">Provision User</h2>
+        <h2 className="font-display font-bold text-[24px] text-[#f4ede4] mb-6">Edit Recruitment Access</h2>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Full Name</label>
+            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Full Name (Read-Only)</label>
             <Input 
               value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              required
+              readOnly
+              className="opacity-50 cursor-not-allowed"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Email Address</label>
+            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Email Address (Read-Only)</label>
             <Input 
               type="email"
               value={formData.email}
-              onChange={e => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Temporary Password</label>
-            <Input 
-              type="password"
-              value={formData.password}
-              onChange={e => setFormData({ ...formData, password: e.target.value })}
+              readOnly
+              className="opacity-50 cursor-not-allowed"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -191,6 +172,7 @@ export default function UsersPage() {
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
             >
+              <option value="NONE">NO ACCESS</option>
               <option value="PANEL_MEMBER">PANEL MEMBER</option>
               <option value="RECRUITER">RECRUITER</option>
               <option value="ADMIN">ADMINISTRATOR</option>

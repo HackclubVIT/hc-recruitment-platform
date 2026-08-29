@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, BackendApplication } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
@@ -11,7 +11,11 @@ import { Button } from "@/components/ui/Button"
 
 export default function RecruiterDashboard() {
   const router = useRouter()
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<{
+    stats: { pendingReviewsCount: number, shortlistedCount: number, interviewsTodayCount: number };
+    recentApplications: BackendApplication[];
+    departments: string[];
+  } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -99,7 +103,7 @@ export default function RecruiterDashboard() {
                     <td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono">NO RECENT APPLICATIONS.</td>
                   </tr>
                 ) : (
-                  recentApplications.map((app: any) => (
+                  recentApplications.map((app: BackendApplication) => (
                     <tr key={app.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
                         <p className="text-[#f4ede4] font-medium">{app.candidate.name}</p>

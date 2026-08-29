@@ -40,7 +40,10 @@ export default function LoginPage() {
 
       if (data.user.role === "ADMIN") router.push("/admin/dashboard")
       else if (data.user.role === "RECRUITER") router.push("/recruiter/dashboard")
-      else router.push("/panel/dashboard")
+      else if (data.user.role === "PANEL_MEMBER") router.push("/panel/dashboard")
+      else {
+        setError("You do not have recruitment staff permissions.")
+      }
 
     } catch (err: any) {
       setError(err.message)
