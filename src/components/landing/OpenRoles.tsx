@@ -78,7 +78,7 @@ export function OpenRoles() {
                   </p>
                   
                   <div className="flex justify-between items-center mt-auto font-mono text-[12px] uppercase tracking-widest text-[#d07d22]">
-                    <span className="group-hover:text-[#ac120c] transition-colors duration-300">Apply Now</span>
+                    <span className="group-hover:text-[#ac120c] transition-colors duration-300">Login</span>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 group-hover:text-[#ac120c] transition-all duration-300">
                       <path d="M5 12h14"></path>
                       <path d="m12 5 7 7-7 7"></path>
