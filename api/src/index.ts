@@ -4,6 +4,10 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { router } from './router.js';
 
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 dotenv.config();
 
 const app = express();

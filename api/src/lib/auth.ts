@@ -44,15 +44,20 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
   const payload = await verifyToken(token)
   if (!payload || !payload.id) return null
   
+  const userIdBigInt = BigInt(payload.id as string)
   const user = await prisma.user.findUnique({
-    where: { id: payload.id as string }
+    where: { id: userIdBigInt }
   })
   
-  if (!user || !user.active) return null
+  if (!user || user.status !== "Active") return null
+
+  const assignment = await prisma.recruitmentRoleAssignment.findUnique({
+    where: { user_id: userIdBigInt }
+  })
 
   return {
-    id: user.id,
-    role: user.role,
-    departments: user.departments || []
+    id: user.id.toString(),
+    role: assignment?.active ? assignment.role : "NONE",
+    departments: assignment?.active ? assignment.departments : []
   }
 }
