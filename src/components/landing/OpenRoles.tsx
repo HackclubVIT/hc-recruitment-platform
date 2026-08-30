@@ -3,20 +3,16 @@
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { ScrollReveal } from "@/components/ui/ScrollReveal"
+import { api } from "@/api-client"
 
 export function OpenRoles() {
   const [forms, setForms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // We could fetch from /api/forms to get active recruitment forms.
-    // Assuming /api/forms returns { forms: [...] }
-    fetch('/api/forms')
-      .then(r => r.json())
+    api.getPublishedForms()
       .then(data => {
-        // Filter published forms
-        const activeForms = (data.forms || []).filter((f: any) => f.status === 'PUBLISHED')
-        setForms(activeForms)
+        setForms(data.forms || [])
         setLoading(false)
       })
       .catch(() => {

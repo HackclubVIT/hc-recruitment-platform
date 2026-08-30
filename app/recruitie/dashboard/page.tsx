@@ -137,6 +137,29 @@ export default function RecruitieDashboard() {
           <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Current Status</span>
           {renderStatus()}
         </Card>
+
+        {application.interviews && application.interviews.length > 0 && (
+          <Card className="flex flex-col gap-4 bg-[#ac120c]/10 border-[#ac120c]/30">
+            <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Interview Information</span>
+            {application.interviews.sort((a, b) => b.round - a.round).slice(0, 1).map((interview) => (
+              <div key={interview.id} className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#f4ede4] font-medium">Round {interview.round}</span>
+                  <span className="text-[11px] font-mono text-[#d07d22] uppercase">{interview.status.replace(/_/g, ' ')}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-y-2 text-sm text-[#bfa8a2]">
+                  <div>Date: <span className="text-[#f4ede4]">{new Date(interview.date).toLocaleDateString()}</span></div>
+                  <div>Time: <span className="text-[#f4ede4]">{new Date(interview.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div>
+                </div>
+                {interview.meeting_link && interview.status === "SCHEDULED" && (
+                  <a href={interview.meeting_link} target="_blank" rel="noopener noreferrer" className="mt-2 text-[#f4ede4] bg-[#ac120c] hover:bg-[#c2140d] px-4 py-2 rounded text-center text-sm font-medium transition-colors">
+                    Join Meeting
+                  </a>
+                )}
+              </div>
+            ))}
+          </Card>
+        )}
       </div>
 
       <section className="flex flex-col gap-6">
