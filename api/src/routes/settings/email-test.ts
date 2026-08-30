@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../lib/db";
 import { getSession } from "../../lib/auth";
 import { logAudit } from "../../lib/audit";
+import { decryptPassword } from "../../lib/encryption";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 
@@ -36,7 +37,7 @@ export const POST = async (req: Request, res: Response) => {
         where: { name: "smtp_settings" }
       });
       if (existing && existing.data) {
-        finalPass = (existing.data as Record<string, any>).pass;
+        finalPass = decryptPassword((existing.data as Record<string, any>).pass);
       }
     }
 

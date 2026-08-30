@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../lib/db";
 import { getSession } from "../../lib/auth";
 import { logAudit } from "../../lib/audit";
+import { encryptPassword } from "../../lib/encryption";
 import { z } from "zod";
 
 const emailSettingsSchema = z.object({
@@ -63,6 +64,9 @@ export const POST = async (req: Request, res: Response) => {
        if (existing && existing.data) {
          finalPass = (existing.data as Record<string, any>).pass;
        }
+    } else {
+       // Only encrypt if it's a freshly provided password from the user
+       finalPass = encryptPassword(finalPass);
     }
 
     const updatedData = {
