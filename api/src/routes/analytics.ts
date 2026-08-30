@@ -10,9 +10,11 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    const totalApplications = await prisma.recruitmentApplication.count()
-    const totalCandidates = await prisma.recruitmentApplication.count()
-    const totalInterviews = await prisma.recruitmentInterview.count()
+    const totalApplications = await prisma.recruitmentApplication.count({ where: { recruitmentId: "recruitment-2026" } })
+    const totalCandidates = await prisma.recruitmentApplication.count({ where: { recruitmentId: "recruitment-2026" } })
+    const totalInterviews = await prisma.recruitmentInterview.count({
+      where: { application: { recruitmentId: "recruitment-2026" } }
+    })
     
     // total recruiters
     const totalRecruiters = await prisma.recruitmentRoleAssignment.count({ 
@@ -20,16 +22,17 @@ export const GET = async (req: Request, res: Response) => {
     })
     const totalPanels = await prisma.recruitmentPanel.count()
 
-    const shortlisted = await prisma.recruitmentApplication.count({ where: { status: 'SHORTLISTED' } })
-    const scheduledInterviews = await prisma.recruitmentApplication.count({ where: { status: 'INTERVIEW_SCHEDULED' } })
-    const completedInterviews = await prisma.recruitmentApplication.count({ where: { status: 'INTERVIEW_COMPLETED' } })
-    const selectedCandidates = await prisma.recruitmentApplication.count({ where: { status: 'SELECTED' } })
-    const rejectedCandidates = await prisma.recruitmentApplication.count({ where: { status: 'REJECTED' } })
+    const shortlisted = await prisma.recruitmentApplication.count({ where: { status: 'SHORTLISTED', recruitmentId: "recruitment-2026" } })
+    const scheduledInterviews = await prisma.recruitmentApplication.count({ where: { status: 'INTERVIEW_SCHEDULED', recruitmentId: "recruitment-2026" } })
+    const completedInterviews = await prisma.recruitmentApplication.count({ where: { status: 'INTERVIEW_COMPLETED', recruitmentId: "recruitment-2026" } })
+    const selectedCandidates = await prisma.recruitmentApplication.count({ where: { status: 'SELECTED', recruitmentId: "recruitment-2026" } })
+    const rejectedCandidates = await prisma.recruitmentApplication.count({ where: { status: 'REJECTED', recruitmentId: "recruitment-2026" } })
     
-    const pendingFeedback = await prisma.recruitmentInterview.count({ where: { status: 'FEEDBACK_PENDING' } })
+    const pendingFeedback = await prisma.recruitmentInterview.count({ where: { status: 'FEEDBACK_PENDING', application: { recruitmentId: "recruitment-2026" } } })
 
     const applicationsByStatusRaw = await prisma.recruitmentApplication.groupBy({
       by: ['status'],
+      where: { recruitmentId: "recruitment-2026" },
       _count: { status: true }
     })
     const applicationsByStatus = applicationsByStatusRaw.reduce((acc: any, curr: any) => {
@@ -40,6 +43,7 @@ export const GET = async (req: Request, res: Response) => {
     // department grouping
     const departmentsWithApps = await prisma.recruitmentApplication.groupBy({
       by: ['domain'],
+      where: { recruitmentId: "recruitment-2026" },
       _count: { id: true }
     })
     
@@ -54,6 +58,7 @@ export const GET = async (req: Request, res: Response) => {
     }
 
     const allInterviews = await prisma.recruitmentInterview.findMany({
+      where: { application: { recruitmentId: "recruitment-2026" } },
       select: { start_time: true }
     })
     
