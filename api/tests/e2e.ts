@@ -911,6 +911,35 @@ async function runTests() {
 
   console.log("SMTP isolated securely. Interviews succeed despite fake credentials.")
 
+  // Test 5: Verify SMTP Test endpoint obscures raw technical errors
+  console.log("Testing SMTP Test Error Obfuscation...")
+  const emailTestRes = await makeRequest('/settings/email/test', 'POST', {
+    host: "invalid.domain.xyz", port: 587, secure: false, user: "admin@gmail.com", pass: "wrong_password", fromEmail: "admin@gmail.com", fromName: "Admin", testRecipient: "candidate@test.com"
+  }, 'ADMIN', admin.id.toString())
+  
+  if (emailTestRes.status !== 400) throw new Error(`Email test should fail with 400. Status: ${emailTestRes.status}`)
+  
+  const testDataStr = JSON.stringify(emailTestRes.data).toLowerCase()
+  if (testDataStr.includes("econnrefused") || testDataStr.includes("enotfound") || testDataStr.includes("auth")) {
+    throw new Error("CRITICAL SECURITY FLAW: SMTP test endpoint leaked raw technical error messages to the client!")
+  }
+  if (!emailTestRes.data.details || emailTestRes.data.details !== "Unable to connect to the configured SMTP server.") {
+    throw new Error("CRITICAL SECURITY FLAW: SMTP test endpoint did not return the generic sanitized error message!")
+  }
+  console.log("SMTP raw errors are securely hidden from API responses.")
+
+  // Test 6: Verify SMTP_ENCRYPTION_KEY is required and no fallback exists
+  console.log("Verifying SMTP encryption key enforcement...")
+  const fs = await import('fs');
+  const encryptionFile = fs.readFileSync('./src/lib/encryption.ts', 'utf-8');
+  if (encryptionFile.includes('fallback_secret_only_for_dev_do_not_use')) {
+    throw new Error("CRITICAL SECURITY FLAW: Found hardcoded fallback encryption key in encryption.ts!");
+  }
+  if (!encryptionFile.includes('process.env.SMTP_ENCRYPTION_KEY')) {
+    throw new Error("CRITICAL SECURITY FLAW: SMTP_ENCRYPTION_KEY is not used in encryption.ts!");
+  }
+  console.log("SMTP encryption strictness verified.")
+
   console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
 
