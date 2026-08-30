@@ -12,6 +12,7 @@ export default function EmailSettings() {
   const [success, setSuccess] = useState<string | null>(null)
 
   const [testEmail, setTestEmail] = useState("")
+  const [logs, setLogs] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     host: "smtp.gmail.com",
@@ -43,6 +44,15 @@ export default function EmailSettings() {
         console.error(err)
         setError("Failed to load settings.")
       })
+
+    fetchApi("/api/settings/email/logs")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setLogs(data)
+        }
+      })
+      .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
 
@@ -100,6 +110,12 @@ export default function EmailSettings() {
       }
       
       setSuccess("Test email sent successfully! Please check the inbox.")
+      
+      // Refresh logs
+      fetchApi("/api/settings/email/logs")
+        .then(res => res.json())
+        .then(data => Array.isArray(data) && setLogs(data))
+        .catch(console.error)
     } catch (err: any) {
       setError(`Test Failed: ${err.message}`)
     } finally {
@@ -292,6 +308,56 @@ export default function EmailSettings() {
         </div>
 
       </div>
+
+      {/* EMAIL LOGS */}
+      <Card className="p-6 mt-6">
+        <h2 className="text-[#f4e4df] font-medium border-b border-[#2a2a2a] pb-2 mb-4 uppercase flex items-center justify-between">
+          <span>Delivery History</span>
+          <span className="text-xs text-[#bfa8a2] font-mono lowercase">Last 100 events</span>
+        </h2>
+        
+        {logs.length === 0 ? (
+          <div className="text-sm text-[#bfa8a2] font-mono text-center py-8">
+            No email delivery logs found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm font-mono border-collapse">
+              <thead>
+                <tr className="border-b border-[#2a2a2a] text-[#bfa8a2] text-xs uppercase tracking-wider">
+                  <th className="py-3 px-4 font-normal">Timestamp</th>
+                  <th className="py-3 px-4 font-normal">Event Type</th>
+                  <th className="py-3 px-4 font-normal">Recipients</th>
+                  <th className="py-3 px-4 font-normal">Status</th>
+                  <th className="py-3 px-4 font-normal">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id} className="border-b border-[#2a2a2a]/50 hover:bg-[#1a1a1a] transition-colors text-[#e0e0e0]">
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4">
+                      {log.event_type}
+                      {log.entity_id && <span className="text-[#bfa8a2] ml-2 text-xs">[{log.entity_id}]</span>}
+                    </td>
+                    <td className="py-3 px-4">{log.recipient_count}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded text-xs ${log.status === "SUCCESS" ? "bg-green-950/40 text-green-400" : "bg-red-950/40 text-red-400"}`}>
+                        {log.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-xs text-[#bfa8a2] truncate max-w-xs" title={log.error_message || "OK"}>
+                      {log.error_message || "Delivered"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }
