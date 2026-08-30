@@ -12,21 +12,36 @@ export const Navbar = () => {
   const router = useRouter()
 
   useEffect(() => {
-    fetchNotifications()
-    // Simple polling for notifications every 2 minutes
-    const interval = setInterval(fetchNotifications, 120000)
-    return () => clearInterval(interval)
+    let interval: NodeJS.Timeout;
+    
+    const initFetch = async () => {
+      const ok = await fetchNotifications();
+      if (ok) {
+        // Only poll if the first fetch succeeds (meaning we are authenticated)
+        interval = setInterval(fetchNotifications, 120000);
+      }
+    };
+    
+    initFetch();
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [])
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (): Promise<boolean> => {
     try {
       const res = await fetchApi("/api/notifications")
       if (res.ok) {
         const data = await res.json()
         setNotifications(data.notifications || [])
         setUnreadCount(data.unreadCount || 0)
+        return true;
       }
-    } catch (err) {}
+      return false;
+    } catch (err) {
+      return false;
+    }
   }
 
   const markAllRead = async () => {
