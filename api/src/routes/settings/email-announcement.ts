@@ -43,7 +43,13 @@ export const POST = async (req: Request, res: Response) => {
     }
 
     // 2. Roles and Departments
-    if (roles.includes("RECRUITER")) {
+    let effectiveRoles = roles;
+    if (roles.length === 0 && departments.length > 0) {
+      // Direct Department Targeting: include candidates and recruiters
+      effectiveRoles = ["CANDIDATE", "RECRUITER"];
+    }
+
+    if (effectiveRoles.includes("RECRUITER")) {
       const whereClause: any = { role: "RECRUITER", active: true };
       if (departments.length > 0) {
         whereClause.departments = { hasSome: departments };
@@ -55,10 +61,8 @@ export const POST = async (req: Request, res: Response) => {
       recruiters.forEach(r => { if (r.user?.email) emailsToNotify.add(r.user.email); });
     }
 
-    if (roles.includes("PANEL_MEMBER")) {
+    if (effectiveRoles.includes("PANEL_MEMBER")) {
       // Panel members don't have explicit departments in their model, so we just get all active panel members
-      // If departments are selected, it technically doesn't filter panel members (since they belong to panels, not departments).
-      // We will include all active panel members.
       const panelMembers = await prisma.recruitmentPanelMember.findMany({
         where: { active: true },
         include: { user: { select: { email: true } } }
@@ -66,7 +70,7 @@ export const POST = async (req: Request, res: Response) => {
       panelMembers.forEach(pm => { if (pm.user?.email) emailsToNotify.add(pm.user.email); });
     }
 
-    if (roles.includes("CANDIDATE")) {
+    if (effectiveRoles.includes("CANDIDATE")) {
       const whereClause: any = {};
       if (departments.length > 0) {
         whereClause.domain = { in: departments };
@@ -94,12 +98,16 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No valid recipients found based on the provided criteria." });
     }
 
-    sendEmail({
+    const result = await sendEmail({
       to: finalRecipients,
       subject,
       html,
       eventType: "CUSTOM_ANNOUNCEMENT"
-    }).catch(console.error);
+    });
+
+    if (result && !result.success) {
+      return res.status(500).json({ error: "Email delivery failed", details: result.error });
+    }
 
     return res.status(200).json({ message: "Announcement sent successfully", count: finalRecipients.length });
   } catch (error) {

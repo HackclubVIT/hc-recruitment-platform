@@ -42,7 +42,7 @@ const createTransporter = (config: any) => {
   return nodemailer.createTransport(config);
 };
 
-export const sendEmail = async (payload: EmailPayload) => {
+export const sendEmail = async (payload: EmailPayload): Promise<{ success: boolean, error?: string }> => {
   let config = await getSmtpSettings();
   
   let fromAddress = `"${process.env.SMTP_FROM_NAME || 'HC Recruitment'}" <${process.env.SMTP_FROM || 'recruitment@hackclubvit.co'}>`;
@@ -50,7 +50,7 @@ export const sendEmail = async (payload: EmailPayload) => {
   if (!config) {
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
       console.warn(`[EMAIL SKIPPED] SMTP not fully configured. Would have sent email to ${payload.to} with subject: ${payload.subject}`);
-      return;
+      return { success: false, error: "SMTP not configured" };
     }
     config = {
       host: process.env.SMTP_HOST,
@@ -79,7 +79,7 @@ export const sendEmail = async (payload: EmailPayload) => {
 
   if (recipients.length === 0) {
     console.warn(`[EMAIL SKIPPED] No valid recipients provided for subject: ${payload.subject}`);
-    return;
+    return { success: false, error: "No valid recipients" };
   }
 
   try {
@@ -101,6 +101,8 @@ export const sendEmail = async (payload: EmailPayload) => {
       }
     }).catch(console.error);
 
+    return { success: true };
+
   } catch (error: any) {
     console.error(`[EMAIL ERROR] Failed to send email to ${recipients.join(', ')}:`, error);
     
@@ -116,6 +118,7 @@ export const sendEmail = async (payload: EmailPayload) => {
     }).catch(console.error);
 
     // Don't throw the error, just log it so transactions aren't broken by email failure
+    return { success: false, error: error?.message || "Unknown error" };
   }
 };
 
