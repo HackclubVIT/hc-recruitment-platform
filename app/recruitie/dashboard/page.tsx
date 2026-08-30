@@ -17,10 +17,12 @@ export default function RecruitieDashboard() {
         if (res.ok) {
           const json = await res.json()
           setData(json)
+        } else if (res.status === 401 || res.status === 403) {
+          setError("Authentication failed or session expired. Please log in again.")
         } else if (res.status === 404) {
           setError("You have not applied for recruitment yet.")
         } else {
-          setError("Failed to load application data.")
+          setError("Internal server error. Please try again later.")
         }
       } catch (e) {
         console.error("Failed to fetch dashboard data:", e)
