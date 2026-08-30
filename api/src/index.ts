@@ -10,8 +10,24 @@ import { router } from './router.js';
 
 dotenv.config();
 
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
 const app = express();
 const port = process.env.PORT || 3001;
+
+// Global Security Middlewares
+app.use(helmet());
+
+// Global Rate Limiter: 200 requests per 15 minutes per IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 200, 
+  message: { error: 'Too many requests from this IP, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
 
 // Middlewares
 app.use(express.json());

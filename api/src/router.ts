@@ -1,9 +1,27 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 login requests per `window`
+  message: { error: 'Too many login attempts from this IP, please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const submissionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // Limit each IP to 3 submissions per `window`
+  message: { error: 'Too many applications submitted from this IP, please try again after an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Analytics
 import { GET as getAnalytics } from './routes/analytics.js';
 // Applications
 import { GET as getApplications, POST as createApplication } from './routes/applications.js';
+import { GET as getApplicationMe } from './routes/applications/me.js';
 import { GET as getApplicationById, PUT as updateApplication } from './routes/applications/[id].js';
 // Audit Logs
 import { GET as getAuditLogs } from './routes/audit-logs.js';
@@ -45,7 +63,7 @@ export const router = Router();
 router.get('/health', healthCheck);
 
 // Auth
-router.post('/auth/login', login);
+router.post('/auth/login', authLimiter, login);
 router.post('/auth/logout', logout);
 router.get('/auth/me', me);
 
@@ -67,7 +85,8 @@ router.delete('/forms/:id/questions/:questionId', deleteQuestion);
 
 // Applications
 router.get('/applications', getApplications);
-router.post('/applications', createApplication);
+router.post('/applications', submissionLimiter, createApplication);
+router.get('/applications/me', getApplicationMe);
 router.get('/applications/:id', getApplicationById);
 router.put('/applications/:id', updateApplication);
 
