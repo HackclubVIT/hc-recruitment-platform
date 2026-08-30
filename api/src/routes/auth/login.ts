@@ -12,8 +12,7 @@ export const POST = async (req: Request, res: Response) => {
       const devAccounts: Record<string, { password: string; role: "ADMIN" | "RECRUITER" | "PANEL_MEMBER" | "NONE" }> = {
         "admin.test@hackclubvit.local": { password: "AdminTest123!", role: "ADMIN" },
         "recruiter.test@hackclubvit.local": { password: "RecruiterTest123!", role: "RECRUITER" },
-        "panel.test@hackclubvit.local": { password: "PanelTest123!", role: "PANEL_MEMBER" },
-        "applicant.test@hackclubvit.local": { password: "ApplicantTest123!", role: "NONE" }
+        "panel.test@hackclubvit.local": { password: "PanelTest123!", role: "PANEL_MEMBER" }
       };
 
       const devUser = devAccounts[email];
