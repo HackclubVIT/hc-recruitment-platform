@@ -13,8 +13,8 @@ export const Navbar = () => {
 
   useEffect(() => {
     fetchNotifications()
-    // Simple polling for notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000)
+    // Simple polling for notifications every 2 minutes
+    const interval = setInterval(fetchNotifications, 120000)
     return () => clearInterval(interval)
   }, [])
 
