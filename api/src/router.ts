@@ -36,6 +36,7 @@ import { GET as getCandidateById } from './routes/candidates/[id].js';
 import { POST as submitFeedback } from './routes/feedback.js';
 // Forms
 import { GET as getForms, POST as createForm } from './routes/forms.js';
+import { GET as getPublishedForms } from './routes/forms/published.js';
 import { GET as getFormById, PUT as updateForm, DELETE as deleteForm } from './routes/forms/[id].js';
 import { POST as createQuestion } from './routes/forms/[id]/questions.js';
 import { PUT as updateQuestion, DELETE as deleteQuestion } from './routes/forms/[id]/questions/[questionId].js';
@@ -75,6 +76,7 @@ router.delete('/users', deleteUser);
 
 // Forms
 router.get('/forms', getForms);
+router.get('/forms/published', getPublishedForms);
 router.post('/forms', createForm);
 router.get('/forms/:id', getFormById);
 router.put('/forms/:id', updateForm);

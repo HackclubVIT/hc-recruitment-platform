@@ -122,6 +122,7 @@ export const api = {
   
   // Forms
   getForms: async () => fetchApi("/api/forms").then(res => res.json()),
+  getPublishedForms: async () => fetchApi("/api/forms/published").then(res => res.json()),
   
   // Panels
   getPanels: async () => fetchApi("/api/panels").then(res => res.json()),
