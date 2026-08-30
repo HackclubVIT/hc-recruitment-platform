@@ -38,7 +38,12 @@ export const GET = async (req: Request, res: Response) => {
       application: {
         ...application,
         id: application.id.toString(),
-        decided_by: application.decided_by?.toString()
+        decided_by: application.decided_by?.toString() || null,
+        interviews: application.interviews.map((i: any) => ({
+          ...i,
+          application_id: i.application_id.toString(),
+          recruiter_id: i.recruiter_id?.toString() || null,
+        }))
       }
     })
 

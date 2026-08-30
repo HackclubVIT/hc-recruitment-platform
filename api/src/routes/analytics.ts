@@ -35,7 +35,7 @@ export const GET = async (req: Request, res: Response) => {
       where: { recruitmentId: "recruitment-2026" },
       _count: { status: true }
     })
-    const applicationsByStatus = applicationsByStatusRaw.reduce((acc: any, curr: any) => {
+    const applicationsByStatus = applicationsByStatusRaw.reduce((acc: Record<string, number>, curr) => {
       acc[curr.status] = curr._count.status
       return acc
     }, {})
@@ -47,7 +47,7 @@ export const GET = async (req: Request, res: Response) => {
       _count: { id: true }
     })
     
-    const applicationsByDepartment = departmentsWithApps.map((d: any) => ({
+    const applicationsByDepartment = departmentsWithApps.map((d) => ({
       department: d.domain || "Unknown",
       count: d._count.id
     }))
@@ -63,7 +63,7 @@ export const GET = async (req: Request, res: Response) => {
     })
     
     const interviewsByDayRaw: Record<string, number> = {}
-    allInterviews.forEach((inv: any) => {
+    allInterviews.forEach((inv) => {
       const istDate = toISTDateString(inv.start_time)
       interviewsByDayRaw[istDate] = (interviewsByDayRaw[istDate] || 0) + 1
     })
@@ -78,7 +78,7 @@ export const GET = async (req: Request, res: Response) => {
     })
 
     // Formatting BigInts for recent activity
-    const formattedActivity = recentActivity.map((a: any) => ({
+    const formattedActivity = recentActivity.map((a) => ({
        ...a,
        id: a.id.toString(),
        user_id: a.user_id ? a.user_id.toString() : null

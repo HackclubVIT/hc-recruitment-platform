@@ -10,6 +10,24 @@ import { router } from './router.js';
 
 dotenv.config();
 
+// Production Safety Checks
+if (process.env.NODE_ENV === 'production') {
+  if (process.env.DEV_AUTH_BYPASS === 'true') {
+    console.error("CRITICAL SECURITY ERROR: DEV_AUTH_BYPASS is true in production!");
+    process.exit(1);
+  }
+  if (!process.env.JWT_SECRET) {
+    console.error("CRITICAL SECURITY ERROR: JWT_SECRET is missing in production!");
+    process.exit(1);
+  }
+  const requiredSmtp = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'];
+  const missingSmtp = requiredSmtp.filter(key => !process.env[key]);
+  if (missingSmtp.length > 0) {
+    console.error(`CRITICAL EMAIL ERROR: Missing required SMTP config: ${missingSmtp.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
