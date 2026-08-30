@@ -16,9 +16,9 @@ const prisma = new PrismaClient({
 
 const API_URL = "http://localhost:3001/api"
 
-async function makeRequest(path: string, method: string, payload?: any, _roleIgnored: string = 'ADMIN', userId: string = 'admin-1', _departmentsIgnored: string[] = []) {
+async function makeRequest(path: string, method: string, payload?: any, _roleIgnored: string = 'ADMIN', userId: string | bigint = 'admin-1', _departmentsIgnored: string[] = []) {
   // We place a generic base payload into the JWT. The backend getSession() must independently resolve the true authoritative role from RecruitmentRoleAssignment.
-  const token = await signToken({ id: userId, role: 'NONE', departments: [] })
+  const token = await signToken({ id: userId.toString(), role: 'NONE', departments: [] })
   
   const res = await fetch(`${API_URL}${path}`, {
     method,
@@ -49,6 +49,8 @@ async function runTests() {
   await prisma.recruitmentInterview.deleteMany({});
   await prisma.recruitmentPanelMember.deleteMany({});
   await prisma.recruitmentPanel.deleteMany({ where: { name: { contains: 'Panel' } } });
+  await prisma.recruitmentFormAnswer.deleteMany({});
+  await prisma.recruitmentFormSubmission.deleteMany({});
   await prisma.recruitmentApplication.deleteMany({ where: { email: { endsWith: '@test.com' } } });
   await prisma.recruitmentFormQuestion.deleteMany({});
   await prisma.recruitmentForm.deleteMany({});
@@ -59,8 +61,9 @@ async function runTests() {
   // Seed basic users as standard HC Members
   const admin = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Admin', email: 'admin@test.com', role: 'Member', password: 'pw' } })
   const recruiter = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Recruiter', email: 'recruiter@test.com', role: 'Member', password: 'pw' } })
-  const panelMemberA = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_A', email: 'a@test.com', role: 'Member', password: 'pw' } })
-  const panelMemberB = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_B', email: 'b@test.com', role: 'Member', password: 'pw' } })
+  const panelMemberA = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_A', email: 'pma@test.com', role: 'Member', password: 'pw' } })
+  
+  const panelMemberB = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_B', email: 'pmb@test.com', role: 'Member', password: 'pw' } })
   
   // Assign Recruitment Roles
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: admin.id, role: 'ADMIN', departments: [], active: true } })
@@ -227,7 +230,7 @@ async function runTests() {
   
   // NEW PANEL MEMBER TEST (Req 6)
   // Interview 1 has A and B assigned. We add a new member D to the live panel A.
-  const pmD = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_D', email: 'd@test.com', role: 'Member', password: 'pw' } })
+  const pmD = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_D', email: 'pmd@test.com', role: 'Member', password: 'pw' } })
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmD.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   await prisma.recruitmentPanelMember.create({ data: { user_id: pmD.id, panel_id: panelA.id } })
   
@@ -351,7 +354,7 @@ async function runTests() {
   // NEW INTERVIEW CONFLICT TEST (Req 14)
   // Panel A currently has A and B (Wait, it actually has A and B, we added them at line 48).
   // Let's add C to Panel A.
-  const pmC = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_C', email: 'c@test.com', role: 'Member', password: 'pw' } })
+  const pmC = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_C', email: 'pmc@test.com', role: 'Member', password: 'pw' } })
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmC.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   const panelMemberC = await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id } })
   
@@ -514,10 +517,10 @@ async function runTests() {
 
   // TRUE JWT REVOCATION TEST (Req 13)
   // We need to use the EXACT same token before and after deactivation
-  const cToken = await signToken({ id: pmC.id, role: 'PANEL_MEMBER', departments: [] })
+  const cToken = await signToken({ id: pmC.id.toString(), role: 'PANEL_MEMBER', departments: [] })
   
   // Ensure C is active
-  await prisma.user.update({ where: { id: pmC.id }, data: {  } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: pmC.id }, data: { active: true } })
   
   const jwtTestBefore = await fetch(`${API_URL}/interviews/${intD.id}`, {
     headers: { 'Cookie': `session=${cToken}` }
@@ -525,7 +528,7 @@ async function runTests() {
   if (jwtTestBefore.status !== 200) throw new Error("C could not access interview initially with explicit JWT")
 
   // Deactivate C
-  await prisma.user.update({ where: { id: pmC.id }, data: { active: false } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: pmC.id }, data: { active: false } })
   
   const jwtTestAfter = await fetch(`${API_URL}/interviews/${intD.id}`, {
     headers: { 'Cookie': `session=${cToken}` }
@@ -536,6 +539,7 @@ async function runTests() {
   // pmB is still an active PanelMember on Panel A.
   // We globally deactivate User B.
   await prisma.recruitmentRoleAssignment.update({ where: { user_id: panelMemberB.id }, data: { active: false } })
+  await prisma.recruitmentPanelMember.updateMany({ where: { user_id: panelMemberB.id.toString() }, data: { active: false } })
   
   // Schedule a new interview (use candE2 since they are available again if we use a different date or they don't have overlapping times)
   // Actually let's create a new candidate I to be safe.
@@ -567,6 +571,7 @@ async function runTests() {
 
   // Reactivate User B
   await prisma.recruitmentRoleAssignment.update({ where: { user_id: panelMemberB.id }, data: { active: true } })
+  await prisma.recruitmentPanelMember.updateMany({ where: { user_id: panelMemberB.id.toString() }, data: { active: true } })
 
   // Schedule another
   await prisma.user.create({ data: { id: BigInt(1009), name: 'Candidate J', email: 'candJ@test.com', role: 'Member', password: 'pw', registerNumber: 'REG012' } })
@@ -823,6 +828,30 @@ async function runTests() {
 
   console.log("Multiple campaigns isolation and Notification department routing verified.")
   
+  console.log("--------------------------------")
+  console.log(" CONCURRENT SUBMISSION RACE CONDITION TEST")
+  console.log("--------------------------------")
+  
+  // Create HC User D
+  await prisma.user.create({ data: { id: BigInt(4006), name: 'Auth User D', email: 'd@test.com', registerNumber: 'D001', role: 'Member', password: 'pw', department: 'CSE' } })
+  
+  const payloadD = {
+    form_id: form.id, name: 'Browser Name D', email: 'd@test.com', phone: '1234567890', department: 'CSE', registration_number: 'D001',
+    answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+  }
+
+  // Fire two simultaneous requests
+  const [res1, res2] = await Promise.all([
+    fetch(`${API_URL}/applications`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadD) }),
+    fetch(`${API_URL}/applications`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadD) })
+  ])
+  
+  const statusCodes = [res1.status, res2.status].sort()
+  if (statusCodes[0] !== 201 || statusCodes[1] !== 409) {
+    throw new Error(`Concurrent submission test failed! Expected exactly one 201 and one 409, got: ${res1.status} and ${res2.status}`)
+  }
+  console.log("Concurrent submission safely blocked by database-level constraints.")
+
   console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
 
