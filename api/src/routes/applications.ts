@@ -146,14 +146,22 @@ export const POST = async (req: Request, res: Response) => {
       },
     })
 
+    const notificationsToCreate = []
     for (const recruiter of recruiters) {
       if (application.domain && recruiter.departments.includes(application.domain)) {
-         await createNotification(
-           recruiter.user_id.toString(),
-           "New Application Submitted",
-           `${application.name} applied for the ${application.domain} department.`
-         )
+         notificationsToCreate.push({
+           user_id: recruiter.user_id,
+           title: "New Application Submitted",
+           message: `${application.name} applied for the ${application.domain} department.`,
+           read: false
+         })
       }
+    }
+    
+    if (notificationsToCreate.length > 0) {
+      await prisma.recruitmentNotification.createMany({
+        data: notificationsToCreate
+      })
     }
 
 

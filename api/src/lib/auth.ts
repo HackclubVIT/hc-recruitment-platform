@@ -70,13 +70,13 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: userId }
+    where: { id: BigInt(userId) }
   })
   
   if (!user || user.status !== "Active") return null
 
   const assignment = await prisma.recruitmentRoleAssignment.findUnique({
-    where: { user_id: userId }
+    where: { user_id: BigInt(userId) }
   })
 
   return {

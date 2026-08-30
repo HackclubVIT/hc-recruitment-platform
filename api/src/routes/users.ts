@@ -72,20 +72,20 @@ export const PUT = async (req: Request, res: Response) => {
     const { id, role, departments, active } = parsed.data
     const userId = id
 
-    const existingUser = await prisma.user.findUnique({ where: { id: userId } })
+    const existingUser = await prisma.user.findUnique({ where: { id: BigInt(userId) } })
     if (!existingUser) {
       return res.status(404).json({ error: "HC User not found" })
     }
 
     const assignment = await prisma.recruitmentRoleAssignment.upsert({
-      where: { user_id: userId },
+      where: { user_id: BigInt(userId) },
       update: {
         role,
         departments: departments || [],
         active: active !== undefined ? active : true
       },
       create: {
-        user_id: userId,
+        user_id: BigInt(userId),
         role,
         departments: departments || [],
         active: active !== undefined ? active : true
@@ -94,7 +94,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     if (role !== "PANEL_MEMBER") {
       await prisma.recruitmentPanelMember.updateMany({
-        where: { user_id: userId },
+        where: { user_id: BigInt(userId) },
         data: { active: false }
       })
     }
@@ -136,13 +136,13 @@ export const DELETE = async (req: Request, res: Response) => {
 
     // Deactivate instead of delete
     await prisma.recruitmentRoleAssignment.update({
-      where: { user_id: userId },
+      where: { user_id: BigInt(userId) },
       data: { active: false, role: 'NONE' }
     })
     
     // Cascade to active panel assignments to prevent future scheduling
     await prisma.recruitmentPanelMember.updateMany({
-      where: { user_id: userId },
+      where: { user_id: BigInt(userId) },
       data: { active: false }
     })
     
