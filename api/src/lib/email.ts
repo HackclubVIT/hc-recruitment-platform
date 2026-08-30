@@ -1,10 +1,13 @@
 import nodemailer from "nodemailer";
 import prisma from "./db";
+import { decryptPassword } from "./encryption";
 
 interface EmailPayload {
   to: string | string[];
   subject: string;
   html: string;
+  eventType?: string;
+  entityId?: string;
 }
 
 const getSmtpSettings = async () => {
@@ -22,7 +25,7 @@ const getSmtpSettings = async () => {
           secure: data.secure === true,
           auth: {
             user: data.user,
-            pass: data.pass,
+            pass: decryptPassword(data.pass),
           },
           fromEmail: data.fromEmail,
           fromName: data.fromName
@@ -88,8 +91,30 @@ export const sendEmail = async (payload: EmailPayload) => {
       html: payload.html,
     });
     console.log(`[EMAIL SENT] to ${recipients.length} recipient(s) - ${payload.subject}`);
-  } catch (error) {
+    
+    await prisma.recruitmentEmailLog.create({
+      data: {
+        event_type: payload.eventType || "General",
+        entity_id: payload.entityId,
+        recipient_count: recipients.length,
+        status: "SUCCESS"
+      }
+    }).catch(console.error);
+
+  } catch (error: any) {
     console.error(`[EMAIL ERROR] Failed to send email to ${recipients.join(', ')}:`, error);
+    
+    // Durable failure tracking
+    await prisma.recruitmentEmailLog.create({
+      data: {
+        event_type: payload.eventType || "General",
+        entity_id: payload.entityId,
+        recipient_count: recipients.length,
+        status: "FAILED",
+        error_message: error?.message?.substring(0, 500) || "Unknown error"
+      }
+    }).catch(console.error);
+
     // Don't throw the error, just log it so transactions aren't broken by email failure
   }
 };

@@ -62,6 +62,7 @@ import { GET as getUsers, PUT as updateUser, DELETE as deleteUser } from './rout
 // Settings
 import { GET as getEmailSettings, POST as updateEmailSettings } from './routes/settings/email.js';
 import { POST as testEmailSettings } from './routes/settings/email-test.js';
+import { GET as getEmailLogs } from './routes/settings/email-logs.js';
 
 export const router = Router();
 
@@ -132,3 +133,4 @@ router.get('/audit-logs', getAuditLogs);
 router.get('/settings/email', getEmailSettings);
 router.post('/settings/email', updateEmailSettings);
 router.post('/settings/email/test', testEmailSettings);
+router.get('/settings/email/logs', getEmailLogs);
