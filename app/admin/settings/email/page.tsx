@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react"
 import { fetchApi } from "@/api-client"
 import { Card } from "@/components/ui/Card"
 import { DiamondIcon } from "@/components/ui/Icons"
+import { AnnouncementComposer } from "./AnnouncementComposer"
 
 export default function EmailSettings() {
   const [loading, setLoading] = useState(true)
@@ -13,6 +14,7 @@ export default function EmailSettings() {
 
   const [testEmail, setTestEmail] = useState("")
   const [logs, setLogs] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState<"CONFIG" | "ANNOUNCE">("CONFIG")
 
   const [formData, setFormData] = useState({
     host: "smtp.gmail.com",
@@ -151,7 +153,33 @@ export default function EmailSettings() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8">
+      <div className="flex gap-4 border-b border-[#2a2a2a] pb-2">
+        <button
+          onClick={() => setActiveTab("CONFIG")}
+          className={`font-mono text-sm uppercase tracking-wider px-4 py-2 transition-colors ${activeTab === "CONFIG" ? "text-[#ff5925] border-b-2 border-[#ff5925]" : "text-[#bfa8a2] hover:text-[#f4e4df]"}`}
+        >
+          Server Settings & Logs
+        </button>
+        <button
+          onClick={() => setActiveTab("ANNOUNCE")}
+          className={`font-mono text-sm uppercase tracking-wider px-4 py-2 transition-colors ${activeTab === "ANNOUNCE" ? "text-[#ff5925] border-b-2 border-[#ff5925]" : "text-[#bfa8a2] hover:text-[#f4e4df]"}`}
+        >
+          Custom Announcements
+        </button>
+      </div>
+
+      {activeTab === "ANNOUNCE" && (
+        <div className="animate-[fadeIn_0.3s_ease-out]">
+          <AnnouncementComposer 
+            onSuccess={(msg) => { setSuccess(msg); setError(null); }}
+            onError={(msg) => { setError(msg); setSuccess(null); }}
+          />
+        </div>
+      )}
+
+      {activeTab === "CONFIG" && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8 animate-[fadeIn_0.3s_ease-out]">
         
         {/* SETTINGS FORM */}
         <Card className="p-6">
@@ -358,6 +386,8 @@ export default function EmailSettings() {
           </div>
         )}
       </Card>
+      </>
+      )}
     </div>
   )
 }
