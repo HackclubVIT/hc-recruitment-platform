@@ -179,9 +179,10 @@ export const GET = async (req: Request, res: Response) => {
     const search = searchParams.get("search") || ""
     const status = searchParams.get("status") || ""
     const department = searchParams.get("department") || ""
-    
-    // We don't have date filtering here easily because appliedDate is a string in HC DB schema
-    
+    const sort = searchParams.get("sort") || ""
+    const date_from = searchParams.get("date_from") || ""
+    const date_to = searchParams.get("date_to") || ""
+
     const skip = (page - 1) * limit
 
     const where: Prisma.RecruitmentApplicationWhereInput = { recruitmentId: "recruitment-2026" }
@@ -216,21 +217,45 @@ export const GET = async (req: Request, res: Response) => {
       where.status = status
     }
 
+    if (date_from || date_to) {
+      const dateFilter: Record<string, string> = {}
+      if (date_from) dateFilter.gte = date_from
+      if (date_to) dateFilter.lte = date_to
+      // appliedDate is stored as ISO string, lexicographic range works
+      ;(where as any).appliedDate = dateFilter
+    }
+
+    let orderBy: Prisma.RecruitmentApplicationOrderByWithRelationInput = { id: "desc" }
+    if (sort) {
+      const [field, dir] = sort.split(":")
+      const direction = dir === "asc" ? "asc" : "desc"
+      const allowed = ["appliedDate", "status", "name", "id", "domain"]
+      if (allowed.includes(field)) {
+        orderBy = { [field]: direction }
+      }
+    }
+
     const [applications, total] = await Promise.all([
       prisma.recruitmentApplication.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { id: "desc" },
+        orderBy,
+        include: { interviews: { include: { panel: true } } },
       }),
       prisma.recruitmentApplication.count({ where })
     ])
     
-    // return direct application structure
-    const items = applications.map((app: { id: bigint } & Record<string, unknown>) => ({
-      ...app,
-      id: app.id.toString()
-    }))
+    const items = applications.map((app: any) => {
+      const interviews = app.interviews || []
+      const latest = interviews.sort((a: any, b: any) => b.id - a.id)[0]
+      return {
+        ...app,
+        id: app.id.toString(),
+        assignedPanel: latest?.panel?.name ?? null,
+        interviewStatus: latest?.status ?? null,
+      }
+    })
 
     return res.status(200).json({
       items,

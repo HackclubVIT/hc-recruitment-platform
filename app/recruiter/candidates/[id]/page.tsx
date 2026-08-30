@@ -85,6 +85,13 @@ export default function RecruiterCandidateProfile() {
             <p><span className="text-[#bfa8a2] font-mono mr-2">PHONE:</span> {candidate.phoneNumber}</p>
             <p><span className="text-[#bfa8a2] font-mono mr-2">REG NO:</span> {candidate.registerNumber}</p>
             <p><span className="text-[#bfa8a2] font-mono mr-2">DEPT:</span> {candidate.domain}</p>
+            {candidate.technicalSkills && candidate.technicalSkills.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {candidate.technicalSkills.map((s: string, i: number) => (
+                  <span key={i} className="bg-[#2a0d0d] text-[#d07d22] font-mono text-[10px] px-2 py-0.5 rounded">{s}</span>
+                ))}
+              </div>
+            )}
             {candidate.portfolio && (
               <p>
                 <span className="text-[#bfa8a2] font-mono mr-2">RESUME:</span>
@@ -171,9 +178,10 @@ export default function RecruiterCandidateProfile() {
                   }>{interview.status}</StatusPill>
                 </div>
                 
-                <div className="flex flex-col gap-2">
-                  <p className="text-[#bfa8a2] text-sm">Time: {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - {new Date(interview.end_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}</p>
-                  {interview.meeting_link && (
+                 <div className="flex flex-col gap-2">
+                   <p className="text-[#bfa8a2] text-sm">Time: {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - {new Date(interview.end_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}</p>
+                   <p className="text-[#bfa8a2] text-sm">Panel: {interview.panel?.name || "-"}</p>
+                   {interview.meeting_link && (
                     <a href={interview.meeting_link} target="_blank" rel="noreferrer" className="text-[#d07d22] text-sm underline">Join Meeting</a>
                   )}
                 </div>
@@ -181,13 +189,15 @@ export default function RecruiterCandidateProfile() {
                 {interview.feedback && interview.feedback.length > 0 && (
                   <div className="mt-2">
                     <h4 className="text-[#d07d22] font-mono text-[12px] uppercase mb-2">Feedback</h4>
-                    {interview.feedback.map((fb: any) => (
+                    {interview.feedback.map((fb: any) => {
+                      const overall = Math.round((fb.technical_score + fb.communication_score + fb.problem_solving_score + fb.confidence_score + fb.teamwork_score) / 5)
+                      return (
                       <div key={fb.id} className="bg-[#2a0d0d]/30 p-3 rounded mb-2 text-sm text-[#f4ede4]">
-                        <p><span className="text-[#bfa8a2]">Scores (T/C/P/CF/TW):</span> {fb.technical_score}/{fb.communication_score}/{fb.problem_solving_score}/{fb.confidence_score}/{fb.teamwork_score}</p>
+                        <p><span className="text-[#bfa8a2]">Scores (T/C/P/CF/TW):</span> {fb.technical_score}/{fb.communication_score}/{fb.problem_solving_score}/{fb.confidence_score}/{fb.teamwork_score} <span className="text-[#d07d22]">Overall: {overall}/5</span></p>
                         <p><span className="text-[#bfa8a2]">Decision:</span> {fb.decision}</p>
                         <p className="mt-1 text-[#bfa8a2] italic">"{fb.comments}"</p>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>

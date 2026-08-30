@@ -185,9 +185,29 @@ export const PUT = async (req: Request, res: Response) => {
 
     await logAudit(BigInt(session.id), `UPDATED_APPLICATION_STATUS_TO_${status}`, "Application", id.toString())
 
-    // Create Notification logic can be ignored if the user isn't assigned to the recruitment app natively
-    // We notify recruiters 
-    // Format response to serialize BigInts
+    const candidateUser = await prisma.user.findUnique({ where: { id: application.id } })
+    if (candidateUser) {
+      if (status === "SHORTLISTED") {
+        await createNotification(candidateUser.id.toString(), "Application Shortlisted", `Your application has been shortlisted.`)
+      }
+      const finalDecisions = ["SELECTED", "WAITLISTED"]
+      if (finalDecisions.includes(status) || (status === "REJECTED" && currentStatus === "INTERVIEW_COMPLETED")) {
+        await createNotification(candidateUser.id.toString(), "Final Decision Made", `Your application status is now ${status}.`)
+      }
+    }
+    if ((status as string) === "INTERVIEW_COMPLETED") {
+      const latestInterview = await prisma.recruitmentInterview.findFirst({
+        where: { application_id: id },
+        orderBy: { round: 'desc' },
+        include: { assigned_members: true },
+      })
+      if (latestInterview) {
+        for (const m of latestInterview.assigned_members) {
+          await createNotification(m.user_id.toString(), "Feedback Pending", `Please submit feedback for interview #${latestInterview.id}.`)
+        }
+      }
+    }
+
     const formattedApp = {
       ...application,
       id: application.id.toString(),

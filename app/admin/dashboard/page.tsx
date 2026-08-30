@@ -229,7 +229,7 @@ export default function AdminDashboard() {
                     <td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono text-sm">NO RECENT ACTIVITY</td>
                   </tr>
                 ) : (
-                  recentLogs.map((log: { id: number, action: string, target_type: string, target_id: string, created_at: string, user: { name: string, email: string, role: string } }) => (
+                  recentLogs.map((log: { id: number, action: string, entity: string, entity_id: string | null, timestamp: string, user: { name: string, email: string, role: string } }) => (
                     <tr key={log.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
                         <p className="text-[#f4ede4] font-medium">{log.user?.name || log.user?.email}</p>
@@ -240,8 +240,8 @@ export default function AdminDashboard() {
                           {log.action}
                         </span>
                       </td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{log.target_type} #{log.target_id}</td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{formatTimestamp(log.created_at)}</td>
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{log.entity}{log.entity_id ? ` #${log.entity_id}` : ""}</td>
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[12px]">{formatTimestamp(log.timestamp)}</td>
                     </tr>
                   ))
                 )}

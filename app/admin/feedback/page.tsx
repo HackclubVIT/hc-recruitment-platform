@@ -53,15 +53,16 @@ export default function AdminFeedbackPage() {
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">DEPT</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">PANELIST</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">SCORES</th>
+                <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">OVERALL</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">DECISION</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">COMMENTS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2a0d0d]">
               {loading ? (
-                <tr><td colSpan={6} className="p-8 text-center text-[#bfa8a2] font-mono">LOADING DATA...</td></tr>
+                <tr><td colSpan={7} className="p-8 text-center text-[#bfa8a2] font-mono">LOADING DATA...</td></tr>
               ) : feedback.length === 0 ? (
-                <tr><td colSpan={6} className="p-8 text-center text-[#bfa8a2] font-mono">NO FEEDBACK FOUND.</td></tr>
+                <tr><td colSpan={7} className="p-8 text-center text-[#bfa8a2] font-mono">NO FEEDBACK FOUND.</td></tr>
               ) : (
                 feedback.map((fb) => (
                   <tr key={fb.id} className="hover:bg-[#1a0606] transition-colors duration-200">
@@ -72,9 +73,10 @@ export default function AdminFeedbackPage() {
                     </td>
                     <td className="p-4 text-[#bfa8a2]">{fb.department}</td>
                     <td className="p-4 text-[#bfa8a2]">{fb.panelMemberName}</td>
-                    <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
                       T:{fb.technical_score} C:{fb.communication_score} P:{fb.problem_solving_score} CF:{fb.confidence_score} TW:{fb.teamwork_score}
                     </td>
+                    <td className="p-4 text-[#d07d22] font-mono font-bold text-[12px]">{fb.overall_score ?? "-"}/5</td>
                     <td className="p-4">
                       <StatusPill status={DECISION_VARIANT[fb.decision] || "pending"}>{fb.decision}</StatusPill>
                     </td>

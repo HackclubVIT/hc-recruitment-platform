@@ -18,6 +18,8 @@ export interface RecruitmentApplication {
   portfolio: string | null;
   status: string;
   appliedDate: string | null;
+  assignedPanel: string | null;
+  interviewStatus: string | null;
   decided_by: string | null;
   decided_at: string | null;
   decision_reason: string | null;
@@ -51,6 +53,7 @@ export interface BackendInterview {
   meeting_link: string | null;
   status: string;
   application?: RecruitmentApplication;
+  panel?: { name: string };
   feedback?: Array<{
     id: number;
     feedback: string;

@@ -45,6 +45,7 @@ export const GET = async (req: Request, res: Response) => {
       problem_solving_score: f.problem_solving_score,
       confidence_score: f.confidence_score,
       teamwork_score: f.teamwork_score,
+      overall_score: Math.round((f.technical_score + f.communication_score + f.problem_solving_score + f.confidence_score + f.teamwork_score) / 5),
       panelMemberName: f.panel_member?.user?.name || "Unknown",
       candidateName: f.interview?.application?.name || "Unknown",
       candidateId: f.interview?.application?.id?.toString() || null,
@@ -190,7 +191,9 @@ export const POST = async (req: Request, res: Response) => {
       )
     }
 
-    return res.status(201).json({ message: "Feedback submitted successfully", feedback: newFeedback })
+    const overallScore = Math.round((technical_score + communication_score + problem_solving_score + confidence_score + teamwork_score) / 5)
+
+    return res.status(201).json({ message: "Feedback submitted successfully", feedback: { ...newFeedback, overall_score: overallScore } })
   } catch (error) {
     console.error("Submit feedback error:", error)
     return res.status(500).json({ error: "Internal server error" })

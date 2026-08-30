@@ -40,6 +40,9 @@ export default function RecruiterApplicationsPage() {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("")
   const [department, setDepartment] = useState("")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+  const [sort, setSort] = useState("")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
@@ -58,7 +61,7 @@ export default function RecruiterApplicationsPage() {
 
   useEffect(() => {
     fetchApplications()
-  }, [debouncedSearch, status, department, page])
+  }, [debouncedSearch, status, department, dateFrom, dateTo, sort, page])
 
   const fetchApplications = async () => {
     setLoading(true)
@@ -68,7 +71,10 @@ export default function RecruiterApplicationsPage() {
         limit: "10",
         search: debouncedSearch,
         status,
-        department
+        department,
+        sort,
+        date_from: dateFrom,
+        date_to: dateTo,
       })
       const res = await fetchApi(`/api/applications?${query.toString()}`)
       const data = await res.json()
@@ -200,6 +206,15 @@ export default function RecruiterApplicationsPage() {
             <option value="Competitive Programming">Competitive Programming</option>
             <option value="Cybersecurity">Cybersecurity</option>
           </select>
+          <input type="date" className="bg-[#1a0606] border border-[#2a0d0d] rounded-lg px-4 py-2.5 text-[#f4ede4] font-mono text-[12px] focus:outline-none focus:border-[#ac120c]" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} placeholder="From" />
+          <input type="date" className="bg-[#1a0606] border border-[#2a0d0d] rounded-lg px-4 py-2.5 text-[#f4ede4] font-mono text-[12px] focus:outline-none focus:border-[#ac120c]" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} placeholder="To" />
+          <select className="bg-[#1a0606] border border-[#2a0d0d] rounded-lg px-4 py-2.5 text-[#f4ede4] font-mono text-[12px] focus:outline-none focus:border-[#ac120c]" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
+            <option value="">Sort By</option>
+            <option value="appliedDate:desc">Applied Date (Newest)</option>
+            <option value="appliedDate:asc">Applied Date (Oldest)</option>
+            <option value="status:asc">Status</option>
+            <option value="name:asc">Name</option>
+          </select>
         </div>
       </div>
 
@@ -214,14 +229,16 @@ export default function RecruiterApplicationsPage() {
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">DEPT</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">APP DATE</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">APP STATUS</th>
+                <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">ASSIGNED PANEL</th>
+                <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">INTERVIEW STATUS</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em] text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2a0d0d]">
               {loading ? (
-                <tr><td colSpan={7} className="p-8 text-center text-[#bfa8a2] font-mono">LOADING DATA...</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-[#bfa8a2] font-mono">LOADING DATA...</td></tr>
               ) : applications.length === 0 ? (
-                <tr><td colSpan={7} className="p-8 text-center text-[#bfa8a2] font-mono">NO APPLICATIONS FOUND.</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-[#bfa8a2] font-mono">NO APPLICATIONS FOUND.</td></tr>
               ) : (
                 applications.map((app) => (
                   <tr key={app.id} className="hover:bg-[#1a0606] transition-colors duration-200">
@@ -232,11 +249,13 @@ export default function RecruiterApplicationsPage() {
                     <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
                       {app.appliedDate ? formatDate(app.appliedDate) : "-"}
                     </td>
-                    <td className="p-4">
+                     <td className="p-4">
                       <StatusPill status={applicationStatusVariant(app.status)}>
                         {app.status || "APPLIED"}
                       </StatusPill>
                     </td>
+                    <td className="p-4 text-[#bfa8a2] text-[11px] font-mono">{app.assignedPanel ?? "-"}</td>
+                    <td className="p-4 text-[#bfa8a2] text-[11px] font-mono">{app.interviewStatus ?? "-"}</td>
                     <td className="p-4 text-right">
                       <a href={`/recruiter/candidates/${app.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
                         VIEW PROFILE
