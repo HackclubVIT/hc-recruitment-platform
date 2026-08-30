@@ -26,8 +26,13 @@ export const GET = async (req: Request, res: Response) => {
       prisma.recruitmentAuditLog.count()
     ])
 
+    const formattedItems = items.map(log => ({
+      ...log,
+      user_id: log.user_id?.toString() || null
+    }))
+
     return res.status(200).json({
-      items,
+      items: formattedItems,
       page,
       limit,
       total,

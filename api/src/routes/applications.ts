@@ -235,7 +235,8 @@ export const GET = async (req: Request, res: Response) => {
     // return direct application structure
     const items = applications.map(app => ({
       ...app,
-      id: app.id.toString()
+      id: app.id.toString(),
+      decided_by: app.decided_by?.toString() || null
     }))
 
     return res.status(200).json({

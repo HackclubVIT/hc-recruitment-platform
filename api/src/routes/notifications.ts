@@ -28,8 +28,13 @@ export const GET = async (req: Request, res: Response) => {
       where: { user_id: BigInt(session.id), read: false }
     })
 
+    const formattedNotifications = notifications.map(n => ({
+      ...n,
+      user_id: n.user_id.toString()
+    }))
+
     return res.status(200).json({ 
-      notifications, 
+      notifications: formattedNotifications, 
       unreadCount,
       page,
       limit,
