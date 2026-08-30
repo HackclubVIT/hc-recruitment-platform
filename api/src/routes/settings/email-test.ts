@@ -62,7 +62,7 @@ export const POST = async (req: Request, res: Response) => {
       console.error("[SMTP TEST VERIFY ERROR]:", verifyError);
       return res.status(400).json({ 
         error: "Failed to connect to SMTP server. Please check host, port, secure settings, and credentials.", 
-        details: verifyError.message 
+        details: "Unable to connect to the configured SMTP server." 
       });
     }
 
@@ -83,7 +83,7 @@ export const POST = async (req: Request, res: Response) => {
       console.error("[SMTP TEST SEND ERROR]:", sendError);
       return res.status(400).json({ 
         error: "SMTP connection succeeded, but failed to send the email.", 
-        details: sendError.message 
+        details: "Test email could not be sent. Check the SMTP configuration." 
       });
     }
 
