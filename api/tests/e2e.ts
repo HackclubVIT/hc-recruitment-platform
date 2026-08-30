@@ -860,6 +860,57 @@ async function runTests() {
   }
   console.log("Application IDs are unique.")
 
+  console.log("--------------------------------")
+  console.log(" ADMIN EMAIL SETTINGS TEST")
+  console.log("--------------------------------")
+
+  // Test 1: Only ADMIN can access settings
+  const emailSettingsRes1 = await makeRequest('/settings/email', 'GET', undefined, 'RECRUITER', recruiter.id.toString())
+  if (emailSettingsRes1.status !== 403) throw new Error(`Email settings GET endpoint allowed non-admin access! Status: ${emailSettingsRes1.status}`)
+
+  const emailSettingsRes2 = await makeRequest('/settings/email', 'POST', {
+    host: "smtp.gmail.com", port: 587, secure: false, user: "test@gmail.com", pass: "app_pw", fromEmail: "test@gmail.com", fromName: "Admin"
+  }, 'RECRUITER', recruiter.id.toString())
+  if (emailSettingsRes2.status !== 403) throw new Error(`Email settings POST endpoint allowed non-admin access! Status: ${emailSettingsRes2.status}`)
+
+  // Test 2: Admin can save settings safely without returning password
+  const emailSettingsRes3 = await makeRequest('/settings/email', 'POST', {
+    host: "smtp.gmail.com", port: 587, secure: false, user: "admin@gmail.com", pass: "secure_app_password_123", fromEmail: "admin@gmail.com", fromName: "HC Admin"
+  }, 'ADMIN', admin.id.toString())
+  if (emailSettingsRes3.status !== 200) throw new Error(`Admin failed to save email settings! Status: ${emailSettingsRes3.status}`)
+  
+  if (emailSettingsRes3.data.settings.pass !== "********") {
+    throw new Error("CRITICAL SECURITY FLAW: Email settings POST endpoint returned the raw SMTP password!")
+  }
+
+  // Test 3: Admin GET settings does not return password
+  const emailSettingsRes4 = await makeRequest('/settings/email', 'GET', undefined, 'ADMIN', admin.id.toString())
+  if (emailSettingsRes4.status !== 200) throw new Error(`Admin failed to get email settings! Status: ${emailSettingsRes4.status}`)
+  if (emailSettingsRes4.data.pass !== "********") {
+    throw new Error("CRITICAL SECURITY FLAW: Email settings GET endpoint returned the raw SMTP password!")
+  }
+
+  // Test 4: Interview creation succeeds even if SMTP fails
+  console.log("Testing SMTP Failure Isolation during interview scheduling...")
+  // (SMTP will fail natively since "admin@gmail.com" with a fake password is not valid and our test env doesn't actually have valid creds)
+  
+  await makeRequest(`/applications/${appAId}`, 'PUT', { status: 'UNDER_REVIEW' }, 'ADMIN', admin.id.toString())
+  await makeRequest(`/applications/${appAId}`, 'PUT', { status: 'SHORTLISTED' }, 'ADMIN', admin.id.toString())
+
+  const scheduleResTest = await makeRequest('/interviews/schedule', 'POST', {
+    application_id: appAId.toString(),
+    panel_id: panelA.id,
+    date: '2026-10-01',
+    start_time: '10:00',
+    end_time: '10:30'
+  }, 'ADMIN', admin.id.toString())
+  
+  if (scheduleResTest.status !== 201) {
+    throw new Error(`Interview scheduling failed! Likely due to SMTP exception. Status: ${scheduleResTest.status}. Details: ${JSON.stringify(scheduleResTest.data)}`)
+  }
+
+  console.log("SMTP isolated securely. Interviews succeed despite fake credentials.")
+
   console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
 
