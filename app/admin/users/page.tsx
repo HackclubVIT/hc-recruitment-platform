@@ -10,8 +10,20 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Modal } from "@/components/ui/Modal"
 
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string | null;
+  registerNumber: string | null;
+  hcDepartment: string | null;
+  status: string;
+  role: "ADMIN" | "RECRUITER" | "PANEL_MEMBER" | "NONE";
+  departments: string[];
+  active: boolean;
+}
+
 export default function UsersPage() {
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
     const [formData, setFormData] = useState({ 
@@ -35,6 +47,26 @@ export default function UsersPage() {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRevoke = async (id: string) => {
+    if (!confirm("Are you sure you want to revoke this user's recruitment access?")) return;
+    try {
+      const res = await fetchApi("/api/users", {
+        method: "DELETE",
+        body: JSON.stringify({ id })
+      })
+      if (!res.ok) {
+        const error = await res.json();
+        alert(`Failed to revoke access: ${error.error || "Unknown error"}`);
+        return;
+      }
+      alert("Access revoked successfully.");
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while revoking access.");
     }
   }
 
@@ -119,7 +151,7 @@ export default function UsersPage() {
                           setFormData({
                             id: user.id,
                             name: user.name, 
-                            email: user.email, 
+                            email: user.email || '', 
                             role: user.role, 
                             departments: user.departments?.join(', ') || '',
                             active: user.active
@@ -131,6 +163,7 @@ export default function UsersPage() {
                         EDIT
                       </button>
                       <button 
+                        onClick={() => handleRevoke(user.id)}
                         className="text-[#ac120c] font-mono text-[10px] uppercase hover:underline ml-2"
                       >
                         REVOKE ACCESS

@@ -668,6 +668,55 @@ async function runTests() {
 
   console.log("Role database priority properly verified.")
   
+  console.log("--------------------------------")
+  console.log(" REVOKE ACCESS & REACTIVATION TEST")
+  console.log("--------------------------------")
+
+  // Assign RECRUITER to roleTestUser
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: roleTestUser.id }, data: { role: 'RECRUITER', active: true, departments: ['Engineering'] } })
+  const revokeTargetToken = await signToken({ id: roleTestUser.id.toString(), role: 'NONE', departments: [] })
+
+  // Verify access works
+  const preRevokeTest = await fetch(`${API_URL}/applications`, { headers: { 'Cookie': `session=${revokeTargetToken}` } })
+  if (preRevokeTest.status !== 200) throw new Error("Revoke Test Setup Failed: Could not access applications as RECRUITER.")
+
+  // Admin revokes access
+  const adminToken = await signToken({ id: admin.id.toString(), role: 'ADMIN', departments: [] })
+  const revokeRes = await fetch(`${API_URL}/users`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', 'Cookie': `session=${adminToken}` },
+    body: JSON.stringify({ id: roleTestUser.id.toString() })
+  })
+  if (revokeRes.status !== 200) throw new Error("Revoke Access API Failed: " + await revokeRes.text())
+
+  // Verify DB state
+  const revokedAssignment = await prisma.recruitmentRoleAssignment.findUnique({ where: { user_id: roleTestUser.id } })
+  if (revokedAssignment!.active !== false || revokedAssignment!.role !== 'NONE') {
+    throw new Error("Revoke Access did not properly set active=false and role=NONE!")
+  }
+
+  // Verify HC User still exists and role is Member
+  const stillUser = await prisma.user.findUnique({ where: { id: roleTestUser.id } })
+  if (!stillUser || stillUser.role !== 'Member') throw new Error("Revoke Access improperly deleted the HC User or modified the HC Role!")
+
+  // Verify access is now blocked
+  const postRevokeTest = await fetch(`${API_URL}/applications`, { headers: { 'Cookie': `session=${revokeTargetToken}` } })
+  if (postRevokeTest.status === 200) throw new Error("Revoked user can still access restricted endpoints!")
+
+  // Reactivate using API
+  const reactivateRes = await fetch(`${API_URL}/users`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Cookie': `session=${adminToken}` },
+    body: JSON.stringify({ id: roleTestUser.id.toString(), role: 'RECRUITER', active: true, departments: ['Engineering'] })
+  })
+  if (reactivateRes.status !== 200) throw new Error("Reactivation API Failed: " + await reactivateRes.text())
+
+  // Verify access returns
+  const postReactivateTest = await fetch(`${API_URL}/applications`, { headers: { 'Cookie': `session=${revokeTargetToken}` } })
+  if (postReactivateTest.status !== 200) throw new Error("Reactivated user cannot access restricted endpoints!")
+
+  console.log("Revoke and Reactivation behaviors correctly enforced.")
+  
   console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
 
