@@ -319,3 +319,16 @@ model RecruitmentAuditLog {
   @@index([timestamp])
   @@map("recruitment_audit_logs")
 }
+
+model RecruitmentEmailLog {
+  id              Int      @id @default(autoincrement())
+  event_type      String
+  entity_id       String?
+  recipient_count Int
+  status          String
+  error_message   String?
+  timestamp       DateTime @default(now())
+
+  @@index([timestamp])
+  @@map("recruitment_email_logs")
+}
