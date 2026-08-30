@@ -57,6 +57,12 @@ export const GET = async (req: Request, res: Response) => {
         return res.status(403).json({ error: "Forbidden" })
       }
     }
+
+    if (session.role === "NONE") {
+      if (application.email !== session.email) {
+        return res.status(403).json({ error: "Forbidden" })
+      }
+    }
     
     // Format response to serialize BigInts
     const formattedApp = {

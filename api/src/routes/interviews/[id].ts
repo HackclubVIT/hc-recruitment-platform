@@ -18,7 +18,7 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
 export const GET = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
-    if (!session) return res.status(401).json({ error: "Unauthorized" })
+    if (!session || session.role === "NONE") return res.status(401).json({ error: "Unauthorized" })
     
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)

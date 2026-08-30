@@ -5,7 +5,7 @@ import { getSession } from "../lib/auth"
 export const GET = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
-    if (!session) {
+    if (!session || session.role === "NONE") {
       return res.status(401).json({ error: "Unauthorized" })
     }
 

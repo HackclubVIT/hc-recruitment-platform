@@ -159,7 +159,7 @@ export const POST = async (req: Request, res: Response) => {
       { message: "Application submitted successfully", applicationId: application.id.toString() })
   } catch (error: unknown) {
     console.error("Application submission error:", error)
-    if (error.code === 'P2002') {
+    if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'P2002') {
       return res.status(409).json({ error: "An application already exists." })
     }
     return res.status(500).json({ error: "Internal server error" })
@@ -169,7 +169,7 @@ export const POST = async (req: Request, res: Response) => {
 export const GET = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
-    if (!session) {
+    if (!session || session.role === "NONE") {
       return res.status(401).json({ error: "Unauthorized" })
     }
 
