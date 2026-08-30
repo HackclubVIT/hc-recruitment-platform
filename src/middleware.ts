@@ -21,9 +21,7 @@ export async function middleware(request: NextRequest) {
         if (payload.role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
         if (payload.role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
         if (payload.role === "PANEL_MEMBER") return NextResponse.redirect(new URL("/panel/dashboard", request.url))
-        
-        // No recruitment role
-        return NextResponse.redirect(new URL("/login?error=unauthorized", request.url))
+        return NextResponse.redirect(new URL("/recruitie/dashboard", request.url))
       }
     }
     return NextResponse.next()
@@ -62,6 +60,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
+  if (pathname.startsWith("/recruitie") && role !== "NONE") {
+    if (role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+    if (role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
+    if (role === "PANEL_MEMBER") return NextResponse.redirect(new URL("/panel/dashboard", request.url))
+  }
 
   return NextResponse.next()
 }
