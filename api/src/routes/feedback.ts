@@ -127,7 +127,7 @@ export const POST = async (req: Request, res: Response) => {
     const newFeedback = feedback.newFeedback
     const allSubmitted = feedback.allSubmitted
 
-    await logAudit(BigInt(session.id), "SUBMITTED_FEEDBACK", "Feedback", newFeedback.id.toString())
+    await logAudit(session.id, "SUBMITTED_FEEDBACK", "Feedback", newFeedback.id.toString())
 
     if (allSubmitted && interview.recruiter_id) {
       await createNotification(

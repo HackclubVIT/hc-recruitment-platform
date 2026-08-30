@@ -10,7 +10,7 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const hcUser = await prisma.user.findUnique({ where: { id: BigInt(session.id) } })
+    const hcUser = await prisma.user.findUnique({ where: { id: session.id } })
     if (!hcUser || !hcUser.email) {
       return res.status(401).json({ error: "Unauthorized: HC User or email not found" })
     }

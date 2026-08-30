@@ -62,21 +62,21 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
     }
   }
 
-  let userIdBigInt: bigint
+  let userId: string
   try {
-    userIdBigInt = BigInt(payload.id as string)
+    userId = payload.id as string
   } catch (e) {
     return null
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: userIdBigInt }
+    where: { id: userId }
   })
   
   if (!user || user.status !== "Active") return null
 
   const assignment = await prisma.recruitmentRoleAssignment.findUnique({
-    where: { user_id: userIdBigInt }
+    where: { user_id: userId }
   })
 
   return {

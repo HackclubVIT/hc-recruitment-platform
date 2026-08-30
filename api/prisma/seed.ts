@@ -22,7 +22,7 @@ async function main() {
     }
     
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
-    const newId = BigInt(Date.now());
+    const newId = String(Date.now());
     
     user = await prisma.user.create({
       data: {

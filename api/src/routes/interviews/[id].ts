@@ -232,7 +232,7 @@ export const PUT = async (req: Request, res: Response) => {
     })
 
     const { logAudit } = await import("../../lib/audit")
-    await logAudit(BigInt(session.id), `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
+    await logAudit(session.id, `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
 
     const { createNotification, getRecruitersByDepartment } = await import("../../lib/notify")
     const { sendEmail, templates } = await import("../../lib/email")

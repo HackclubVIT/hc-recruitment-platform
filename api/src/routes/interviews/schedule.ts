@@ -155,7 +155,7 @@ export const POST = async (req: Request, res: Response) => {
       return newInterview
     })
 
-    await logAudit(BigInt(session.id), "SCHEDULED_INTERVIEW", "Interview", interview.id)
+    await logAudit(BigInt(BigInt(session.id).toString()), "SCHEDULED_INTERVIEW", "Interview", interview.id)
 
     for (const pm of panel.members) {
       await createNotification(

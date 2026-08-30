@@ -23,7 +23,7 @@ export const GET = async (req: Request, res: Response) => {
       includeClause = {
         interviews: {
           where: {
-            assigned_members: { some: { user_id: BigInt(session.id) } }
+            assigned_members: { some: { user_id: session.id } }
           },
           include: { feedback: true } // Removed panel include to restrict unnecessary data
         }

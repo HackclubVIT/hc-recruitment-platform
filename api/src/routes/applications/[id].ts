@@ -178,7 +178,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const isTrueFinal = ["SELECTED", "REJECTED", "WAITLISTED"].includes(status)
     if (isTrueFinal) {
-      updateData.decided_by = BigInt(session.id)
+      updateData.decided_by = session.id
       updateData.decided_at = new Date()
       if (reason) {
         updateData.decision_reason = reason
@@ -190,7 +190,7 @@ export const PUT = async (req: Request, res: Response) => {
       data: updateData
     })
 
-    await logAudit(BigInt(session.id), `UPDATED_APPLICATION_STATUS_TO_${status}`, "Application", id.toString())
+    await logAudit(session.id, `UPDATED_APPLICATION_STATUS_TO_${status}`, "Application", id.toString())
 
     // Notify Candidate via In-app and Email asynchronously
     const notificationMessage = `Your application status has been updated to ${status}.`

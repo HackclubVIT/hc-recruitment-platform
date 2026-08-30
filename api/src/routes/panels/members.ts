@@ -16,7 +16,7 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" })
     }
 
-    const userIdBigInt = BigInt(user_id)
+    const userId = user_id
 
     // Verify panel exists and is ACTIVE
     const panel = await prisma.recruitmentPanel.findUnique({ where: { id: panel_id } })
@@ -29,7 +29,7 @@ export const POST = async (req: Request, res: Response) => {
 
     // Check if user is a panel member role and is active
     const roleAssignment = await prisma.recruitmentRoleAssignment.findUnique({ 
-      where: { user_id: userIdBigInt } 
+      where: { user_id: userId } 
     })
     
     if (!roleAssignment || roleAssignment.role !== "PANEL_MEMBER") {
@@ -41,7 +41,7 @@ export const POST = async (req: Request, res: Response) => {
 
     // Check if already in panel
     const existing = await prisma.recruitmentPanelMember.findFirst({
-      where: { panel_id, user_id: userIdBigInt }
+      where: { panel_id, user_id: userId }
     })
     
     let member;
@@ -56,11 +56,11 @@ export const POST = async (req: Request, res: Response) => {
       }
     } else {
       member = await prisma.recruitmentPanelMember.create({
-        data: { panel_id, user_id: userIdBigInt }
+        data: { panel_id, user_id: userId }
       })
     }
 
-    await logAudit(BigInt(session.id), "ADDED_PANEL_MEMBER", "PanelMember", member.id.toString())
+    await logAudit(session.id, "ADDED_PANEL_MEMBER", "PanelMember", member.id.toString())
 
     return res.status(201).json({ member: { ...member, user_id: member.user_id.toString() } })
   } catch (error) {
@@ -82,10 +82,10 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" })
     }
 
-    const userIdBigInt = BigInt(user_id)
+    const userId = user_id
 
     const member = await prisma.recruitmentPanelMember.findFirst({
-      where: { panel_id, user_id: userIdBigInt, active: true }
+      where: { panel_id, user_id: userId, active: true }
     })
 
     if (!member) {
@@ -98,7 +98,7 @@ export const DELETE = async (req: Request, res: Response) => {
       data: { active: false }
     })
 
-    await logAudit(BigInt(session.id), "REMOVED_PANEL_MEMBER", "PanelMember", member.id.toString())
+    await logAudit(session.id, "REMOVED_PANEL_MEMBER", "PanelMember", member.id.toString())
 
     return res.status(200).json({ message: "Member removed" })
   } catch (error) {
