@@ -12,7 +12,7 @@ export const GET = async (req: Request, res: Response) => {
 
     const application = await prisma.recruitmentApplication.findFirst({
       where: {
-        email: session.email,
+        id: BigInt(session.id),
         recruitmentId: "recruitment-2026"
       },
       include: {

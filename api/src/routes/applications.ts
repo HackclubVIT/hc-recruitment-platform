@@ -106,7 +106,11 @@ export const POST = async (req: Request, res: Response) => {
       }
     })
 
-    const appId = existingUser ? existingUser.id : BigInt(Date.now());
+    if (!existingUser) {
+      return res.status(403).json({ error: "Identity verification failed. You must register on the Hack Club main website before applying for recruitment." })
+    }
+
+    const appId = existingUser.id;
 
     const application = await prisma.recruitmentApplication.create({
       data: {
