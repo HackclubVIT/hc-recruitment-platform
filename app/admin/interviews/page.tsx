@@ -122,6 +122,20 @@ export default function AdminInterviewsPage() {
     }
   }
 
+  const handleComplete = async (id: number) => {
+    if (!confirm("Mark this interview as completed?")) return
+    try {
+      await fetchApi(`/api/interviews/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" })
+      })
+      fetchInterviews()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out] pb-10">
       <header className="flex items-end justify-between">
@@ -188,19 +202,28 @@ export default function AdminInterviewsPage() {
                       )}
                     </td>
                     <td className="p-4 text-right flex items-center justify-end gap-2">
-                      {interview.status === "SCHEDULED" && (
+                      {(interview.status === "SCHEDULED" || interview.status === "IN_PROGRESS") && (
                         <>
+                          {interview.status === "SCHEDULED" && (
+                            <Button 
+                              variant="ghost" 
+                              className="text-[10px] py-1 px-3"
+                              onClick={() => setRescheduleData({ 
+                                id: interview.id, 
+                                panel_id: interview.panel_id,
+                                date: new Date(interview.date).toISOString().split('T')[0],
+                                start_time: new Date(interview.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) 
+                              })}
+                            >
+                              RESCHEDULE
+                            </Button>
+                          )}
                           <Button 
                             variant="ghost" 
-                            className="text-[10px] py-1 px-3"
-                            onClick={() => setRescheduleData({ 
-                              id: interview.id, 
-                              panel_id: interview.panel_id,
-                              date: new Date(interview.date).toISOString().split('T')[0],
-                              start_time: new Date(interview.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) 
-                            })}
+                            className="text-[#2e7d32] text-[10px] py-1 px-3"
+                            onClick={() => handleComplete(interview.id)}
                           >
-                            RESCHEDULE
+                            COMPLETE
                           </Button>
                           <Button 
                             variant="ghost" 

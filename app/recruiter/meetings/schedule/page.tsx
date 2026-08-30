@@ -124,7 +124,7 @@ function ScheduleForm() {
           >
             <option value="" disabled>Select Shortlisted Candidate</option>
             {candidates.map(c => (
-              <option key={c.id} value={c.id}>{c.name} ({c.registration_number})</option>
+              <option key={c.id} value={c.id}>{c.name} ({c.registerNumber || c.registration_number || c.email})</option>
             ))}
           </select>
         </div>

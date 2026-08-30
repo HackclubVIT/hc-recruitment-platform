@@ -1,5 +1,8 @@
 "use client"
 import { fetchApi, RecruitmentApplication, BackendInterview } from "@/api-client"
+import { applicationStatusVariant } from "@/lib/utils"
+import { NotesPanel } from "@/components/NotesPanel"
+import { StatusHistoryPanel } from "@/components/StatusHistoryPanel"
 
 
 import React, { useState, useEffect } from "react"
@@ -25,7 +28,7 @@ export default function RecruiterCandidateProfile() {
       const res = await fetchApi(`/api/candidates/${id}`)
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
-      setCandidate(data.candidate)
+      setCandidate(data.application || data)
     } catch (err) {
       console.error(err)
     } finally {
@@ -82,6 +85,13 @@ export default function RecruiterCandidateProfile() {
             <p><span className="text-[#bfa8a2] font-mono mr-2">PHONE:</span> {candidate.phoneNumber}</p>
             <p><span className="text-[#bfa8a2] font-mono mr-2">REG NO:</span> {candidate.registerNumber}</p>
             <p><span className="text-[#bfa8a2] font-mono mr-2">DEPT:</span> {candidate.domain}</p>
+            {candidate.technicalSkills && candidate.technicalSkills.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {candidate.technicalSkills.map((s: string, i: number) => (
+                  <span key={i} className="bg-[#2a0d0d] text-[#d07d22] font-mono text-[10px] px-2 py-0.5 rounded">{s}</span>
+                ))}
+              </div>
+            )}
             {candidate.portfolio && (
               <p>
                 <span className="text-[#bfa8a2] font-mono mr-2">RESUME:</span>
@@ -98,7 +108,7 @@ export default function RecruiterCandidateProfile() {
               <div key={app.id} className="bg-[#1a0606] p-4 rounded border border-[#2a0d0d]">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-mono text-[#bfa8a2] text-[12px]">Application #{app.id}</span>
-                  <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
+                  <StatusPill status={applicationStatusVariant(app.status)}>
                     {app.status}
                   </StatusPill>
                 </div>
@@ -160,12 +170,18 @@ export default function RecruiterCandidateProfile() {
               <div key={interview.id} className="bg-[#1a0606] p-4 rounded border border-[#2a0d0d] flex flex-col gap-4">
                 <div className="flex justify-between border-b border-[#2a0d0d] pb-2">
                   <h3 className="text-[#f4ede4] font-medium">Round {i + 1} - {new Date(interview.date).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })}</h3>
-                  <StatusPill status={interview.status === 'COMPLETED' ? 'selected' : 'pending'}>{interview.status}</StatusPill>
+                  <StatusPill status={
+                    interview.status === 'COMPLETED' ? 'completed'
+                      : interview.status === 'CANCELLED' ? 'cancelled'
+                        : interview.status === 'FEEDBACK_SUBMITTED' ? 'selected'
+                          : 'pending'
+                  }>{interview.status}</StatusPill>
                 </div>
                 
-                <div className="flex flex-col gap-2">
-                  <p className="text-[#bfa8a2] text-sm">Time: {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - {new Date(interview.end_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}</p>
-                  {interview.meeting_link && (
+                 <div className="flex flex-col gap-2">
+                   <p className="text-[#bfa8a2] text-sm">Time: {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - {new Date(interview.end_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}</p>
+                   <p className="text-[#bfa8a2] text-sm">Panel: {interview.panel?.name || "-"}</p>
+                   {interview.meeting_link && (
                     <a href={interview.meeting_link} target="_blank" rel="noreferrer" className="text-[#d07d22] text-sm underline">Join Meeting</a>
                   )}
                 </div>
@@ -173,13 +189,15 @@ export default function RecruiterCandidateProfile() {
                 {interview.feedback && interview.feedback.length > 0 && (
                   <div className="mt-2">
                     <h4 className="text-[#d07d22] font-mono text-[12px] uppercase mb-2">Feedback</h4>
-                    {interview.feedback.map((fb: { id: number, feedback: string, user_id: string, overall_score: number, recommendation: string, comments: string }) => (
+                    {interview.feedback.map((fb: any) => {
+                      const overall = Math.round((fb.technical_score + fb.communication_score + fb.problem_solving_score + fb.confidence_score + fb.teamwork_score) / 5)
+                      return (
                       <div key={fb.id} className="bg-[#2a0d0d]/30 p-3 rounded mb-2 text-sm text-[#f4ede4]">
-                        <p><span className="text-[#bfa8a2]">Score:</span> {fb.overall_score} / 25</p>
-                        <p><span className="text-[#bfa8a2]">Recommendation:</span> {fb.recommendation}</p>
+                        <p><span className="text-[#bfa8a2]">Scores (T/C/P/CF/TW):</span> {fb.technical_score}/{fb.communication_score}/{fb.problem_solving_score}/{fb.confidence_score}/{fb.teamwork_score} <span className="text-[#d07d22]">Overall: {overall}/5</span></p>
+                        <p><span className="text-[#bfa8a2]">Decision:</span> {fb.decision}</p>
                         <p className="mt-1 text-[#bfa8a2] italic">"{fb.comments}"</p>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>
@@ -187,6 +205,11 @@ export default function RecruiterCandidateProfile() {
           </div>
         )}
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <NotesPanel applicationId={id as string} />
+        <StatusHistoryPanel applicationId={id as string} />
+      </div>
     </div>
   )
 }

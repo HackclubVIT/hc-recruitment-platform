@@ -29,7 +29,7 @@ export const GET = async (req: Request, res: Response) => {
       },
     })
 
-    const formattedUsers = users.map(u => ({
+    const formattedUsers = users.map((u: any) => ({
       id: u.id.toString(),
       name: u.name,
       email: u.email,

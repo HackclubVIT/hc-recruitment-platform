@@ -131,6 +131,17 @@ export default function UsersPage() {
                         EDIT
                       </button>
                       <button 
+                        onClick={async () => {
+                          if (!confirm(`Revoke access for ${user.name}? This will deactivate the account.`)) return
+                          try {
+                            await fetchApi(`/api/users`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: user.id, role: user.role, departments: user.departments || [], active: false })
+                            })
+                            fetchUsers()
+                          } catch (e) { console.error(e) }
+                        }}
                         className="text-[#ac120c] font-mono text-[10px] uppercase hover:underline ml-2"
                       >
                         REVOKE ACCESS

@@ -80,7 +80,7 @@ export const GET = async (req: Request, res: Response) => {
     ])
 
     // Format for frontend compatibility - serialize BigInts
-    const candidates = applications.map(app => ({
+    const candidates = applications.map((app: { id: bigint } & Record<string, unknown>) => ({
       ...app,
       id: app.id.toString(),
       decided_by: app.decided_by?.toString() || null,

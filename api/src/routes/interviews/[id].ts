@@ -148,7 +148,10 @@ export const PUT = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Cannot manually transition to feedback states. These are managed automatically." })
       }
 
-      const allowed = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
+      const allowedBase = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
+      const allowed = (session.role === "ADMIN" && existingInterview.status === "SCHEDULED" && status === "COMPLETED")
+        ? [...allowedBase, "COMPLETED"]
+        : allowedBase
       if (!allowed.includes(status)) {
         return res.status(400).json({ error: `Invalid status transition from ${existingInterview.status} to ${status}` })
       }
@@ -235,13 +238,22 @@ export const PUT = async (req: Request, res: Response) => {
     await logAudit(BigInt(session.id), `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
 
     const { createNotification } = await import("../../lib/notify")
-    const action = status === "CANCELLED" ? "cancelled" : "updated"
+    const isRescheduled = !!(date && start_time)
+    const action = status === "CANCELLED" ? "cancelled" : isRescheduled ? "rescheduled" : "updated"
     for (const pm of interview.assigned_members) {
       await createNotification(
         pm.user_id.toString(),
         `Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
         `The interview with ${interview.application.name} has been ${action}.`
       )
+    }
+    const candidateUser = await prisma.user.findUnique({ where: { id: interview.application_id } })
+    if (candidateUser) {
+      if (status === "CANCELLED") {
+        await createNotification(candidateUser.id.toString(), "Interview Cancelled", `Your interview has been cancelled.`)
+      } else if (isRescheduled) {
+        await createNotification(candidateUser.id.toString(), "Interview Rescheduled", `Your interview has been rescheduled.`)
+      }
     }
 
     return res.status(200).json({ interview: { ...interview, application_id: interview.application_id.toString() } })

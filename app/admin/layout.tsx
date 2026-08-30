@@ -12,6 +12,7 @@ const ADMIN_LINKS = [
   { label: "INTERVIEWS", href: "/admin/interviews" },
   { label: "RECRUITERS", href: "/admin/recruiters" },
   { label: "PANELS", href: "/admin/panels" },
+  { label: "FEEDBACK", href: "/admin/feedback" },
   { label: "ANALYTICS", href: "/admin/analytics" },
   { label: "AUDIT LOGS", href: "/admin/audit-logs" },
 ]

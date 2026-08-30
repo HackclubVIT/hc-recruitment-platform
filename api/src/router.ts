@@ -4,7 +4,11 @@ import { Router } from 'express';
 import { GET as getAnalytics } from './routes/analytics.js';
 // Applications
 import { GET as getApplications, POST as createApplication } from './routes/applications.js';
+import { POST as bulkUpdateApplications } from './routes/applications/bulk.js';
 import { GET as getApplicationById, PUT as updateApplication } from './routes/applications/[id].js';
+import { GET as getApplicationNotes, POST as createApplicationNote } from './routes/applications/[id]/notes.js';
+import { DELETE as deleteApplicationNote } from './routes/applications/[id]/notes/[noteId].js';
+import { GET as getApplicationHistory } from './routes/applications/[id]/history.js';
 // Audit Logs
 import { GET as getAuditLogs } from './routes/audit-logs.js';
 // Auth
@@ -68,8 +72,13 @@ router.delete('/forms/:id/questions/:questionId', deleteQuestion);
 // Applications
 router.get('/applications', getApplications);
 router.post('/applications', createApplication);
+router.post('/applications/bulk', bulkUpdateApplications);
 router.get('/applications/:id', getApplicationById);
 router.put('/applications/:id', updateApplication);
+router.get('/applications/:id/notes', getApplicationNotes);
+router.post('/applications/:id/notes', createApplicationNote);
+router.delete('/applications/:id/notes/:noteId', deleteApplicationNote);
+router.get('/applications/:id/history', getApplicationHistory);
 
 // Candidates
 router.get('/candidates', getCandidates);

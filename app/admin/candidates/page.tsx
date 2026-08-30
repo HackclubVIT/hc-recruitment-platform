@@ -64,10 +64,14 @@ export default function AdminCandidatesPage() {
             onChange={(e) => setDepartmentFilter(e.target.value)}
           >
             <option value="ALL">All Departments</option>
-            <option value="CSE">CSE</option>
-            <option value="ECE">ECE</option>
-            <option value="DESIGN">DESIGN</option>
-            <option value="MANAGEMENT">MANAGEMENT</option>
+            <option value="Web Development">Web Development</option>
+            <option value="AI/ML">AI/ML</option>
+            <option value="App Development">App Development</option>
+            <option value="Design">Design</option>
+            <option value="Events">Events</option>
+            <option value="Operations">Operations</option>
+            <option value="Competitive Programming">Competitive Programming</option>
+            <option value="Cybersecurity">Cybersecurity</option>
           </select>
         </div>
         <div className="w-full sm:w-1/4">
@@ -111,7 +115,7 @@ export default function AdminCandidatesPage() {
                     <tr key={candidate.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
                         <Link href={`/admin/candidates/${candidate.id}`} className="text-[#d07d22] font-mono text-[13px] font-bold hover:underline">
-                          {candidate.registration_number}
+                          {candidate.registerNumber || candidate.registration_number || "-"}
                         </Link>
                       </td>
                       <td className="p-4">
@@ -120,7 +124,7 @@ export default function AdminCandidatesPage() {
                         </Link>
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{candidate.email}</p>
                       </td>
-                      <td className="p-4 text-[#bfa8a2]">{candidate.department}</td>
+                      <td className="p-4 text-[#bfa8a2]">{candidate.domain || candidate.department || "-"}</td>
                       <td className="p-4">
                         <StatusPill status={appStatus.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
                           {appStatus}

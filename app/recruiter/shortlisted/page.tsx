@@ -79,12 +79,12 @@ export default function ShortlistedCandidatesPage() {
                 candidates.map((candidate) => {
                   return (
                     <tr key={candidate.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                      <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">{candidate.registration_number}</td>
+                      <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">{candidate.registerNumber || candidate.registration_number || "-"}</td>
                       <td className="p-4">
                         <p className="text-[#f4ede4] font-medium">{candidate.name}</p>
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{candidate.email}</p>
                       </td>
-                      <td className="p-4 text-[#bfa8a2]">{candidate.department}</td>
+                      <td className="p-4 text-[#bfa8a2]">{candidate.domain || candidate.department || "-"}</td>
                       <td className="p-4 flex gap-3">
                         <Link href={`/recruiter/meetings/schedule?candidate=${candidate.id}`}>
                           <Button variant="cta" className="py-2 px-4 text-xs">SCHEDULE</Button>
