@@ -93,7 +93,6 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Identity mismatch or user not found. Ensure your email and registration number exactly match your Hack Club account." })
     }
 
-    try {
       const application = await prisma.$transaction(async (tx) => {
         const existingApp = await tx.recruitmentApplication.findFirst({
           where: {
