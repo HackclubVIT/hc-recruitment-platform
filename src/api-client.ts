@@ -140,4 +140,16 @@ export const api = {
   
   // Audit Logs
   getAuditLogs: async () => fetchApi("/api/audit-logs").then(res => res.json()),
+
+  // Application notes & history
+  getApplicationNotes: async (id: string) => fetchApi(`/api/applications/${id}/notes`).then(res => res.json()),
+  createApplicationNote: async (id: string, content: string) =>
+    fetchApi(`/api/applications/${id}/notes`, { method: "POST", body: JSON.stringify({ content }) }).then(res => res.json()),
+  deleteApplicationNote: async (id: string, noteId: number) =>
+    fetchApi(`/api/applications/${id}/notes/${noteId}`, { method: "DELETE" }).then(res => res.json()),
+  getApplicationHistory: async (id: string) => fetchApi(`/api/applications/${id}/history`).then(res => res.json()),
+
+  // Bulk status update
+  bulkUpdateApplications: async (ids: string[], status: string) =>
+    fetchApi(`/api/applications/bulk`, { method: "POST", body: JSON.stringify({ ids, status }) }).then(res => res.json()),
 };

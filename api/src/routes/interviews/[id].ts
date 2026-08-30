@@ -148,7 +148,10 @@ export const PUT = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Cannot manually transition to feedback states. These are managed automatically." })
       }
 
-      const allowed = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
+      const allowedBase = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
+      const allowed = (session.role === "ADMIN" && existingInterview.status === "SCHEDULED" && status === "COMPLETED")
+        ? [...allowedBase, "COMPLETED"]
+        : allowedBase
       if (!allowed.includes(status)) {
         return res.status(400).json({ error: `Invalid status transition from ${existingInterview.status} to ${status}` })
       }

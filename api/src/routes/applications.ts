@@ -159,7 +159,7 @@ export const POST = async (req: Request, res: Response) => {
       { message: "Application submitted successfully", applicationId: application.id.toString() })
   } catch (error: unknown) {
     console.error("Application submission error:", error)
-    if (error.code === 'P2002') {
+    if (typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "P2002") {
       return res.status(409).json({ error: "An application already exists." })
     }
     return res.status(500).json({ error: "Internal server error" })
@@ -227,7 +227,7 @@ export const GET = async (req: Request, res: Response) => {
     ])
     
     // return direct application structure
-    const items = applications.map(app => ({
+    const items = applications.map((app: { id: bigint } & Record<string, unknown>) => ({
       ...app,
       id: app.id.toString()
     }))
