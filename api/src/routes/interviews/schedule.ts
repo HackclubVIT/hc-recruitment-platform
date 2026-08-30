@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../../lib/db"
 import { getSession } from "../../lib/auth"
 import { logAudit } from "../../lib/audit"
-import { createNotification } from "../../lib/notify"
+import { createNotification, getRecruitersByDepartment } from "../../lib/notify"
 import { sendEmail, templates } from "../../lib/email"
 import { z } from "zod"
 import { parseISTDateToUTC } from "../../lib/timezone"
@@ -163,14 +163,39 @@ export const POST = async (req: Request, res: Response) => {
         "New Interview Scheduled",
         `You have a new interview scheduled with ${application.name} on ${date} at ${start_time}.`
       )
+      
+      // Email panel members
+      if (pm.user.email) {
+        sendEmail({
+          to: pm.user.email,
+          subject: `HackClub VIT Recruitment - Interview Panel Assignment`,
+          html: `You have been assigned to an interview panel for candidate ${application.name} (Round ${interview.round}).<br/>Date: ${date}<br/>Time: ${start_time}<br/>Link: ${meeting_link || "TBD"}`
+        }).catch(console.error);
+      }
     }
 
     // Email candidate
-    sendEmail({
-      to: application.email,
-      subject: `HackClub VIT Recruitment - Interview Scheduled (Round ${interview.round})`,
-      html: templates.interviewScheduled(application.name, date, start_time, 10, interview.round, meeting_link || "TBD")
-    }).catch(console.error);
+    if (application.email) {
+      sendEmail({
+        to: application.email,
+        subject: `HackClub VIT Recruitment - Interview Scheduled (Round ${interview.round})`,
+        html: templates.interviewScheduled(application.name, date, start_time, 10, interview.round, meeting_link || "TBD")
+      }).catch(console.error);
+    }
+
+    // Email relevant department recruiters
+    if (application.domain) {
+      const recruiters = await getRecruitersByDepartment(application.domain);
+      for (const r of recruiters) {
+        if (r.email) {
+           sendEmail({
+             to: r.email,
+             subject: `HackClub VIT Recruitment - Interview Scheduled for ${application.domain}`,
+             html: `An interview has been scheduled for candidate ${application.name} (Round ${interview.round}).<br/>Date: ${date}<br/>Time: ${start_time}<br/>Link: ${meeting_link || "TBD"}`
+           }).catch(console.error);
+        }
+      }
+    }
 
     return res.status(201).json({ message: "Interview scheduled successfully", interview: { ...interview, application_id: interview.application_id.toString() } })
   } catch (error: any) {

@@ -3,7 +3,8 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/db"
 import { getSession } from "../lib/auth"
 import { logAudit } from "../lib/audit"
-import { createNotification } from "../lib/notify"
+import { createNotification, getRecruitersByDepartment } from "../lib/notify"
+import { sendEmail } from "../lib/email"
 import { z } from "zod"
 
 const feedbackSchema = z.object({
@@ -134,6 +135,19 @@ export const POST = async (req: Request, res: Response) => {
         "Interview Feedback Complete",
         `All panel members have submitted feedback for ${interview.application.name}. The interview is now completed.`
       )
+    }
+
+    if (allSubmitted && interview.application.domain) {
+      const recruiters = await getRecruitersByDepartment(interview.application.domain);
+      for (const r of recruiters) {
+        if (r.email) {
+          sendEmail({
+            to: r.email,
+            subject: `HackClub VIT Recruitment - Feedback Complete for ${interview.application.name}`,
+            html: `All panel members have submitted feedback for candidate ${interview.application.name} (Round ${interview.round}).<br/><br/>The interview is now marked as COMPLETED. Please review the feedback and take further action.`
+          }).catch(console.error);
+        }
+      }
     }
 
     return res.status(201).json({ message: "Feedback submitted successfully", feedback: newFeedback })

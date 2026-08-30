@@ -225,7 +225,7 @@ export const PUT = async (req: Request, res: Response) => {
       const updatedInterview = await tx.recruitmentInterview.update({
         where: { id },
         data: updateData,
-        include: { application: true, assigned_members: true }
+        include: { application: true, assigned_members: { include: { user: true } } }
       })
 
       return updatedInterview
@@ -234,7 +234,7 @@ export const PUT = async (req: Request, res: Response) => {
     const { logAudit } = await import("../../lib/audit")
     await logAudit(BigInt(session.id), `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
 
-    const { createNotification } = await import("../../lib/notify")
+    const { createNotification, getRecruitersByDepartment } = await import("../../lib/notify")
     const { sendEmail, templates } = await import("../../lib/email")
     const action = status === "CANCELLED" ? "cancelled" : "updated"
     for (const pm of interview.assigned_members) {
@@ -243,6 +243,15 @@ export const PUT = async (req: Request, res: Response) => {
         `Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
         `The interview with ${interview.application.name} has been ${action}.`
       )
+      
+      // Email panel members
+      if (pm.user?.email) {
+        sendEmail({
+          to: pm.user.email,
+          subject: `HackClub VIT Recruitment - Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+          html: `The interview with ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`
+        }).catch(console.error);
+      }
     }
 
     if (status === "CANCELLED") {
@@ -263,6 +272,20 @@ export const PUT = async (req: Request, res: Response) => {
           meeting_link || interview.meeting_link || "TBD"
         )
       }).catch(console.error);
+    }
+    
+    // Email relevant department recruiters
+    if (interview.application.domain && (status === "CANCELLED" || (date && start_time))) {
+      const recruiters = await getRecruitersByDepartment(interview.application.domain);
+      for (const r of recruiters) {
+        if (r.email) {
+           sendEmail({
+             to: r.email,
+             subject: `HackClub VIT Recruitment - Interview ${action.charAt(0).toUpperCase() + action.slice(1)} for ${interview.application.domain}`,
+             html: `The interview for candidate ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`
+           }).catch(console.error);
+        }
+      }
     }
 
     return res.status(200).json({ interview: { ...interview, application_id: interview.application_id.toString() } })
