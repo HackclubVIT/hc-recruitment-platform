@@ -194,13 +194,19 @@ export const PUT = async (req: Request, res: Response) => {
 
     // Notify Candidate via In-app and Email asynchronously
     const notificationMessage = `Your application status has been updated to ${status}.`
-    prisma.recruitmentNotification.create({
-      data: {
-        user_id: BigInt(existingApplication.id.toString()),
-        title: "Application Status Updated",
-        message: notificationMessage,
-      }
-    }).catch(console.error);
+    const candidateUser = await prisma.user.findFirst({
+      where: { email: existingApplication.email }
+    })
+    
+    if (candidateUser) {
+      prisma.recruitmentNotification.create({
+        data: {
+          user_id: candidateUser.id,
+          title: "Application Status Updated",
+          message: notificationMessage,
+        }
+      }).catch(console.error);
+    }
 
     sendEmail({
       to: existingApplication.email,

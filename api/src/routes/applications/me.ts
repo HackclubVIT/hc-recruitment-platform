@@ -10,9 +10,14 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" })
     }
 
+    const hcUser = await prisma.user.findUnique({ where: { id: BigInt(session.id) } })
+    if (!hcUser) {
+      return res.status(401).json({ error: "Unauthorized: HC User not found" })
+    }
+
     const application = await prisma.recruitmentApplication.findFirst({
       where: {
-        id: BigInt(session.id),
+        email: hcUser.email,
         recruitmentId: "recruitment-2026"
       },
       include: {
