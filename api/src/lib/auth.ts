@@ -32,6 +32,7 @@ export async function verifyToken(token: string | undefined = "") {
 
 interface SessionPayload {
   id: string
+  email: string
   role: string
   departments: string[]
   [key: string]: any
@@ -44,7 +45,23 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
   const payload = await verifyToken(token)
   if (!payload || !payload.id) return null
   
-  const userIdBigInt = BigInt(payload.id as string)
+  if (typeof payload.id === "string" && payload.id.startsWith("dev-mock-id")) {
+    if (process.env.NODE_ENV === "production") return null;
+    return {
+      id: payload.id,
+      email: payload.email as string,
+      role: payload.role as string,
+      departments: payload.departments as string[]
+    }
+  }
+
+  let userIdBigInt: bigint
+  try {
+    userIdBigInt = BigInt(payload.id as string)
+  } catch (e) {
+    return null
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userIdBigInt }
   })
@@ -57,6 +74,7 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
 
   return {
     id: user.id.toString(),
+    email: user.email || (payload.email as string) || "",
     role: assignment?.active ? assignment.role : "NONE",
     departments: assignment?.active ? assignment.departments : []
   }
