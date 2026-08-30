@@ -4,6 +4,7 @@ import prisma from "../lib/db"
 import { getSession } from "../lib/auth"
 import { createNotification } from "../lib/notify"
 import { logAudit } from "../lib/audit"
+import { sendEmail, templates } from "../lib/email"
 import { z } from "zod"
 import { getISTDateBounds } from "../lib/timezone"
 
@@ -156,6 +157,7 @@ export const POST = async (req: Request, res: Response) => {
          )
       }
     }
+
 
     await logAudit(undefined, "APPLICATION_SUBMITTED", "Application", application.id.toString())
 

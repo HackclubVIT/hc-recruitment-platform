@@ -3,6 +3,7 @@ import prisma from "../../lib/db"
 import { getSession } from "../../lib/auth"
 import { logAudit } from "../../lib/audit"
 import { createNotification } from "../../lib/notify"
+import { sendEmail, templates } from "../../lib/email"
 import { z } from "zod"
 
 export const GET = async (req: Request, res: Response) => {
@@ -190,6 +191,22 @@ export const PUT = async (req: Request, res: Response) => {
     })
 
     await logAudit(BigInt(session.id), `UPDATED_APPLICATION_STATUS_TO_${status}`, "Application", id.toString())
+
+    // Notify Candidate via In-app and Email asynchronously
+    const notificationMessage = `Your application status has been updated to ${status}.`
+    prisma.recruitmentNotification.create({
+      data: {
+        user_id: BigInt(existingApplication.id.toString()),
+        title: "Application Status Updated",
+        message: notificationMessage,
+      }
+    }).catch(console.error);
+
+    sendEmail({
+      to: existingApplication.email,
+      subject: "HackClub VIT Recruitment - Status Update",
+      html: templates.statusUpdated(existingApplication.name, status, reason)
+    }).catch(console.error);
 
     // Create Notification logic can be ignored if the user isn't assigned to the recruitment app natively
     // We notify recruiters 

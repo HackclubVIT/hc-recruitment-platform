@@ -235,6 +235,7 @@ export const PUT = async (req: Request, res: Response) => {
     await logAudit(BigInt(session.id), `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
 
     const { createNotification } = await import("../../lib/notify")
+    const { sendEmail, templates } = await import("../../lib/email")
     const action = status === "CANCELLED" ? "cancelled" : "updated"
     for (const pm of interview.assigned_members) {
       await createNotification(
@@ -242,6 +243,26 @@ export const PUT = async (req: Request, res: Response) => {
         `Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
         `The interview with ${interview.application.name} has been ${action}.`
       )
+    }
+
+    if (status === "CANCELLED") {
+      sendEmail({
+        to: interview.application.email,
+        subject: `HackClub VIT Recruitment - Interview Cancelled`,
+        html: templates.interviewCancelled(interview.application.name, interview.round)
+      }).catch(console.error);
+    } else if (date && start_time) {
+      sendEmail({
+        to: interview.application.email,
+        subject: `HackClub VIT Recruitment - Interview Rescheduled (Round ${interview.round})`,
+        html: templates.interviewRescheduled(
+          interview.application.name, 
+          date, 
+          start_time, 
+          interview.round, 
+          meeting_link || interview.meeting_link || "TBD"
+        )
+      }).catch(console.error);
     }
 
     return res.status(200).json({ interview: { ...interview, application_id: interview.application_id.toString() } })

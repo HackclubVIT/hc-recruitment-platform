@@ -4,6 +4,7 @@ import prisma from "../../lib/db"
 import { getSession } from "../../lib/auth"
 import { logAudit } from "../../lib/audit"
 import { createNotification } from "../../lib/notify"
+import { sendEmail, templates } from "../../lib/email"
 import { z } from "zod"
 import { parseISTDateToUTC } from "../../lib/timezone"
 
@@ -163,6 +164,13 @@ export const POST = async (req: Request, res: Response) => {
         `You have a new interview scheduled with ${application.name} on ${date} at ${start_time}.`
       )
     }
+
+    // Email candidate
+    sendEmail({
+      to: application.email,
+      subject: `HackClub VIT Recruitment - Interview Scheduled (Round ${interview.round})`,
+      html: templates.interviewScheduled(application.name, date, start_time, 10, interview.round, meeting_link || "TBD")
+    }).catch(console.error);
 
     return res.status(201).json({ message: "Interview scheduled successfully", interview: { ...interview, application_id: interview.application_id.toString() } })
   } catch (error: any) {
