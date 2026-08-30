@@ -8,11 +8,14 @@ export async function middleware(request: NextRequest) {
 
   // Paths that are explicitly public
   if (
+    pathname === "/" ||
     pathname.startsWith("/login") || 
     pathname.startsWith("/recruitment") || 
     pathname.startsWith("/application-success") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon.ico")
+    pathname.startsWith("/images") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/icon.svg")
   ) {
     // If logged in user tries to access /login, redirect to their dashboard
     if (pathname === "/login" && token) {
