@@ -1,10 +1,11 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-// Use JWT_SECRET as the base key, fallback to a hardcoded one ONLY if missing (should not happen in prod)
-// We hash the secret to ensure it's exactly 32 bytes for aes-256
 const getEncryptionKey = () => {
-  const secret = process.env.JWT_SECRET || 'fallback_secret_only_for_dev_do_not_use';
+  const secret = process.env.SMTP_ENCRYPTION_KEY;
+  if (!secret || secret.trim() === '') {
+    throw new Error('CRITICAL SECURITY ERROR: SMTP_ENCRYPTION_KEY environment variable is missing.');
+  }
   return crypto.createHash('sha256').update(String(secret)).digest();
 };
 

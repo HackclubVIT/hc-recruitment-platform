@@ -20,6 +20,10 @@ if (process.env.NODE_ENV === 'production') {
     console.error("CRITICAL SECURITY ERROR: JWT_SECRET is missing in production!");
     process.exit(1);
   }
+  if (!process.env.SMTP_ENCRYPTION_KEY) {
+    console.error("CRITICAL SECURITY ERROR: SMTP_ENCRYPTION_KEY is missing in production!");
+    process.exit(1);
+  }
   const requiredSmtp = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'];
   const missingSmtp = requiredSmtp.filter(key => !process.env[key]);
   if (missingSmtp.length > 0) {
