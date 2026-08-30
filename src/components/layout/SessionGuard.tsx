@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { api } from '@/api-client'
 
 export function SessionGuard({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
   const router = useRouter()
@@ -12,13 +13,7 @@ export function SessionGuard({ children, requiredRole }: { children: React.React
   useEffect(() => {
     async function verifySession() {
       try {
-        const res = await fetch('/api/auth/me')
-        if (!res.ok) {
-          router.push('/login')
-          return
-        }
-        
-        const data = await res.json()
+        const data = await api.getMe()
         const userRole = data.user?.role
         
         // Define route-to-role mappings
