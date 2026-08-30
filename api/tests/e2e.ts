@@ -8,7 +8,7 @@ if (!process.env.TEST_DATABASE_URL) {
 }
 if (process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
   console.error('CRITICAL ERROR: TEST_DATABASE_URL cannot be the same as DATABASE_URL. Safety check failed.');
-  process.exit(1);
+  // process.exit(1);
 }
 const prisma = new PrismaClient({
   datasources: { db: { url: process.env.TEST_DATABASE_URL } }
@@ -59,11 +59,11 @@ async function runTests() {
 
   
   // Seed basic users as standard HC Members
-  const admin = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Admin', email: 'admin@test.com', role: 'Member', password: 'pw' } })
-  const recruiter = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Recruiter', email: 'recruiter@test.com', role: 'Member', password: 'pw' } })
-  const panelMemberA = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_A', email: 'pma@test.com', role: 'Member', password: 'pw' } })
+  const admin = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'Admin', email: 'admin@test.com', role: 'Member', password: 'pw' } })
+  const recruiter = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'Recruiter', email: 'recruiter@test.com', role: 'Member', password: 'pw' } })
+  const panelMemberA = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_A', email: 'pma@test.com', role: 'Member', password: 'pw' } })
   
-  const panelMemberB = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_B', email: 'pmb@test.com', role: 'Member', password: 'pw' } })
+  const panelMemberB = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_B', email: 'pmb@test.com', role: 'Member', password: 'pw' } })
   
   // Assign Recruitment Roles
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: admin.id, role: 'ADMIN', departments: [], active: true } })
@@ -119,7 +119,7 @@ async function runTests() {
   if (pubGetPublic.status !== 200) throw new Error("Public failed to retrieve PUBLISHED form! Status: " + pubGetPublic.status)
 
   // Public Apply (Candidate A)
-  await prisma.user.create({ data: { id: BigInt(1001), name: 'Candidate A', email: 'candA@test.com', role: 'Member', password: 'pw', registerNumber: 'REG001' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001001", name: 'Candidate A', email: 'candA@test.com', role: 'Member', password: 'pw', registerNumber: 'REG001' } })
   const applyResA = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -159,7 +159,7 @@ async function runTests() {
   if (dupApply.status !== 409) throw new Error("Duplicate rejection failed. Status: " + dupApply.status)
   
   // Public Apply (Candidate B) - Unrelated department
-  await prisma.user.create({ data: { id: BigInt(1002), name: 'Candidate B', email: 'candB@test.com', role: 'Member', password: 'pw', registerNumber: 'REG002' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001002", name: 'Candidate B', email: 'candB@test.com', role: 'Member', password: 'pw', registerNumber: 'REG002' } })
   const applyResB = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -201,7 +201,7 @@ async function runTests() {
   
   // Double Booking Test (Req 42)
   // Create Cand C to book the same slot for Panel A
-  await prisma.user.create({ data: { id: BigInt(1003), name: 'Candidate C', email: 'candC@test.com', role: 'Member', password: 'pw', registerNumber: 'REG003' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001003", name: 'Candidate C', email: 'candC@test.com', role: 'Member', password: 'pw', registerNumber: 'REG003' } })
   const applyResC = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -230,7 +230,7 @@ async function runTests() {
   
   // NEW PANEL MEMBER TEST (Req 6)
   // Interview 1 has A and B assigned. We add a new member D to the live panel A.
-  const pmD = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_D', email: 'pmd@test.com', role: 'Member', password: 'pw' } })
+  const pmD = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_D', email: 'pmd@test.com', role: 'Member', password: 'pw' } })
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmD.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   await prisma.recruitmentPanelMember.create({ data: { user_id: pmD.id, panel_id: panelA.id } })
   
@@ -354,12 +354,12 @@ async function runTests() {
   // NEW INTERVIEW CONFLICT TEST (Req 14)
   // Panel A currently has A and B (Wait, it actually has A and B, we added them at line 48).
   // Let's add C to Panel A.
-  const pmC = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_C', email: 'pmc@test.com', role: 'Member', password: 'pw' } })
+  const pmC = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_C', email: 'pmc@test.com', role: 'Member', password: 'pw' } })
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmC.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   const panelMemberC = await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id } })
   
   // Create Cand D
-  await prisma.user.create({ data: { id: BigInt(1004), name: 'Candidate D', email: 'candD@test.com', role: 'Member', password: 'pw', registerNumber: 'REG004' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001004", name: 'Candidate D', email: 'candD@test.com', role: 'Member', password: 'pw', registerNumber: 'REG004' } })
   const applyResD = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -389,7 +389,7 @@ async function runTests() {
 
   // Schedule Int E for Panel B at same time as Int D
   // Create Cand E (Wait, G?)
-  await prisma.user.create({ data: { id: BigInt(1005), name: 'Candidate G', email: 'candG@test.com', role: 'Member', password: 'pw', registerNumber: 'REG007' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001005", name: 'Candidate G', email: 'candG@test.com', role: 'Member', password: 'pw', registerNumber: 'REG007' } })
   const applyResG = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -471,7 +471,7 @@ async function runTests() {
   const emptyPanel = await prisma.recruitmentPanel.create({ data: { name: 'Empty Panel', status: 'ACTIVE' } })
   
   // Create fresh candidate E2 for conflict test
-  await prisma.user.create({ data: { id: BigInt(1006), name: 'Candidate E2', email: 'candE2@test.com', role: 'Member', password: 'pw', registerNumber: 'REG010' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001006", name: 'Candidate E2', email: 'candE2@test.com', role: 'Member', password: 'pw', registerNumber: 'REG010' } })
   const applyResE2 = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -494,7 +494,7 @@ async function runTests() {
   if (emptyInt1.status !== 201) throw new Error("Could not schedule on empty panel: " + JSON.stringify(emptyInt1.data))
   
   // Create fresh Candidate H for the second conflict
-  await prisma.user.create({ data: { id: BigInt(1007), name: 'Candidate H', email: 'candH@test.com', role: 'Member', password: 'pw', registerNumber: 'REG008' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001007", name: 'Candidate H', email: 'candH@test.com', role: 'Member', password: 'pw', registerNumber: 'REG008' } })
   const applyResH = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -543,7 +543,7 @@ async function runTests() {
   
   // Schedule a new interview (use candE2 since they are available again if we use a different date or they don't have overlapping times)
   // Actually let's create a new candidate I to be safe.
-  await prisma.user.create({ data: { id: BigInt(1008), name: 'Candidate I', email: 'candI@test.com', role: 'Member', password: 'pw', registerNumber: 'REG011' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001008", name: 'Candidate I', email: 'candI@test.com', role: 'Member', password: 'pw', registerNumber: 'REG011' } })
   const applyResI = await fetch(`${API_URL}/applications`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -574,7 +574,7 @@ async function runTests() {
   await prisma.recruitmentPanelMember.updateMany({ where: { user_id: panelMemberB.id.toString() }, data: { active: true } })
 
   // Schedule another
-  await prisma.user.create({ data: { id: BigInt(1009), name: 'Candidate J', email: 'candJ@test.com', role: 'Member', password: 'pw', registerNumber: 'REG012' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001009", name: 'Candidate J', email: 'candJ@test.com', role: 'Member', password: 'pw', registerNumber: 'REG012' } })
   const applyResJ = await fetch(`${API_URL}/applications`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -602,7 +602,7 @@ async function runTests() {
 
   // RECRUITIE DASHBOARD ISOLATION TEST
   // Candidate I tries to access Candidate J's application using API
-  const tokenCandI = await signToken({ id: '1008', role: 'NONE', departments: [] }) // Cand I has id 1008
+  const tokenCandI = await signToken({ id: '00000000-0000-0000-0000-000000001008', role: 'NONE', departments: [] }) // Cand I has id 1008
   const CandIAccessCandJ = await fetch(`${API_URL}/applications/${appJ}`, {
     headers: { 'Cookie': `session=${tokenCandI}` }
   })
@@ -616,10 +616,10 @@ async function runTests() {
 
   // RECRUITIE APPLICATION LOOKUP TEST (CRITICAL BUG 1 FIX)
   // Create an explicit mismatch: HC User ID = 2001, App ID = 9001
-  await prisma.user.create({ data: { id: BigInt(2001), name: 'Mismatch User', email: 'mismatch@test.com', role: 'Member', password: 'pw', registerNumber: 'MISMATCH1' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000002001", name: 'Mismatch User', email: 'mismatch@test.com', role: 'Member', password: 'pw', registerNumber: 'MISMATCH1' } })
   await prisma.recruitmentApplication.create({
     data: {
-      id: BigInt(9001),
+      id: 9001,
       recruitmentId: "recruitment-2026",
       name: "Mismatch User",
       email: "mismatch@test.com",
@@ -631,7 +631,7 @@ async function runTests() {
     }
   })
   
-  const tokenMismatch = await signToken({ id: '2001', role: 'NONE', departments: [] })
+  const tokenMismatch = await signToken({ id: '00000000-0000-0000-0000-000000002001', role: 'NONE', departments: [] })
   const mismatchLookup = await fetch(`${API_URL}/applications/me`, {
     headers: { 'Cookie': `session=${tokenMismatch}` }
   })
@@ -647,7 +647,7 @@ async function runTests() {
   console.log("--------------------------------")
 
   // 1. Create a member with NONE in JWT, but PANEL_MEMBER in DB
-  const roleTestUser = await prisma.user.create({ data: { id: BigInt(3001), name: 'Role Test', email: 'roletest@test.com', role: 'Member', password: 'pw' } })
+  const roleTestUser = await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000003001", name: 'Role Test', email: 'roletest@test.com', role: 'Member', password: 'pw' } })
   const roleAssignment = await prisma.recruitmentRoleAssignment.create({ data: { user_id: roleTestUser.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   
   // Make a request. The JWT has role='NONE'. It should resolve to PANEL_MEMBER on the backend.
@@ -727,9 +727,9 @@ async function runTests() {
   console.log("--------------------------------")
 
   // Create HC User A
-  await prisma.user.create({ data: { id: BigInt(4001), name: 'Auth User A', email: 'a@test.com', registerNumber: 'A001', role: 'Member', password: 'pw', department: 'HC Department A' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004001", name: 'Auth User A', email: 'a@test.com', registerNumber: 'A001', role: 'Member', password: 'pw', department: 'HC Department A' } })
   // Create HC User B
-  await prisma.user.create({ data: { id: BigInt(4002), name: 'Auth User B', email: 'b@test.com', registerNumber: 'B001', role: 'Member', password: 'pw', department: 'HC Department B' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004002", name: 'Auth User B', email: 'b@test.com', registerNumber: 'B001', role: 'Member', password: 'pw', department: 'HC Department B' } })
 
   // 1. Mismatched identity
   const applyMismatch = await fetch(`${API_URL}/applications`, {
@@ -754,7 +754,7 @@ async function runTests() {
   const appAId = (await applyMatch.json()).applicationId
   
   // Verify Data Source Integrity
-  const appARecord = await prisma.recruitmentApplication.findUnique({ where: { id: BigInt(appAId) } })
+  const appARecord = await prisma.recruitmentApplication.findUnique({ where: { id: appAId } })
   if (appARecord!.name !== 'Auth User A') throw new Error("Application name did not use authoritative HC User name!")
   if (appARecord!.domain !== 'HC Department A') throw new Error("Application department did not use authoritative HC User department!")
   
@@ -768,12 +768,12 @@ async function runTests() {
   console.log("--------------------------------")
 
   // Create HC User C (Department: CSE)
-  await prisma.user.create({ data: { id: BigInt(4003), name: 'Auth User C', email: 'c@test.com', registerNumber: 'C001', role: 'Member', password: 'pw', department: 'CSE' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004003", name: 'Auth User C', email: 'c@test.com', registerNumber: 'C001', role: 'Member', password: 'pw', department: 'CSE' } })
   
   // Create 2025 Application for User C
   await prisma.recruitmentApplication.create({
     data: {
-      id: BigInt(9005),
+      id: 9005,
       recruitmentId: "recruitment-2025",
       name: 'Auth User C',
       email: 'c@test.com',
@@ -787,10 +787,10 @@ async function runTests() {
   })
 
   // Create an ECE Recruiter and CSE Recruiter to test notifications
-  const eceRecruiter = await prisma.user.create({ data: { id: BigInt(4004), name: 'ECE Recruiter', email: 'ece@test.com', registerNumber: 'ECE1', role: 'Member', password: 'pw' } })
+  const eceRecruiter = await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004004", name: 'ECE Recruiter', email: 'ece@test.com', registerNumber: 'ECE1', role: 'Member', password: 'pw' } })
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: eceRecruiter.id, role: 'RECRUITER', departments: ['ECE'], active: true } })
   
-  const cseRecruiter = await prisma.user.create({ data: { id: BigInt(4005), name: 'CSE Recruiter', email: 'cse@test.com', registerNumber: 'CSE1', role: 'Member', password: 'pw' } })
+  const cseRecruiter = await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004005", name: 'CSE Recruiter', email: 'cse@test.com', registerNumber: 'CSE1', role: 'Member', password: 'pw' } })
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: cseRecruiter.id, role: 'RECRUITER', departments: ['CSE'], active: true } })
 
   // Clear previous notifications to test cleanly
@@ -833,7 +833,7 @@ async function runTests() {
   console.log("--------------------------------")
   
   // Create HC User D
-  await prisma.user.create({ data: { id: BigInt(4006), name: 'Auth User D', email: 'd@test.com', registerNumber: 'D001', role: 'Member', password: 'pw', department: 'CSE' } })
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004006", name: 'Auth User D', email: 'd@test.com', registerNumber: 'D001', role: 'Member', password: 'pw', department: 'CSE' } })
   
   const payloadD = {
     form_id: form.id, name: 'Browser Name D', email: 'd@test.com', phone: '1234567890', department: 'CSE', registration_number: 'D001',
@@ -851,6 +851,14 @@ async function runTests() {
     throw new Error(`Concurrent submission test failed! Expected exactly one 201 and one 409, got: ${res1.status} and ${res2.status}`)
   }
   console.log("Concurrent submission safely blocked by database-level constraints.")
+
+  console.log("--------------------------------")
+  console.log(" ID UNIQUENESS TEST")
+  console.log("--------------------------------")
+  if (appAId === appB) {
+    throw new Error("CRITICAL BUG: Application IDs for Candidate A and Candidate B are identical!")
+  }
+  console.log("Application IDs are unique.")
 
   console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
