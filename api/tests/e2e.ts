@@ -606,6 +606,34 @@ async function runTests() {
   })
   if (CandIAccessSelf.status !== 200) throw new Error("Recruitie failed to access their own dashboard: " + CandIAccessSelf.status)
 
+  // RECRUITIE APPLICATION LOOKUP TEST (CRITICAL BUG 1 FIX)
+  // Create an explicit mismatch: HC User ID = 2001, App ID = 9001
+  await prisma.user.create({ data: { id: BigInt(2001), name: 'Mismatch User', email: 'mismatch@test.com', role: 'Member', password: 'pw', registerNumber: 'MISMATCH1' } })
+  await prisma.recruitmentApplication.create({
+    data: {
+      id: BigInt(9001),
+      recruitmentId: "recruitment-2026",
+      name: "Mismatch User",
+      email: "mismatch@test.com",
+      phoneNumber: "1234567890",
+      domain: "Engineering",
+      registerNumber: "MISMATCH1",
+      yearOfStudy: "1",
+      status: "APPLIED"
+    }
+  })
+  
+  const tokenMismatch = await signToken({ id: '2001', role: 'NONE', departments: [] })
+  const mismatchLookup = await fetch(`${API_URL}/applications/me`, {
+    headers: { 'Cookie': `session=${tokenMismatch}` }
+  })
+  if (mismatchLookup.status !== 200) throw new Error("Recruitie lookup failed with ID mismatch! Status: " + mismatchLookup.status)
+  
+  const mismatchData = await mismatchLookup.json()
+  if (mismatchData.application.id !== '9001') {
+    throw new Error(`CRITICAL BUG: Looked up application returned ID ${mismatchData.application.id} instead of 9001!`)
+  }
+
   console.log("All Security and E2E Tests Passed Successfully!")
 }
 
