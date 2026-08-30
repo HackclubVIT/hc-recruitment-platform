@@ -11,7 +11,15 @@ function getSecretKey() {
 
 const getEncodedKey = () => new TextEncoder().encode(getSecretKey())
 
-export async function signToken(payload: any) {
+export interface JWTPayload {
+  id: string;
+  email?: string;
+  role?: string;
+  departments?: string[];
+  [key: string]: unknown;
+}
+
+export async function signToken(payload: JWTPayload) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -32,9 +40,9 @@ export async function verifyToken(token: string | undefined = "") {
 
 interface SessionPayload {
   id: string
+  email: string
   role: string
   departments: string[]
-  [key: string]: any
 }
 
 export async function getSession(req?: Request): Promise<SessionPayload | null> {
@@ -44,19 +52,36 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
   const payload = await verifyToken(token)
   if (!payload || !payload.id) return null
   
-  const userIdBigInt = BigInt(payload.id as string)
+  if (typeof payload.id === "string" && payload.id.startsWith("dev-mock-id")) {
+    if (process.env.NODE_ENV === "production") return null;
+    return {
+      id: payload.id,
+      email: payload.email as string,
+      role: payload.role as string,
+      departments: payload.departments as string[]
+    }
+  }
+
+  let userId: string
+  try {
+    userId = payload.id as string
+  } catch (e) {
+    return null
+  }
+
   const user = await prisma.user.findUnique({
-    where: { id: userIdBigInt }
+    where: { id: userId }
   })
   
   if (!user || user.status !== "Active") return null
 
   const assignment = await prisma.recruitmentRoleAssignment.findUnique({
-    where: { user_id: userIdBigInt }
+    where: { user_id: userId }
   })
 
   return {
     id: user.id.toString(),
+    email: user.email || (payload.email as string) || "",
     role: assignment?.active ? assignment.role : "NONE",
     departments: assignment?.active ? assignment.departments : []
   }

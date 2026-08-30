@@ -11,7 +11,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     if (id) {
       const result = await prisma.recruitmentNotification.updateMany({
-        where: { id: parseInt(id, 10), user_id: BigInt(session.id) },
+        where: { id: parseInt(id, 10), user_id: session.id },
         data: { read: true }
       })
       if (result.count === 0) {
@@ -19,7 +19,7 @@ export const PUT = async (req: Request, res: Response) => {
       }
     } else {
       await prisma.recruitmentNotification.updateMany({
-        where: { user_id: BigInt(session.id), read: false },
+        where: { user_id: session.id, read: false },
         data: { read: true }
       })
     }

@@ -11,7 +11,20 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
+    const searchParams = new URLSearchParams(req.query as Record<string, string>)
+    const search = searchParams.get("q") || ""
+
+    const where: any = {}
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { registerNumber: { contains: search, mode: "insensitive" } }
+      ]
+    }
+
     const users = await prisma.user.findMany({
+      where,
       select: {
         id: true,
         name: true,
@@ -29,7 +42,7 @@ export const GET = async (req: Request, res: Response) => {
       },
     })
 
-    const formattedUsers = users.map((u: any) => ({
+    const formattedUsers = users.map(u => ({
       id: u.id.toString(),
       name: u.name,
       email: u.email,
@@ -70,22 +83,22 @@ export const PUT = async (req: Request, res: Response) => {
     }
 
     const { id, role, departments, active } = parsed.data
-    const userIdBigInt = BigInt(id)
+    const userId = id
 
-    const existingUser = await prisma.user.findUnique({ where: { id: userIdBigInt } })
+    const existingUser = await prisma.user.findUnique({ where: { id: userId } })
     if (!existingUser) {
       return res.status(404).json({ error: "HC User not found" })
     }
 
     const assignment = await prisma.recruitmentRoleAssignment.upsert({
-      where: { user_id: userIdBigInt },
+      where: { user_id: userId },
       update: {
         role,
         departments: departments || [],
         active: active !== undefined ? active : true
       },
       create: {
-        user_id: userIdBigInt,
+        user_id: userId,
         role,
         departments: departments || [],
         active: active !== undefined ? active : true
@@ -94,12 +107,12 @@ export const PUT = async (req: Request, res: Response) => {
 
     if (role !== "PANEL_MEMBER") {
       await prisma.recruitmentPanelMember.updateMany({
-        where: { user_id: userIdBigInt },
+        where: { user_id: userId },
         data: { active: false }
       })
     }
 
-    await logAudit(BigInt(session.id), "UPDATED_RECRUITMENT_ROLE", "RecruitmentRoleAssignment", assignment.id.toString())
+    await logAudit(session.id, "UPDATED_RECRUITMENT_ROLE", "RecruitmentRoleAssignment", assignment.id.toString())
 
     return res.status(200).json({ 
       user: {
@@ -132,15 +145,21 @@ export const DELETE = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Cannot deactivate yourself" })
     }
 
-    const userIdBigInt = BigInt(id)
+    const userId = id
 
     // Deactivate instead of delete
     await prisma.recruitmentRoleAssignment.update({
-      where: { user_id: userIdBigInt },
+      where: { user_id: userId },
       data: { active: false, role: 'NONE' }
     })
     
-    await logAudit(BigInt(session.id), "DEACTIVATED_RECRUITMENT_ROLE", "User", id)
+    // Cascade to active panel assignments to prevent future scheduling
+    await prisma.recruitmentPanelMember.updateMany({
+      where: { user_id: userId },
+      data: { active: false }
+    })
+    
+    await logAudit(session.id, "DEACTIVATED_RECRUITMENT_ROLE", "User", id)
     return res.status(200).json({ success: true, message: "User recruitment access deactivated." })
   } catch (error: any) {
     console.error("Deactivate user error:", error)

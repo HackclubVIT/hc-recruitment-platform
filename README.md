@@ -97,16 +97,11 @@ pnpm run start
 - **Authentication**: JWT-based session cookies are issued directly by the Express API. The cookies are strictly `httpOnly` and validated directly by the backend for every protected route.
 - **Strict Workflow Integrity**: Administrative privileges do not bypass the logical recruitment state machine (e.g. `INTERVIEW_SCHEDULED` -> `INTERVIEW_COMPLETED` -> `SELECTED`).
 
- ## Local Development & Testing
+## Local Development & Testing
 
- - Always run the API (`cd api && pnpm dev`) and the Frontend (`pnpm dev`) concurrently during local development.
- - Utilize standard local tools (e.g., Postman) targeting `http://localhost:3001` for direct API testing.
- - Test workflows end-to-end starting from Public Form application submission to Final Decision. Ensure strict isolation mechanisms are respected by switching between Admin, Recruiter, and Panel Member accounts.
-
-## Spec Deviations (from guidance PDF)
-
-- **Candidate == Application (merged model):** The guidance spec models `candidates` and `applications` as separate entities. This implementation uses a single `RecruitmentApplication` record per candidate (the application IS the candidate profile). This is intentional to simplify the workflow; both can be reconciled later without changing the UI.
-- **Resume as URL:** The spec references resume file upload validation; this implementation stores a `resume_url` string (a link to the resume) rather than accepting file uploads. File upload can be added in a follow-up.
+- Always run the API (`cd api && pnpm dev`) and the Frontend (`pnpm dev`) concurrently during local development.
+- Utilize standard local tools (e.g., Postman) targeting `http://localhost:3001` for direct API testing.
+- Test workflows end-to-end starting from Public Form application submission to Final Decision. Ensure strict isolation mechanisms are respected by switching between Admin, Recruiter, and Panel Member accounts.
 
 ## API Documentation
 

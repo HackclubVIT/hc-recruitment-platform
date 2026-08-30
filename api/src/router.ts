@@ -1,14 +1,30 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 login requests per `window`
+  message: { error: 'Too many login attempts from this IP, please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS === 'true',
+});
+
+const submissionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // Limit each IP to 3 submissions per `window`
+  message: { error: 'Too many applications submitted from this IP, please try again after an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS === 'true',
+});
 
 // Analytics
 import { GET as getAnalytics } from './routes/analytics.js';
 // Applications
 import { GET as getApplications, POST as createApplication } from './routes/applications.js';
-import { POST as bulkUpdateApplications } from './routes/applications/bulk.js';
+import { GET as getApplicationMe } from './routes/applications/me.js';
 import { GET as getApplicationById, PUT as updateApplication } from './routes/applications/[id].js';
-import { GET as getApplicationNotes, POST as createApplicationNote } from './routes/applications/[id]/notes.js';
-import { DELETE as deleteApplicationNote } from './routes/applications/[id]/notes/[noteId].js';
-import { GET as getApplicationHistory } from './routes/applications/[id]/history.js';
 // Audit Logs
 import { GET as getAuditLogs } from './routes/audit-logs.js';
 // Auth
@@ -22,6 +38,7 @@ import { GET as getCandidateById } from './routes/candidates/[id].js';
 import { POST as submitFeedback } from './routes/feedback.js';
 // Forms
 import { GET as getForms, POST as createForm } from './routes/forms.js';
+import { GET as getPublishedForms } from './routes/forms/published.js';
 import { GET as getFormById, PUT as updateForm, DELETE as deleteForm } from './routes/forms/[id].js';
 import { POST as createQuestion } from './routes/forms/[id]/questions.js';
 import { PUT as updateQuestion, DELETE as deleteQuestion } from './routes/forms/[id]/questions/[questionId].js';
@@ -42,6 +59,11 @@ import { POST as addPanelMember, DELETE as removePanelMember } from './routes/pa
 import { GET as getRecruiterDashboard } from './routes/recruiter/dashboard.js';
 // Users
 import { GET as getUsers, PUT as updateUser, DELETE as deleteUser } from './routes/users.js';
+// Settings
+import { GET as getEmailSettings, POST as updateEmailSettings } from './routes/settings/email.js';
+import { POST as testEmailSettings } from './routes/settings/email-test.js';
+import { GET as getEmailLogs } from './routes/settings/email-logs.js';
+import { POST as sendEmailAnnouncement } from './routes/settings/email-announcement.js';
 
 export const router = Router();
 
@@ -49,7 +71,7 @@ export const router = Router();
 router.get('/health', healthCheck);
 
 // Auth
-router.post('/auth/login', login);
+router.post('/auth/login', authLimiter, login);
 router.post('/auth/logout', logout);
 router.get('/auth/me', me);
 
@@ -61,6 +83,7 @@ router.delete('/users', deleteUser);
 
 // Forms
 router.get('/forms', getForms);
+router.get('/forms/published', getPublishedForms);
 router.post('/forms', createForm);
 router.get('/forms/:id', getFormById);
 router.put('/forms/:id', updateForm);
@@ -71,14 +94,10 @@ router.delete('/forms/:id/questions/:questionId', deleteQuestion);
 
 // Applications
 router.get('/applications', getApplications);
-router.post('/applications', createApplication);
-router.post('/applications/bulk', bulkUpdateApplications);
+router.post('/applications', submissionLimiter, createApplication);
+router.get('/applications/me', getApplicationMe);
 router.get('/applications/:id', getApplicationById);
 router.put('/applications/:id', updateApplication);
-router.get('/applications/:id/notes', getApplicationNotes);
-router.post('/applications/:id/notes', createApplicationNote);
-router.delete('/applications/:id/notes/:noteId', deleteApplicationNote);
-router.get('/applications/:id/history', getApplicationHistory);
 
 // Candidates
 router.get('/candidates', getCandidates);
@@ -110,3 +129,10 @@ router.put('/notifications/read', readNotifications);
 router.get('/recruiter/dashboard', getRecruiterDashboard);
 router.get('/analytics', getAnalytics);
 router.get('/audit-logs', getAuditLogs);
+
+// Settings
+router.get('/settings/email', getEmailSettings);
+router.post('/settings/email', updateEmailSettings);
+router.post('/settings/email/test', testEmailSettings);
+router.get('/settings/email/logs', getEmailLogs);
+router.post('/settings/email/announcement', sendEmailAnnouncement);

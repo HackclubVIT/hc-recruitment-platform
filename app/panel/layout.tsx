@@ -2,6 +2,7 @@ import React from "react"
 import { Navbar } from "@/components/layout/Navbar"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { MobileNav } from "@/components/layout/MobileNav"
+import { SessionGuard } from "@/components/layout/SessionGuard"
 
 const PANEL_LINKS = [
   { label: "DASHBOARD", href: "/panel/dashboard" },
@@ -17,7 +18,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <MobileNav links={PANEL_LINKS} title="Panel Menu" />
         <Sidebar links={PANEL_LINKS} />
         <main className="flex-1 p-4 lg:p-10 overflow-y-auto max-w-[1180px] mx-auto w-full">
-          {children}
+          <SessionGuard requiredRole="PANEL_MEMBER">
+            {children}
+          </SessionGuard>
         </main>
       </div>
     </div>

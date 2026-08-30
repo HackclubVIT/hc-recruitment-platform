@@ -20,8 +20,7 @@ function ScheduleForm() {
   const [error, setError] = useState("")
 
   const [formData, setFormData] = useState({
-    candidate_id: initialCandidateId ? parseInt(initialCandidateId) : "",
-    application_id: "",
+    application_id: initialCandidateId ? parseInt(initialCandidateId) : "",
     panel_id: "",
     date: "",
     start_time: "",
@@ -51,8 +50,7 @@ function ScheduleForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          candidate_id: Number(formData.candidate_id),
-          application_id: Number(formData.application_id),
+          application_id: String(formData.application_id),
           panel_id: Number(formData.panel_id)
         })
       })
@@ -117,14 +115,14 @@ function ScheduleForm() {
         <div className="flex flex-col gap-2">
           <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Candidate</label>
           <select
-            value={formData.candidate_id}
-            onChange={e => setFormData({ ...formData, candidate_id: e.target.value, application_id: e.target.value })}
+            value={formData.application_id}
+            onChange={e => setFormData({ ...formData, application_id: e.target.value })}
             className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono focus:border-[#d07d22] outline-none"
             required
           >
             <option value="" disabled>Select Shortlisted Candidate</option>
             {candidates.map(c => (
-              <option key={c.id} value={c.id}>{c.name} ({c.registerNumber || c.registration_number || c.email})</option>
+              <option key={c.id} value={c.id}>{c.name} ({c.registration_number})</option>
             ))}
           </select>
         </div>

@@ -18,7 +18,7 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
 export const GET = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
-    if (!session) return res.status(401).json({ error: "Unauthorized" })
+    if (!session || session.role === "NONE") return res.status(401).json({ error: "Unauthorized" })
     
     const resolvedParams = req.params
     const id = parseInt((resolvedParams.id as string), 10)
@@ -148,10 +148,7 @@ export const PUT = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Cannot manually transition to feedback states. These are managed automatically." })
       }
 
-      const allowedBase = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
-      const allowed = (session.role === "ADMIN" && existingInterview.status === "SCHEDULED" && status === "COMPLETED")
-        ? [...allowedBase, "COMPLETED"]
-        : allowedBase
+      const allowed = VALID_STATUS_TRANSITIONS[existingInterview.status] || []
       if (!allowed.includes(status)) {
         return res.status(400).json({ error: `Invalid status transition from ${existingInterview.status} to ${status}` })
       }
@@ -228,31 +225,74 @@ export const PUT = async (req: Request, res: Response) => {
       const updatedInterview = await tx.recruitmentInterview.update({
         where: { id },
         data: updateData,
-        include: { application: true, assigned_members: true }
+        include: { application: true, assigned_members: { include: { user: true } } }
       })
 
       return updatedInterview
     })
 
     const { logAudit } = await import("../../lib/audit")
-    await logAudit(BigInt(session.id), `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
+    await logAudit(session.id, `UPDATED_INTERVIEW_${status || 'RESCHEDULED'}`, "Interview", id)
 
-    const { createNotification } = await import("../../lib/notify")
-    const isRescheduled = !!(date && start_time)
-    const action = status === "CANCELLED" ? "cancelled" : isRescheduled ? "rescheduled" : "updated"
+    const { createNotification, getRecruitersByDepartment } = await import("../../lib/notify")
+    const { sendEmail, templates } = await import("../../lib/email")
+    const action = status === "CANCELLED" ? "cancelled" : "updated"
     for (const pm of interview.assigned_members) {
       await createNotification(
         pm.user_id.toString(),
         `Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
         `The interview with ${interview.application.name} has been ${action}.`
       )
+      
+      // Email panel members
+      if (pm.user?.email) {
+        sendEmail({
+          to: pm.user.email,
+          subject: `HackClub VIT Recruitment - Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+          html: `The interview with ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`,
+          eventType: status === "CANCELLED" ? "INTERVIEW_CANCELLED" : "INTERVIEW_RESCHEDULED",
+          entityId: interview.id.toString()
+        }).catch(console.error);
+      }
     }
-    const candidateUser = await prisma.user.findUnique({ where: { id: interview.application_id } })
-    if (candidateUser) {
-      if (status === "CANCELLED") {
-        await createNotification(candidateUser.id.toString(), "Interview Cancelled", `Your interview has been cancelled.`)
-      } else if (isRescheduled) {
-        await createNotification(candidateUser.id.toString(), "Interview Rescheduled", `Your interview has been rescheduled.`)
+
+    if (status === "CANCELLED") {
+      sendEmail({
+        to: interview.application.email,
+        subject: `HackClub VIT Recruitment - Interview Cancelled`,
+        html: templates.interviewCancelled(interview.application.name, interview.round),
+        eventType: "INTERVIEW_CANCELLED",
+        entityId: interview.id.toString()
+      }).catch(console.error);
+    } else if (date && start_time) {
+      sendEmail({
+        to: interview.application.email,
+        subject: `HackClub VIT Recruitment - Interview Rescheduled (Round ${interview.round})`,
+        html: templates.interviewRescheduled(
+          interview.application.name, 
+          date, 
+          start_time, 
+          interview.round, 
+          meeting_link || interview.meeting_link || "TBD"
+        ),
+        eventType: "INTERVIEW_RESCHEDULED",
+        entityId: interview.id.toString()
+      }).catch(console.error);
+    }
+    
+    // Email relevant department recruiters
+    if (interview.application.domain && (status === "CANCELLED" || (date && start_time))) {
+      const recruiters = await getRecruitersByDepartment(interview.application.domain);
+      for (const r of recruiters) {
+        if (r.email) {
+           sendEmail({
+             to: r.email,
+             subject: `HackClub VIT Recruitment - Interview ${action.charAt(0).toUpperCase() + action.slice(1)} for ${interview.application.domain}`,
+             html: `The interview for candidate ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`,
+             eventType: status === "CANCELLED" ? "INTERVIEW_CANCELLED" : "INTERVIEW_RESCHEDULED",
+             entityId: interview.id.toString()
+           }).catch(console.error);
+        }
       }
     }
 

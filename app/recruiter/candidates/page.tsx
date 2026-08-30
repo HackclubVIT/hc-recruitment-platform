@@ -97,14 +97,10 @@ export default function CandidatesPage() {
             onChange={(e) => setDepartmentFilter(e.target.value)}
           >
             <option value="ALL">All Depts</option>
-            <option value="Web Development">Web Development</option>
-            <option value="AI/ML">AI/ML</option>
-            <option value="App Development">App Development</option>
-            <option value="Design">Design</option>
-            <option value="Events">Events</option>
-            <option value="Operations">Operations</option>
-            <option value="Competitive Programming">Competitive Programming</option>
-            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="CSE">CSE</option>
+            <option value="ECE">ECE</option>
+            <option value="EEE">EEE</option>
+            <option value="MECH">MECH</option>
           </select>
         </div>
         <div className="w-full sm:w-1/5">

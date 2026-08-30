@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
+import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/db"
 import { getSession } from "../lib/auth"
 import { createNotification } from "../lib/notify"
 import { logAudit } from "../lib/audit"
+import { sendEmail, templates } from "../lib/email"
 import { z } from "zod"
 import { getISTDateBounds } from "../lib/timezone"
 
@@ -13,6 +15,7 @@ const applicationSchema = z.object({
   phone: z.string().min(10),
   department: z.string().min(2),
   registration_number: z.string().min(4),
+  yearOfStudy: z.string().optional(),
   resume_url: z.string().url().refine(val => val.startsWith('https://'), { message: "resume_url must use HTTPS protocol" }).optional().or(z.literal('')),
   form_id: z.number().int().positive(),
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional()
@@ -80,60 +83,71 @@ export const POST = async (req: Request, res: Response) => {
       }
     }
 
-    const existingApp = await prisma.recruitmentApplication.findFirst({
-      where: {
-        OR: [
-          { email: data.email },
-          { registerNumber: data.registration_number }
-        ]
-      }
-    })
-
-    if (existingApp) {
-      if (existingApp.email !== data.email || existingApp.registerNumber !== data.registration_number) {
-        return res.status(400).json({ error: "Identity mismatch. Please use the exact email and registration number you previously used." })
-      }
-      return res.status(409).json({ error: "An application already exists for this candidate." })
-    }
-
-    // Check if they are an existing HC member
+    // Check if they are an existing HC member with EXACT matching identity
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email: data.email },
-          { registerNumber: data.registration_number }
-        ]
+        email: data.email,
+        registerNumber: data.registration_number
       }
     })
 
-    const appId = existingUser ? existingUser.id : BigInt(Date.now());
+    if (!existingUser) {
+      return res.status(403).json({ error: "Identity mismatch or user not found. Ensure your email and registration number exactly match your Hack Club account." })
+    }
 
-    const application = await prisma.recruitmentApplication.create({
-      data: {
-        id: appId,
-        recruitmentId: "recruitment-2026",
-        name: data.name,
-        email: data.email,
-        phoneNumber: data.phone,
-        domain: data.department,
-        registerNumber: data.registration_number,
-        portfolio: data.resume_url || null,
-        yearOfStudy: "1",
-        status: "APPLIED",
-        appliedDate: new Date().toISOString(),
-        formSubmission: {
-          create: {
-            form_id: form.id,
-            answers: {
-              create: form.questions.map((q: { id: number }) => ({
-                question_id: q.id,
-                answer: String(data.answers?.[q.id] || "")
-              }))
-            }
+      const application = await prisma.$transaction(async (tx) => {
+        const existingApp = await tx.recruitmentApplication.findFirst({
+          where: {
+            recruitmentId: "recruitment-2026",
+            OR: [
+              { email: existingUser.email || data.email },
+              { registerNumber: existingUser.registerNumber || data.registration_number }
+            ]
           }
+        })
+        
+        if (existingApp) {
+          throw new Error("DUPLICATE_APPLICATION")
         }
-      },
-    })
+
+        const newAppId = crypto.randomBytes(8).readBigUInt64LE() & 0x7FFFFFFFFFFFFFFFn;
+
+        return await tx.recruitmentApplication.create({
+          data: {
+            id: newAppId,
+            recruitmentId: "recruitment-2026",
+            name: existingUser.name,
+            email: existingUser.email || data.email,
+            phoneNumber: existingUser.phoneNumber || data.phone,
+            domain: existingUser.department || data.department,
+            registerNumber: existingUser.registerNumber || data.registration_number,
+            portfolio: data.resume_url || null,
+            yearOfStudy: data.yearOfStudy || (() => {
+              const regMatch = (existingUser.registerNumber || data.registration_number).match(/^(\d{2})/);
+              if (regMatch) {
+                const startYear = 2000 + parseInt(regMatch[1], 10);
+                const currentYear = new Date().getFullYear();
+                const studyYear = currentYear - startYear;
+                return studyYear > 0 && studyYear <= 5 ? studyYear.toString() : "";
+              }
+              return "";
+            })(),
+            status: "APPLIED",
+            appliedDate: new Date().toISOString(),
+            formSubmission: {
+              create: {
+                form_id: form.id,
+                answers: {
+                  create: form.questions.map((q: { id: number }) => ({
+                    question_id: q.id,
+                    answer: String(data.answers?.[q.id] || "")
+                  }))
+                }
+              }
+            }
+          },
+        })
+      })
 
     // Notify recruiters
     const recruiters = await prisma.recruitmentRoleAssignment.findMany({
@@ -143,23 +157,43 @@ export const POST = async (req: Request, res: Response) => {
       },
     })
 
+    const notificationsToCreate = []
     for (const recruiter of recruiters) {
-      if (recruiter.departments.includes(data.department)) {
-         await createNotification(
-           recruiter.user_id.toString(),
-           "New Application Submitted",
-           `${application.name} applied for the ${application.domain} department.`
-         )
+      if (application.domain && recruiter.departments.includes(application.domain)) {
+         notificationsToCreate.push({
+           user_id: recruiter.user_id,
+           title: "New Application Submitted",
+           message: `${application.name} applied for the ${application.domain} department.`,
+           read: false
+         })
       }
     }
+    
+    if (notificationsToCreate.length > 0) {
+      await prisma.recruitmentNotification.createMany({
+        data: notificationsToCreate
+      })
+    }
+
 
     await logAudit(undefined, "APPLICATION_SUBMITTED", "Application", application.id.toString())
+
+    sendEmail({
+      to: application.email,
+      subject: `HackClub VIT Recruitment - Application Received`,
+      html: templates.applicationSubmitted(application.name, "HackClub VIT Recruitment 2026"),
+      eventType: "APPLICATION_SUBMITTED",
+      entityId: application.id.toString()
+    }).catch(console.error);
 
     return res.status(201).json(
       { message: "Application submitted successfully", applicationId: application.id.toString() })
   } catch (error: unknown) {
     console.error("Application submission error:", error)
-    if (typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "P2002") {
+    if (error instanceof Error && error.message === "DUPLICATE_APPLICATION") {
+      return res.status(409).json({ error: "An application already exists for this candidate." })
+    }
+    if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'P2002') {
       return res.status(409).json({ error: "An application already exists." })
     }
     return res.status(500).json({ error: "Internal server error" })
@@ -169,7 +203,7 @@ export const POST = async (req: Request, res: Response) => {
 export const GET = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
-    if (!session) {
+    if (!session || session.role === "NONE") {
       return res.status(401).json({ error: "Unauthorized" })
     }
 
@@ -179,10 +213,9 @@ export const GET = async (req: Request, res: Response) => {
     const search = searchParams.get("search") || ""
     const status = searchParams.get("status") || ""
     const department = searchParams.get("department") || ""
-    const sort = searchParams.get("sort") || ""
-    const date_from = searchParams.get("date_from") || ""
-    const date_to = searchParams.get("date_to") || ""
-
+    
+    // We don't have date filtering here easily because appliedDate is a string in HC DB schema
+    
     const skip = (page - 1) * limit
 
     const where: Prisma.RecruitmentApplicationWhereInput = { recruitmentId: "recruitment-2026" }
@@ -203,7 +236,7 @@ export const GET = async (req: Request, res: Response) => {
       where.interviews = {
         some: {
           assigned_members: {
-            some: { user_id: BigInt(session.id) }
+            some: { user_id: session.id }
           }
         }
       }
@@ -217,45 +250,22 @@ export const GET = async (req: Request, res: Response) => {
       where.status = status
     }
 
-    if (date_from || date_to) {
-      const dateFilter: Record<string, string> = {}
-      if (date_from) dateFilter.gte = date_from
-      if (date_to) dateFilter.lte = date_to
-      // appliedDate is stored as ISO string, lexicographic range works
-      ;(where as any).appliedDate = dateFilter
-    }
-
-    let orderBy: Prisma.RecruitmentApplicationOrderByWithRelationInput = { id: "desc" }
-    if (sort) {
-      const [field, dir] = sort.split(":")
-      const direction = dir === "asc" ? "asc" : "desc"
-      const allowed = ["appliedDate", "status", "name", "id", "domain"]
-      if (allowed.includes(field)) {
-        orderBy = { [field]: direction }
-      }
-    }
-
     const [applications, total] = await Promise.all([
       prisma.recruitmentApplication.findMany({
         where,
         skip,
         take: limit,
-        orderBy,
-        include: { interviews: { include: { panel: true } } },
+        orderBy: { id: "desc" },
       }),
       prisma.recruitmentApplication.count({ where })
     ])
     
-    const items = applications.map((app: any) => {
-      const interviews = app.interviews || []
-      const latest = interviews.sort((a: any, b: any) => b.id - a.id)[0]
-      return {
-        ...app,
-        id: app.id.toString(),
-        assignedPanel: latest?.panel?.name ?? null,
-        interviewStatus: latest?.status ?? null,
-      }
-    })
+    // return direct application structure
+    const items = applications.map(app => ({
+      ...app,
+      id: app.id.toString(),
+      decided_by: app.decided_by?.toString() || null
+    }))
 
     return res.status(200).json({
       items,

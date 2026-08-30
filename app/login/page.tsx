@@ -41,7 +41,17 @@ export default function LoginPage() {
       else if (data.user.role === "RECRUITER") router.push("/recruiter/dashboard")
       else if (data.user.role === "PANEL_MEMBER") router.push("/panel/dashboard")
       else {
-        setError("You do not have recruitment staff permissions.")
+        // For NONE role, verify application exists
+        try {
+          const appRes = await fetchApi("/api/applications/me");
+          if (appRes.ok) {
+            router.push("/recruitie/dashboard");
+          } else {
+            setError("No Recruitment Access. You have not submitted an application.");
+          }
+        } catch (e) {
+          setError("Failed to verify recruitment access.");
+        }
       }
 
     } catch (err: any) {
