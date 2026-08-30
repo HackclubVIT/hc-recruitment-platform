@@ -115,6 +115,7 @@ async function runTests() {
   if (pubGetPublic.status !== 200) throw new Error("Public failed to retrieve PUBLISHED form! Status: " + pubGetPublic.status)
 
   // Public Apply (Candidate A)
+  await prisma.user.create({ data: { id: BigInt(1001), name: 'Candidate A', email: 'candA@test.com', role: 'Member', password: 'pw', registerNumber: 'REG001' } })
   const applyResA = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -154,6 +155,7 @@ async function runTests() {
   if (dupApply.status !== 409) throw new Error("Duplicate rejection failed. Status: " + dupApply.status)
   
   // Public Apply (Candidate B) - Unrelated department
+  await prisma.user.create({ data: { id: BigInt(1002), name: 'Candidate B', email: 'candB@test.com', role: 'Member', password: 'pw', registerNumber: 'REG002' } })
   const applyResB = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -185,7 +187,6 @@ async function runTests() {
 
   // SCHEDULE INTERVIEW A
   const schedARes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candA!.id,
     application_id: appA,
     panel_id: panelA.id,
     date: '2026-10-15',
@@ -196,6 +197,7 @@ async function runTests() {
   
   // Double Booking Test (Req 42)
   // Create Cand C to book the same slot for Panel A
+  await prisma.user.create({ data: { id: BigInt(1003), name: 'Candidate C', email: 'candC@test.com', role: 'Member', password: 'pw', registerNumber: 'REG003' } })
   const applyResC = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -210,7 +212,6 @@ async function runTests() {
   await makeRequest(`/applications/${appC}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const doubleSched = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candC!.id,
     application_id: appC,
     panel_id: panelA.id,
     date: '2026-10-15',
@@ -299,7 +300,7 @@ async function runTests() {
   if (slResB.status !== 200) throw new Error("Admin shortlisting B failed: " + JSON.stringify(slResB.data))
 
   const schedBRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candB!.id, application_id: appB, panel_id: panelA.id,
+    application_id: appB, panel_id: panelA.id,
     date: '2026-10-16', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedBRes.status !== 201) throw new Error("Admin scheduling B failed: " + JSON.stringify(schedBRes.data))
@@ -339,7 +340,7 @@ async function runTests() {
   
   // Schedule next round
   const schedB2Res = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candB!.id, application_id: appB, panel_id: panelB.id,
+    application_id: appB, panel_id: panelB.id,
     date: '2026-10-17', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedB2Res.status !== 201) throw new Error("Admin scheduling B round 2 failed: " + JSON.stringify(schedB2Res.data))
@@ -352,6 +353,7 @@ async function runTests() {
   const panelMemberC = await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id } })
   
   // Create Cand D
+  await prisma.user.create({ data: { id: BigInt(1004), name: 'Candidate D', email: 'candD@test.com', role: 'Member', password: 'pw', registerNumber: 'REG004' } })
   const applyResD = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -367,7 +369,7 @@ async function runTests() {
 
   // Schedule Int D for Panel A (now has A, B, C)
   const schedDRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candD!.id, application_id: appD, panel_id: panelA.id,
+    application_id: appD, panel_id: panelA.id,
     date: '2026-10-20', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedDRes.status !== 201) throw new Error("Scheduling D failed: " + JSON.stringify(schedDRes.data))
@@ -380,7 +382,8 @@ async function runTests() {
   await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelB.id } })
 
   // Schedule Int E for Panel B at same time as Int D
-  // Create Cand E
+  // Create Cand E (Wait, G?)
+  await prisma.user.create({ data: { id: BigInt(1005), name: 'Candidate G', email: 'candG@test.com', role: 'Member', password: 'pw', registerNumber: 'REG007' } })
   const applyResG = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -395,7 +398,7 @@ async function runTests() {
   await makeRequest(`/applications/${appG}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const schedERes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candG!.id, application_id: appG, panel_id: panelB.id,
+    application_id: appG, panel_id: panelB.id,
     date: '2026-10-20', start_time: '10:00' // SAME TIME AS INT D
   }, 'ADMIN', admin.id.toString())
   
@@ -430,7 +433,7 @@ async function runTests() {
 
   // Panel Member A CANNOT access newly assigned interviews
   const schedCRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candC!.id, application_id: appC, panel_id: panelA.id,
+    application_id: appC, panel_id: panelA.id,
     date: '2026-10-18', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedCRes.status !== 201) throw new Error("Scheduling C failed: " + JSON.stringify(schedCRes.data))
@@ -462,6 +465,7 @@ async function runTests() {
   const emptyPanel = await prisma.recruitmentPanel.create({ data: { name: 'Empty Panel', status: 'ACTIVE' } })
   
   // Create fresh candidate E2 for conflict test
+  await prisma.user.create({ data: { id: BigInt(1006), name: 'Candidate E2', email: 'candE2@test.com', role: 'Member', password: 'pw', registerNumber: 'REG010' } })
   const applyResE2 = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -478,12 +482,13 @@ async function runTests() {
   await makeRequest(`/applications/${appE2}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const emptyInt1 = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candE2!.id, application_id: appE2, panel_id: emptyPanel.id,
+    application_id: appE2, panel_id: emptyPanel.id,
     date: '2026-11-01', start_time: '12:00'
   }, 'ADMIN', admin.id.toString())
   if (emptyInt1.status !== 201) throw new Error("Could not schedule on empty panel: " + JSON.stringify(emptyInt1.data))
   
   // Create fresh Candidate H for the second conflict
+  await prisma.user.create({ data: { id: BigInt(1007), name: 'Candidate H', email: 'candH@test.com', role: 'Member', password: 'pw', registerNumber: 'REG008' } })
   const applyResH = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -498,7 +503,7 @@ async function runTests() {
   await makeRequest(`/applications/${appH}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const emptyInt2 = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candH!.id, application_id: appH, panel_id: emptyPanel.id,
+    application_id: appH, panel_id: emptyPanel.id,
     date: '2026-11-01', start_time: '12:00'
   }, 'ADMIN', admin.id.toString())
   
@@ -531,6 +536,7 @@ async function runTests() {
   
   // Schedule a new interview (use candE2 since they are available again if we use a different date or they don't have overlapping times)
   // Actually let's create a new candidate I to be safe.
+  await prisma.user.create({ data: { id: BigInt(1008), name: 'Candidate I', email: 'candI@test.com', role: 'Member', password: 'pw', registerNumber: 'REG011' } })
   const applyResI = await fetch(`${API_URL}/applications`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -544,7 +550,7 @@ async function runTests() {
   await makeRequest(`/applications/${appI}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const schedIRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candI!.id, application_id: appI, panel_id: panelA.id,
+    application_id: appI, panel_id: panelA.id,
     date: '2026-11-05', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedIRes.status !== 201) throw new Error("Scheduling I failed: " + JSON.stringify(schedIRes.data))
@@ -560,6 +566,7 @@ async function runTests() {
   await prisma.user.update({ where: { id: panelMemberB.id.toString() }, data: {  } })
 
   // Schedule another
+  await prisma.user.create({ data: { id: BigInt(1009), name: 'Candidate J', email: 'candJ@test.com', role: 'Member', password: 'pw', registerNumber: 'REG012' } })
   const applyResJ = await fetch(`${API_URL}/applications`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -573,7 +580,7 @@ async function runTests() {
   await makeRequest(`/applications/${appJ}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const schedJRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candJ!.id, application_id: appJ, panel_id: panelA.id,
+    application_id: appJ, panel_id: panelA.id,
     date: '2026-11-06', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedJRes.status !== 201) throw new Error("Scheduling J failed: " + JSON.stringify(schedJRes.data))
@@ -584,6 +591,20 @@ async function runTests() {
   if (!verifyJ!.assigned_members.some((m: any) => m.user_id === panelMemberB.id.toString())) {
     throw new Error("Reactivated User B was improperly excluded from new interview!")
   }
+
+  // RECRUITIE DASHBOARD ISOLATION TEST
+  // Candidate I tries to access Candidate J's application using API
+  const tokenCandI = await signToken({ id: '1008', role: 'NONE', departments: [] }) // Cand I has id 1008
+  const CandIAccessCandJ = await fetch(`${API_URL}/applications/${appJ}`, {
+    headers: { 'Cookie': `session=${tokenCandI}` }
+  })
+  if (CandIAccessCandJ.status !== 403) throw new Error("Recruitie Isolation Failed! Cand I accessed Cand J: " + CandIAccessCandJ.status)
+
+  // Cand I accesses their own application using /applications/me
+  const CandIAccessSelf = await fetch(`${API_URL}/applications/me`, {
+    headers: { 'Cookie': `session=${tokenCandI}` }
+  })
+  if (CandIAccessSelf.status !== 200) throw new Error("Recruitie failed to access their own dashboard: " + CandIAccessSelf.status)
 
   console.log("All Security and E2E Tests Passed Successfully!")
 }
