@@ -15,6 +15,7 @@ const ADMIN_LINKS = [
   { label: "PANELS", href: "/admin/panels" },
   { label: "ANALYTICS", href: "/admin/analytics" },
   { label: "AUDIT LOGS", href: "/admin/audit-logs" },
+  { label: "EMAIL SETTINGS", href: "/admin/settings/email" },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
