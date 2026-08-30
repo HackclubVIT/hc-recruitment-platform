@@ -1,64 +1,4 @@
--- AlterTable
-ALTER TABLE "users" ALTER COLUMN "id" TYPE BIGINT USING "id"::bigint;
-ALTER TABLE "users"
-ADD COLUMN     "avatar" TEXT,
-ADD COLUMN     "averageRating" TEXT NOT NULL DEFAULT '0.0',
-ADD COLUMN     "badges" JSONB NOT NULL DEFAULT '[]',
-ADD COLUMN     "contributionScore" INTEGER NOT NULL DEFAULT 10,
-ADD COLUMN     "department" TEXT,
-ADD COLUMN     "eventScore" INTEGER NOT NULL DEFAULT 5,
-ADD COLUMN     "github" TEXT,
-ADD COLUMN     "isReviewer" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "joined" TEXT,
-ADD COLUMN     "location" TEXT,
-ADD COLUMN     "phoneNumber" TEXT,
-ADD COLUMN     "portfolio" TEXT,
-ADD COLUMN     "projectRatingScore" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "projectsUploaded" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "recentProjects" JSONB NOT NULL DEFAULT '[]',
-ADD COLUMN     "registerNumber" TEXT,
-ADD COLUMN     "status" TEXT NOT NULL DEFAULT 'Active',
-ADD COLUMN     "totalScore" INTEGER NOT NULL DEFAULT 7,
-ADD COLUMN     "id" BIGINT NOT NULL;
-
--- CreateTable
-CREATE TABLE "projects" (
-    "id" BIGINT NOT NULL,
-    "title" TEXT NOT NULL,
-    "description" TEXT,
-    "category" TEXT NOT NULL DEFAULT 'Web Development',
-    "problemStatement" TEXT,
-    "solution" TEXT,
-    "screenshots" JSONB NOT NULL DEFAULT '[]',
-    "demoVideoUrl" TEXT,
-    "github" TEXT,
-    "deployment" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
-    "owner" TEXT,
-    "rating" TEXT NOT NULL DEFAULT '0.0',
-    "ratingCount" INTEGER NOT NULL DEFAULT 0,
-    "contributors" TEXT,
-    "submissionDate" TEXT,
-    "technologiesUsed" JSONB NOT NULL DEFAULT '[]',
-    "awards" JSONB NOT NULL DEFAULT '[]',
-    "individualRatings" JSONB NOT NULL DEFAULT '[]',
-
-    CONSTRAINT "projects_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "project_ratings" (
-    "id" BIGINT NOT NULL,
-    "projectId" BIGINT NOT NULL,
-    "adminId" BIGINT NOT NULL,
-    "adminName" TEXT NOT NULL,
-    "rating" DOUBLE PRECISION NOT NULL,
-    "comment" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "project_ratings_pkey" PRIMARY KEY ("id")
-);
+-- Migration strictly restricted to recruitment structures
 
 -- CreateTable
 CREATE TABLE "recruitment_applications" (
@@ -90,35 +30,18 @@ CREATE TABLE "recruitment_applications" (
     "projectDetails" TEXT,
     "status" TEXT NOT NULL DEFAULT 'Pending',
     "appliedDate" TEXT,
-    "decided_by" BIGINT,
+    "decided_by" UUID,
     "decided_at" TIMESTAMP(3),
     "decision_reason" TEXT,
 
     CONSTRAINT "recruitment_applications_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "allowed_emails" (
-    "id" SERIAL NOT NULL,
-    "email" TEXT NOT NULL,
-    "addedBy" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "allowed_emails_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "collections" (
-    "name" TEXT NOT NULL,
-    "data" JSONB NOT NULL,
-
-    CONSTRAINT "collections_pkey" PRIMARY KEY ("name")
-);
 
 -- CreateTable
 CREATE TABLE "recruitment_role_assignments" (
     "id" SERIAL NOT NULL,
-    "user_id" BIGINT NOT NULL,
+    "user_id" UUID NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'NONE',
     "departments" TEXT[],
     "active" BOOLEAN NOT NULL DEFAULT true,
@@ -189,7 +112,7 @@ CREATE TABLE "recruitment_panels" (
 CREATE TABLE "recruitment_panel_members" (
     "id" SERIAL NOT NULL,
     "panel_id" INTEGER NOT NULL,
-    "user_id" BIGINT NOT NULL,
+    "user_id" UUID NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "recruitment_panel_members_pkey" PRIMARY KEY ("id")
@@ -200,7 +123,7 @@ CREATE TABLE "recruitment_interviews" (
     "id" SERIAL NOT NULL,
     "application_id" BIGINT NOT NULL,
     "panel_id" INTEGER NOT NULL,
-    "recruiter_id" BIGINT,
+    "recruiter_id" UUID,
     "round" INTEGER NOT NULL DEFAULT 1,
     "date" TIMESTAMP(3) NOT NULL,
     "start_time" TIMESTAMP(3) NOT NULL,
@@ -230,7 +153,7 @@ CREATE TABLE "recruitment_feedback" (
 -- CreateTable
 CREATE TABLE "recruitment_notifications" (
     "id" SERIAL NOT NULL,
-    "user_id" BIGINT NOT NULL,
+    "user_id" UUID NOT NULL,
     "title" TEXT NOT NULL,
     "message" TEXT NOT NULL,
     "read" BOOLEAN NOT NULL DEFAULT false,
@@ -242,7 +165,7 @@ CREATE TABLE "recruitment_notifications" (
 -- CreateTable
 CREATE TABLE "recruitment_audit_logs" (
     "id" SERIAL NOT NULL,
-    "user_id" BIGINT,
+    "user_id" UUID,
     "action" TEXT NOT NULL,
     "entity" TEXT NOT NULL,
     "entity_id" TEXT,
@@ -251,8 +174,6 @@ CREATE TABLE "recruitment_audit_logs" (
     CONSTRAINT "recruitment_audit_logs_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "project_ratings_projectId_adminId_key" ON "project_ratings"("projectId", "adminId");
 
 -- CreateIndex
 CREATE INDEX "recruitment_applications_recruitmentId_idx" ON "recruitment_applications"("recruitmentId");
@@ -269,8 +190,6 @@ CREATE UNIQUE INDEX "recruitment_applications_recruitmentId_email_key" ON "recru
 -- CreateIndex
 CREATE UNIQUE INDEX "recruitment_applications_recruitmentId_registerNumber_key" ON "recruitment_applications"("recruitmentId", "registerNumber");
 
--- CreateIndex
-CREATE UNIQUE INDEX "allowed_emails_email_key" ON "allowed_emails"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "recruitment_role_assignments_user_id_key" ON "recruitment_role_assignments"("user_id");
