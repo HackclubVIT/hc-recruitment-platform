@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import prisma from "./db";
 
 interface EmailPayload {
   to: string | string[];
@@ -6,37 +7,89 @@ interface EmailPayload {
   html: string;
 }
 
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+const getSmtpSettings = async () => {
+  try {
+    const setting = await prisma.collection.findUnique({
+      where: { name: "smtp_settings" }
+    });
+    
+    if (setting && setting.data) {
+      const data = setting.data as Record<string, any>;
+      if (data.host && data.user && data.pass) {
+        return {
+          host: data.host,
+          port: Number(data.port) || 587,
+          secure: data.secure === true,
+          auth: {
+            user: data.user,
+            pass: data.pass,
+          },
+          fromEmail: data.fromEmail,
+          fromName: data.fromName
+        };
+      }
+    }
+  } catch (err) {
+    console.error("[EMAIL CONFIG ERROR] Failed to fetch settings from DB", err);
+  }
+  return null;
+};
+
+const createTransporter = (config: any) => {
+  return nodemailer.createTransport(config);
 };
 
 export const sendEmail = async (payload: EmailPayload) => {
-  // If email is not configured in env, we just log and skip to not break the app
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn(`[EMAIL SKIPPED] SMTP not fully configured. Would have sent email to ${payload.to} with subject: ${payload.subject}`);
+  let config = await getSmtpSettings();
+  
+  let fromAddress = `"${process.env.SMTP_FROM_NAME || 'HC Recruitment'}" <${process.env.SMTP_FROM || 'recruitment@hackclubvit.co'}>`;
+
+  if (!config) {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.warn(`[EMAIL SKIPPED] SMTP not fully configured. Would have sent email to ${payload.to} with subject: ${payload.subject}`);
+      return;
+    }
+    config = {
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === "true",
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      fromEmail: undefined,
+      fromName: undefined
+    };
+  } else {
+    fromAddress = `"${config.fromName || 'HC Recruitment'}" <${config.fromEmail || config.auth.user}>`;
+  }
+
+  const transporter = createTransporter(config);
+
+  // Validate, deduplicate, and remove empty addresses
+  let recipients: string[] = [];
+  if (Array.isArray(payload.to)) {
+    recipients = Array.from(new Set(payload.to.filter(email => email && typeof email === 'string' && email.trim() !== '')));
+  } else if (typeof payload.to === 'string' && payload.to.trim() !== '') {
+    recipients = [payload.to.trim()];
+  }
+
+  if (recipients.length === 0) {
+    console.warn(`[EMAIL SKIPPED] No valid recipients provided for subject: ${payload.subject}`);
     return;
   }
 
-  const transporter = createTransporter();
-
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"HackClub VIT" <recruitment@hackclubvit.co>`,
-      to: Array.isArray(payload.to) ? payload.to.join(", ") : payload.to,
+      from: fromAddress,
+      to: recipients.length === 1 ? recipients[0] : undefined,
+      bcc: recipients.length > 1 ? recipients : undefined,
       subject: payload.subject,
       html: payload.html,
     });
-    console.log(`[EMAIL SENT] to ${payload.to} - ${payload.subject}`);
+    console.log(`[EMAIL SENT] to ${recipients.length} recipient(s) - ${payload.subject}`);
   } catch (error) {
-    console.error(`[EMAIL ERROR] Failed to send email to ${payload.to}:`, error);
+    console.error(`[EMAIL ERROR] Failed to send email to ${recipients.join(', ')}:`, error);
     // Don't throw the error, just log it so transactions aren't broken by email failure
   }
 };

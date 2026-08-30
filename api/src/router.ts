@@ -59,6 +59,9 @@ import { POST as addPanelMember, DELETE as removePanelMember } from './routes/pa
 import { GET as getRecruiterDashboard } from './routes/recruiter/dashboard.js';
 // Users
 import { GET as getUsers, PUT as updateUser, DELETE as deleteUser } from './routes/users.js';
+// Settings
+import { GET as getEmailSettings, POST as updateEmailSettings } from './routes/settings/email.js';
+import { POST as testEmailSettings } from './routes/settings/email-test.js';
 
 export const router = Router();
 
@@ -124,3 +127,8 @@ router.put('/notifications/read', readNotifications);
 router.get('/recruiter/dashboard', getRecruiterDashboard);
 router.get('/analytics', getAnalytics);
 router.get('/audit-logs', getAuditLogs);
+
+// Settings
+router.get('/settings/email', getEmailSettings);
+router.post('/settings/email', updateEmailSettings);
+router.post('/settings/email/test', testEmailSettings);
