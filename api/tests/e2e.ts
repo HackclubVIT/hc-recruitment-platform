@@ -226,7 +226,8 @@ async function runTests() {
   
   // NEW PANEL MEMBER TEST (Req 6)
   // Interview 1 has A and B assigned. We add a new member D to the live panel A.
-  const pmD = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_D', email: 'd@test.com', role: 'PANEL_MEMBER', password: 'pw' } })
+  const pmD = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_D', email: 'd@test.com', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmD.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   await prisma.recruitmentPanelMember.create({ data: { user_id: pmD.id, panel_id: panelA.id } })
   
   // Verify D is NOT added to assigned_members
@@ -349,7 +350,8 @@ async function runTests() {
   // NEW INTERVIEW CONFLICT TEST (Req 14)
   // Panel A currently has A and B (Wait, it actually has A and B, we added them at line 48).
   // Let's add C to Panel A.
-  const pmC = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_C', email: 'c@test.com', role: 'PANEL_MEMBER', password: 'pw' } })
+  const pmC = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_C', email: 'c@test.com', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmC.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   const panelMemberC = await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id } })
   
   // Create Cand D

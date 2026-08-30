@@ -18,9 +18,9 @@ export default function RecruitieDashboard() {
           const json = await res.json()
           setData(json)
         } else if (res.status === 401 || res.status === 403) {
-          setError("Authentication failed or session expired. Please log in again.")
+          window.location.href = "/login"
         } else if (res.status === 404) {
-          setError("You have not applied for recruitment yet.")
+          window.location.href = "/" // Redirect to home if no application
         } else {
           setError("Internal server error. Please try again later.")
         }

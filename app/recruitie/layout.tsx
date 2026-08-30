@@ -2,6 +2,7 @@ import React from "react"
 import { Navbar } from "@/components/layout/Navbar"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { MobileNav } from "@/components/layout/MobileNav"
+import { SessionGuard } from "@/components/layout/SessionGuard"
 
 const RECRUITIE_LINKS = [
   { label: "MY APPLICATION", href: "/recruitie/dashboard" },
@@ -15,7 +16,9 @@ export default function RecruitieLayout({ children }: { children: React.ReactNod
         <MobileNav links={RECRUITIE_LINKS} title="Applicant Menu" />
         <Sidebar links={RECRUITIE_LINKS} />
         <main className="flex-1 p-4 lg:p-10 overflow-y-auto max-w-[1180px] mx-auto w-full">
-          {children}
+          <SessionGuard requiredRole="NONE">
+            {children}
+          </SessionGuard>
         </main>
       </div>
     </div>
