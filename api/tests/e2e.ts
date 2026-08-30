@@ -16,8 +16,9 @@ const prisma = new PrismaClient({
 
 const API_URL = "http://localhost:3001/api"
 
-async function makeRequest(path: string, method: string, payload?: any, role: string = 'ADMIN', userId: string = 'admin-1', departments: string[] = []) {
-  const token = await signToken({ id: userId, role, departments })
+async function makeRequest(path: string, method: string, payload?: any, _roleIgnored: string = 'ADMIN', userId: string = 'admin-1', _departmentsIgnored: string[] = []) {
+  // We place a generic base payload into the JWT. The backend getSession() must independently resolve the true authoritative role from RecruitmentRoleAssignment.
+  const token = await signToken({ id: userId, role: 'NONE', departments: [] })
   
   const res = await fetch(`${API_URL}${path}`, {
     method,
@@ -534,7 +535,7 @@ async function runTests() {
   // FINAL SMALL SECURITY FIX (Req 7)
   // pmB is still an active PanelMember on Panel A.
   // We globally deactivate User B.
-  await prisma.user.update({ where: { id: panelMemberB.id.toString() }, data: { active: false } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: panelMemberB.id }, data: { active: false } })
   
   // Schedule a new interview (use candE2 since they are available again if we use a different date or they don't have overlapping times)
   // Actually let's create a new candidate I to be safe.
@@ -565,7 +566,7 @@ async function runTests() {
   }
 
   // Reactivate User B
-  await prisma.user.update({ where: { id: panelMemberB.id.toString() }, data: {  } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: panelMemberB.id }, data: { active: true } })
 
   // Schedule another
   await prisma.user.create({ data: { id: BigInt(1009), name: 'Candidate J', email: 'candJ@test.com', role: 'Member', password: 'pw', registerNumber: 'REG012' } })
@@ -636,7 +637,38 @@ async function runTests() {
     throw new Error(`CRITICAL BUG: Looked up application returned ID ${mismatchData.application.id} instead of 9001!`)
   }
 
-  console.log("All Security and E2E Tests Passed Successfully!")
+  console.log("--------------------------------")
+  console.log(" ROLE REGRESSION TEST")
+  console.log("--------------------------------")
+
+  // 1. Create a member with NONE in JWT, but PANEL_MEMBER in DB
+  const roleTestUser = await prisma.user.create({ data: { id: BigInt(3001), name: 'Role Test', email: 'roletest@test.com', role: 'Member', password: 'pw' } })
+  const roleAssignment = await prisma.recruitmentRoleAssignment.create({ data: { user_id: roleTestUser.id, role: 'PANEL_MEMBER', departments: [], active: true } })
+  
+  // Make a request. The JWT has role='NONE'. It should resolve to PANEL_MEMBER on the backend.
+  const roleJwt = await signToken({ id: roleTestUser.id.toString(), role: 'NONE', departments: [] })
+  
+  const meRes1 = await fetch(`${API_URL}/auth/me`, { headers: { 'Cookie': `session=${roleJwt}` } })
+  const meData1 = await meRes1.json()
+  if (meData1.user.role !== 'PANEL_MEMBER') throw new Error("Role Regression Failed: Expected PANEL_MEMBER, got " + meData1.user.role)
+
+  // 2. Change assignment to RECRUITER
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: roleTestUser.id }, data: { role: 'RECRUITER', departments: ['Engineering'] } })
+  
+  const meRes2 = await fetch(`${API_URL}/auth/me`, { headers: { 'Cookie': `session=${roleJwt}` } })
+  const meData2 = await meRes2.json()
+  if (meData2.user.role !== 'RECRUITER') throw new Error("Role Regression Failed: Expected RECRUITER, got " + meData2.user.role)
+
+  // 3. Change assignment to NONE
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: roleTestUser.id }, data: { role: 'NONE' } })
+  
+  const meRes3 = await fetch(`${API_URL}/auth/me`, { headers: { 'Cookie': `session=${roleJwt}` } })
+  const meData3 = await meRes3.json()
+  if (meData3.user.role !== 'NONE') throw new Error("Role Regression Failed: Expected NONE, got " + meData3.user.role)
+
+  console.log("Role database priority properly verified.")
+  
+  console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
 
 runTests().catch(e => {
