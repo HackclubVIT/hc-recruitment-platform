@@ -11,8 +11,8 @@ export const GET = async (req: Request, res: Response) => {
     }
 
     const hcUser = await prisma.user.findUnique({ where: { id: BigInt(session.id) } })
-    if (!hcUser) {
-      return res.status(401).json({ error: "Unauthorized: HC User not found" })
+    if (!hcUser || !hcUser.email) {
+      return res.status(401).json({ error: "Unauthorized: HC User or email not found" })
     }
 
     const application = await prisma.recruitmentApplication.findFirst({
@@ -44,11 +44,11 @@ export const GET = async (req: Request, res: Response) => {
         ...application,
         id: application.id.toString(),
         decided_by: application.decided_by?.toString() || null,
-        interviews: application.interviews.map((i: any) => ({
+        interviews: application.interviews ? application.interviews.map((i: any) => ({
           ...i,
           application_id: i.application_id.toString(),
           recruiter_id: i.recruiter_id?.toString() || null,
-        }))
+        })) : []
       }
     })
 
