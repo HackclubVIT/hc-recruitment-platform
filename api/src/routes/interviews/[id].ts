@@ -249,7 +249,9 @@ export const PUT = async (req: Request, res: Response) => {
         sendEmail({
           to: pm.user.email,
           subject: `HackClub VIT Recruitment - Interview ${action.charAt(0).toUpperCase() + action.slice(1)}`,
-          html: `The interview with ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`
+          html: `The interview with ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`,
+          eventType: status === "CANCELLED" ? "INTERVIEW_CANCELLED" : "INTERVIEW_RESCHEDULED",
+          entityId: interview.id.toString()
         }).catch(console.error);
       }
     }
@@ -258,7 +260,9 @@ export const PUT = async (req: Request, res: Response) => {
       sendEmail({
         to: interview.application.email,
         subject: `HackClub VIT Recruitment - Interview Cancelled`,
-        html: templates.interviewCancelled(interview.application.name, interview.round)
+        html: templates.interviewCancelled(interview.application.name, interview.round),
+        eventType: "INTERVIEW_CANCELLED",
+        entityId: interview.id.toString()
       }).catch(console.error);
     } else if (date && start_time) {
       sendEmail({
@@ -270,7 +274,9 @@ export const PUT = async (req: Request, res: Response) => {
           start_time, 
           interview.round, 
           meeting_link || interview.meeting_link || "TBD"
-        )
+        ),
+        eventType: "INTERVIEW_RESCHEDULED",
+        entityId: interview.id.toString()
       }).catch(console.error);
     }
     
@@ -282,7 +288,9 @@ export const PUT = async (req: Request, res: Response) => {
            sendEmail({
              to: r.email,
              subject: `HackClub VIT Recruitment - Interview ${action.charAt(0).toUpperCase() + action.slice(1)} for ${interview.application.domain}`,
-             html: `The interview for candidate ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`
+             html: `The interview for candidate ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`,
+             eventType: status === "CANCELLED" ? "INTERVIEW_CANCELLED" : "INTERVIEW_RESCHEDULED",
+             entityId: interview.id.toString()
            }).catch(console.error);
         }
       }

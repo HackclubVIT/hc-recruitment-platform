@@ -211,7 +211,9 @@ export const PUT = async (req: Request, res: Response) => {
     sendEmail({
       to: existingApplication.email,
       subject: "HackClub VIT Recruitment - Status Update",
-      html: templates.statusUpdated(existingApplication.name, status, reason)
+      html: templates.statusUpdated(existingApplication.name, status, reason),
+      eventType: "APPLICATION_STATUS_UPDATED",
+      entityId: id.toString()
     }).catch(console.error);
 
     // Create Notification logic can be ignored if the user isn't assigned to the recruitment app natively

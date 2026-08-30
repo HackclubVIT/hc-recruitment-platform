@@ -144,7 +144,9 @@ export const POST = async (req: Request, res: Response) => {
           sendEmail({
             to: r.email,
             subject: `HackClub VIT Recruitment - Feedback Complete for ${interview.application.name}`,
-            html: `All panel members have submitted feedback for candidate ${interview.application.name} (Round ${interview.round}).<br/><br/>The interview is now marked as COMPLETED. Please review the feedback and take further action.`
+            html: `All panel members have submitted feedback for candidate ${interview.application.name} (Round ${interview.round}).<br/><br/>The interview is now marked as COMPLETED. Please review the feedback and take further action.`,
+            eventType: "FEEDBACK_COMPLETED",
+            entityId: newFeedback.id.toString()
           }).catch(console.error);
         }
       }

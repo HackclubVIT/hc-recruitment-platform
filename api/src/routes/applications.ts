@@ -178,6 +178,14 @@ export const POST = async (req: Request, res: Response) => {
 
     await logAudit(undefined, "APPLICATION_SUBMITTED", "Application", application.id.toString())
 
+    sendEmail({
+      to: application.email,
+      subject: `HackClub VIT Recruitment - Application Received`,
+      html: templates.applicationSubmitted(application.name, "HackClub VIT Recruitment 2026"),
+      eventType: "APPLICATION_SUBMITTED",
+      entityId: application.id.toString()
+    }).catch(console.error);
+
     return res.status(201).json(
       { message: "Application submitted successfully", applicationId: application.id.toString() })
   } catch (error: unknown) {

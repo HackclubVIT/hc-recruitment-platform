@@ -169,7 +169,9 @@ export const POST = async (req: Request, res: Response) => {
         sendEmail({
           to: pm.user.email,
           subject: `HackClub VIT Recruitment - Interview Panel Assignment`,
-          html: `You have been assigned to an interview panel for candidate ${application.name} (Round ${interview.round}).<br/>Date: ${date}<br/>Time: ${start_time}<br/>Link: ${meeting_link || "TBD"}`
+          html: `You have been assigned to an interview panel for candidate ${application.name} (Round ${interview.round}).<br/>Date: ${date}<br/>Time: ${start_time}<br/>Link: ${meeting_link || "TBD"}`,
+          eventType: "INTERVIEW_SCHEDULED",
+          entityId: interview.id.toString()
         }).catch(console.error);
       }
     }
@@ -179,7 +181,9 @@ export const POST = async (req: Request, res: Response) => {
       sendEmail({
         to: application.email,
         subject: `HackClub VIT Recruitment - Interview Scheduled (Round ${interview.round})`,
-        html: templates.interviewScheduled(application.name, date, start_time, 10, interview.round, meeting_link || "TBD")
+        html: templates.interviewScheduled(application.name, date, start_time, 10, interview.round, meeting_link || "TBD"),
+        eventType: "INTERVIEW_SCHEDULED",
+        entityId: interview.id.toString()
       }).catch(console.error);
     }
 
@@ -191,7 +195,9 @@ export const POST = async (req: Request, res: Response) => {
            sendEmail({
              to: r.email,
              subject: `HackClub VIT Recruitment - Interview Scheduled for ${application.domain}`,
-             html: `An interview has been scheduled for candidate ${application.name} (Round ${interview.round}).<br/>Date: ${date}<br/>Time: ${start_time}<br/>Link: ${meeting_link || "TBD"}`
+             html: `An interview has been scheduled for candidate ${application.name} (Round ${interview.round}).<br/>Date: ${date}<br/>Time: ${start_time}<br/>Link: ${meeting_link || "TBD"}`,
+             eventType: "INTERVIEW_SCHEDULED",
+             entityId: interview.id.toString()
            }).catch(console.error);
         }
       }
