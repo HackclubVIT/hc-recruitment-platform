@@ -93,48 +93,51 @@ export const POST = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Identity mismatch or user not found. Ensure your email and registration number exactly match your Hack Club account." })
     }
 
-    const existingApp = await prisma.recruitmentApplication.findFirst({
-      where: {
-        recruitmentId: "recruitment-2026",
-        OR: [
-          { email: existingUser.email || data.email },
-          { registerNumber: existingUser.registerNumber || data.registration_number }
-        ]
-      }
-    })
-
-    if (existingApp) {
-      return res.status(409).json({ error: "An application already exists for this candidate." })
-    }
-
-    const newAppId = BigInt(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'));
-
-    const application = await prisma.recruitmentApplication.create({
-      data: {
-        id: newAppId,
-        recruitmentId: "recruitment-2026",
-        name: existingUser.name,
-        email: existingUser.email || data.email,
-        phoneNumber: existingUser.phoneNumber || data.phone,
-        domain: existingUser.department || data.department,
-        registerNumber: existingUser.registerNumber || data.registration_number,
-        portfolio: data.resume_url || null,
-        yearOfStudy: "",
-        status: "APPLIED",
-        appliedDate: new Date().toISOString(),
-        formSubmission: {
-          create: {
-            form_id: form.id,
-            answers: {
-              create: form.questions.map((q: { id: number }) => ({
-                question_id: q.id,
-                answer: String(data.answers?.[q.id] || "")
-              }))
-            }
+    try {
+      const application = await prisma.$transaction(async (tx) => {
+        const existingApp = await tx.recruitmentApplication.findFirst({
+          where: {
+            recruitmentId: "recruitment-2026",
+            OR: [
+              { email: existingUser.email || data.email },
+              { registerNumber: existingUser.registerNumber || data.registration_number }
+            ]
           }
+        })
+        
+        if (existingApp) {
+          throw new Error("DUPLICATE_APPLICATION")
         }
-      },
-    })
+
+        const newAppId = BigInt(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'));
+
+        return await tx.recruitmentApplication.create({
+          data: {
+            id: newAppId,
+            recruitmentId: "recruitment-2026",
+            name: existingUser.name,
+            email: existingUser.email || data.email,
+            phoneNumber: existingUser.phoneNumber || data.phone,
+            domain: existingUser.department || data.department,
+            registerNumber: existingUser.registerNumber || data.registration_number,
+            portfolio: data.resume_url || null,
+            yearOfStudy: "",
+            status: "APPLIED",
+            appliedDate: new Date().toISOString(),
+            formSubmission: {
+              create: {
+                form_id: form.id,
+                answers: {
+                  create: form.questions.map((q: { id: number }) => ({
+                    question_id: q.id,
+                    answer: String(data.answers?.[q.id] || "")
+                  }))
+                }
+              }
+            }
+          },
+        })
+      })
 
     // Notify recruiters
     const recruiters = await prisma.recruitmentRoleAssignment.findMany({
@@ -161,6 +164,9 @@ export const POST = async (req: Request, res: Response) => {
       { message: "Application submitted successfully", applicationId: application.id.toString() })
   } catch (error: unknown) {
     console.error("Application submission error:", error)
+    if (error instanceof Error && error.message === "DUPLICATE_APPLICATION") {
+      return res.status(409).json({ error: "An application already exists for this candidate." })
+    }
     if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'P2002') {
       return res.status(409).json({ error: "An application already exists." })
     }
