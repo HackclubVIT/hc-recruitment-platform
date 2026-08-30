@@ -56,7 +56,7 @@ export const decryptPassword = (payload: string): string => {
     
     return decrypted;
   } catch (error) {
-    console.error('[ENCRYPTION ERROR] Failed to decrypt password. The JWT_SECRET may have changed.', error);
+    console.error('[ENCRYPTION ERROR] Failed to decrypt password. The SMTP_ENCRYPTION_KEY may have changed.', error);
     return '';
   }
 };
