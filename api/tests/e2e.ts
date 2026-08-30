@@ -716,6 +716,47 @@ async function runTests() {
   if (postReactivateTest.status !== 200) throw new Error("Reactivated user cannot access restricted endpoints!")
 
   console.log("Revoke and Reactivation behaviors correctly enforced.")
+
+  console.log("--------------------------------")
+  console.log(" APPLICATION IDENTITY INTEGRITY TEST")
+  console.log("--------------------------------")
+
+  // Create HC User A
+  await prisma.user.create({ data: { id: BigInt(4001), name: 'Auth User A', email: 'a@test.com', registerNumber: 'A001', role: 'Member', password: 'pw', department: 'HC Department A' } })
+  // Create HC User B
+  await prisma.user.create({ data: { id: BigInt(4002), name: 'Auth User B', email: 'b@test.com', registerNumber: 'B001', role: 'Member', password: 'pw', department: 'HC Department B' } })
+
+  // 1. Mismatched identity
+  const applyMismatch = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Browser Name', email: 'a@test.com', phone: '1234567890', department: 'Browser Dept', registration_number: 'B001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (applyMismatch.status !== 403) throw new Error("Mismatched identity not rejected! Status: " + applyMismatch.status)
+
+  // 2. Exact match identity (HC Data Source Test)
+  const applyMatch = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Fake Browser Name', email: 'a@test.com', phone: '9999999999', department: 'Fake Browser Dept', registration_number: 'A001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (applyMatch.status !== 201) throw new Error("Exact identity match failed: " + await applyMatch.text())
+
+  const appAId = (await applyMatch.json()).applicationId
+  
+  // Verify Data Source Integrity
+  const appARecord = await prisma.recruitmentApplication.findUnique({ where: { id: BigInt(appAId) } })
+  if (appARecord!.name !== 'Auth User A') throw new Error("Application name did not use authoritative HC User name!")
+  if (appARecord!.domain !== 'HC Department A') throw new Error("Application department did not use authoritative HC User department!")
+  
+  // Verify Year of Study is NOT hardcoded to "1"
+  if (appARecord!.yearOfStudy === "1") throw new Error("Year of Study was illegally hardcoded to '1' without authoritative data!")
+
+  console.log("Identity matching and authoritative data overrides properly enforced.")
   
   console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }

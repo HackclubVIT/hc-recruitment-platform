@@ -81,34 +81,29 @@ export const POST = async (req: Request, res: Response) => {
       }
     }
 
+    // Check if they are an existing HC member with EXACT matching identity
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: data.email,
+        registerNumber: data.registration_number
+      }
+    })
+
+    if (!existingUser) {
+      return res.status(403).json({ error: "Identity mismatch or user not found. Ensure your email and registration number exactly match your Hack Club account." })
+    }
+
     const existingApp = await prisma.recruitmentApplication.findFirst({
       where: {
         OR: [
-          { email: data.email },
-          { registerNumber: data.registration_number }
+          { email: existingUser.email || data.email },
+          { registerNumber: existingUser.registerNumber || data.registration_number }
         ]
       }
     })
 
     if (existingApp) {
-      if (existingApp.email !== data.email || existingApp.registerNumber !== data.registration_number) {
-        return res.status(400).json({ error: "Identity mismatch. Please use the exact email and registration number you previously used." })
-      }
       return res.status(409).json({ error: "An application already exists for this candidate." })
-    }
-
-    // Check if they are an existing HC member
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: data.email },
-          { registerNumber: data.registration_number }
-        ]
-      }
-    })
-
-    if (!existingUser) {
-      return res.status(403).json({ error: "Identity verification failed. You must register on the Hack Club main website before applying for recruitment." })
     }
 
     const newAppId = BigInt(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'));
@@ -117,13 +112,13 @@ export const POST = async (req: Request, res: Response) => {
       data: {
         id: newAppId,
         recruitmentId: "recruitment-2026",
-        name: data.name,
-        email: data.email,
-        phoneNumber: data.phone,
-        domain: data.department,
-        registerNumber: data.registration_number,
+        name: existingUser.name,
+        email: existingUser.email || data.email,
+        phoneNumber: existingUser.phoneNumber || data.phone,
+        domain: existingUser.department || data.department,
+        registerNumber: existingUser.registerNumber || data.registration_number,
         portfolio: data.resume_url || null,
-        yearOfStudy: "1",
+        yearOfStudy: "",
         status: "APPLIED",
         appliedDate: new Date().toISOString(),
         formSubmission: {
