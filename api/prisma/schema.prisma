@@ -88,8 +88,8 @@ model RecruitmentApplication {
   id                         BigInt  @id
   recruitmentId              String  @default("recruitment-2026")
   name                       String
-  registerNumber             String  @unique
-  email                      String  @unique
+  registerNumber             String
+  email                      String
   phoneNumber                String?
   domain                     String?
   firstPreference            String?
@@ -125,6 +125,8 @@ model RecruitmentApplication {
   @@index([recruitmentId])
   @@index([status])
   @@index([domain])
+  @@unique([recruitmentId, email])
+  @@unique([recruitmentId, registerNumber])
   @@map("recruitment_applications")
 }
 
