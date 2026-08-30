@@ -35,9 +35,11 @@ export const GET = async (req: Request, res: Response) => {
 
     // Convert BigInt id to string
     return res.status(200).json({
-      ...application,
-      id: application.id.toString(),
-      decided_by: application.decided_by?.toString()
+      application: {
+        ...application,
+        id: application.id.toString(),
+        decided_by: application.decided_by?.toString()
+      }
     })
 
   } catch (error) {
