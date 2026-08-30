@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HackClub VIT Recruitment and Interview Management Platform
 
-## Getting Started
+The HackClub VIT Recruitment Platform is built on a strictly decoupled 3-tier architecture. It comprises a Next.js Frontend for recruitment and administration, an independent Express API to securely manage all business logic, and a PostgreSQL database.
 
-First, run the development server:
+## Architecture Overview
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Main Website
+       |
+       v
+Independent Express API
+       |
+       v
+PostgreSQL
+       ^
+       |
+Recruitment Website
+
+- **Recruitment Frontend**: Built with Next.js (App Router), deployed independently. Handles purely presentation and UX. All recruitment data is fetched securely from the Independent Express API.
+- **Independent Express API**: Located in `api/`. This is the authoritative source for authentication, authorization, session management, scheduling, candidate logic, and database interactions.
+- **Database**: PostgreSQL (managed via Prisma ORM exclusively inside the API).
+
+---
+
+## Setup Instructions
+
+### 1. Database & Environment
+
+Ensure you have a PostgreSQL instance running.
+
+Create a `.env` file at the root of the project for the Frontend:
+```env
+# Frontend Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create a `.env` file inside `api/` for the Backend:
+```env
+# Backend Configuration
+PORT=3001
+DATABASE_URL="postgresql://user:password@localhost:5432/hackclub_db"
+JWT_SECRET="your-super-secret-jwt-key"
+FRONTEND_URL="http://localhost:3000"
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Independent API Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The API is fully self-contained and strictly decoupled from the frontend. It has its own `package.json` and `pnpm-lock.yaml`.
 
-## Learn More
+```bash
+cd api
+pnpm install
+npx prisma generate
+npx prisma db push
+```
 
-To learn more about Next.js, take a look at the following resources:
+#### Running the API (Development)
+```bash
+pnpm run dev
+```
+*The API will start on `http://localhost:3001`.*
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+#### Building the API (Production)
+```bash
+pnpm run build
+pnpm run start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. Frontend Setup
 
-## Deploy on Vercel
+The frontend consumes the Independent API via the centralized `fetchApi` client. It requires the API to be running to function properly.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# From the root directory
+pnpm install
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### Running the Frontend (Development)
+```bash
+pnpm run dev
+```
+*The Frontend will start on `http://localhost:3000`.*
+
+#### Building the Frontend (Production)
+```bash
+pnpm run build
+pnpm run start
+```
+
+*Note: In production, `NEXT_PUBLIC_API_URL` must be set to the live API domain. The frontend will explicitly crash or warn if it attempts to silently fallback to itself.*
+
+---
+
+## Technical Policies
+
+- **No Shared Database Logic**: The frontend must never contain Prisma schema definitions or database queries.
+- **API Centralization**: All API calls from the frontend must be routed through `src/api-client.ts` to ensure credentials and JSON headers are systematically attached.
+- **Authentication**: JWT-based session cookies are issued directly by the Express API. The cookies are strictly `httpOnly` and validated directly by the backend for every protected route.
+- **Strict Workflow Integrity**: Administrative privileges do not bypass the logical recruitment state machine (e.g. `INTERVIEW_SCHEDULED` -> `INTERVIEW_COMPLETED` -> `SELECTED`).
+
+## Local Development & Testing
+
+- Always run the API (`cd api && pnpm dev`) and the Frontend (`pnpm dev`) concurrently during local development.
+- Utilize standard local tools (e.g., Postman) targeting `http://localhost:3001` for direct API testing.
+- Test workflows end-to-end starting from Public Form application submission to Final Decision. Ensure strict isolation mechanisms are respected by switching between Admin, Recruiter, and Panel Member accounts.
+
+## API Documentation
+
+For full details on the registered API endpoints, architecture, and environment configuration, please see [API.md](./API.md).
