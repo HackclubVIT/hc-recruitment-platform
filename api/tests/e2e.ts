@@ -292,7 +292,7 @@ async function runTests() {
   
   // Verify audit logs and decided_by
   const decApp = await prisma.recruitmentApplication.findUnique({ where: { id: appA } })
-  if (decApp!.decided_by !== recruiter.id.toString()) throw new Error("decided_by not set")
+  if (decApp!.decided_by?.toString() !== recruiter.id.toString()) throw new Error("decided_by not set")
   
   // FURTHER ROUND TEST (Req 41)
   const urResB = await makeRequest(`/applications/${appB}`, 'PUT', { status: 'UNDER_REVIEW' }, 'ADMIN', admin.id.toString())
@@ -561,7 +561,7 @@ async function runTests() {
 
   // Verify B is NOT in assigned_members
   const verifyI = await prisma.recruitmentInterview.findUnique({ where: { id: intI.id }, include: { assigned_members: true } })
-  if (verifyI!.assigned_members.some((m: any) => m.user_id === panelMemberB.id.toString())) {
+  if (verifyI!.assigned_members.some((m: any) => m.user_id.toString() === panelMemberB.id.toString())) {
     throw new Error("Globally deactivated User B was improperly assigned to new interview!")
   }
 
@@ -591,7 +591,7 @@ async function runTests() {
 
   // Verify B IS in assigned_members
   const verifyJ = await prisma.recruitmentInterview.findUnique({ where: { id: intJ.id }, include: { assigned_members: true } })
-  if (!verifyJ!.assigned_members.some((m: any) => m.user_id === panelMemberB.id.toString())) {
+  if (!verifyJ!.assigned_members.some((m: any) => m.user_id.toString() === panelMemberB.id.toString())) {
     throw new Error("Reactivated User B was improperly excluded from new interview!")
   }
 

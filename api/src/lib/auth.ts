@@ -11,7 +11,15 @@ function getSecretKey() {
 
 const getEncodedKey = () => new TextEncoder().encode(getSecretKey())
 
-export async function signToken(payload: any) {
+export interface JWTPayload {
+  id: string;
+  email?: string;
+  role?: string;
+  departments?: string[];
+  [key: string]: unknown;
+}
+
+export async function signToken(payload: JWTPayload) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -35,7 +43,6 @@ interface SessionPayload {
   email: string
   role: string
   departments: string[]
-  [key: string]: any
 }
 
 export async function getSession(req?: Request): Promise<SessionPayload | null> {
