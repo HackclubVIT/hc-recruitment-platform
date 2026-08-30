@@ -11,7 +11,20 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
+    const searchParams = new URLSearchParams(req.query as Record<string, string>)
+    const search = searchParams.get("q") || ""
+
+    const where: any = {}
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { registerNumber: { contains: search, mode: "insensitive" } }
+      ]
+    }
+
     const users = await prisma.user.findMany({
+      where,
       select: {
         id: true,
         name: true,

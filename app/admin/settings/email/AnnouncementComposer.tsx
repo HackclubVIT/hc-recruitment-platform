@@ -10,8 +10,12 @@ export function AnnouncementComposer({ onSuccess, onError }: { onSuccess: (msg: 
   const [html, setHtml] = useState("")
   const [roles, setRoles] = useState<string[]>([])
   const [departments, setDepartments] = useState<string[]>([])
-  const [specificUsers, setSpecificUsers] = useState("")
+  const [specificUsers, setSpecificUsers] = useState<{id: string, name: string, email: string}[]>([])
   const [customEmails, setCustomEmails] = useState("")
+
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searching, setSearching] = useState(false)
   
   const [previewing, setPreviewing] = useState(false)
   const [sending, setSending] = useState(false)
@@ -33,10 +37,42 @@ export function AnnouncementComposer({ onSuccess, onError }: { onSuccess: (msg: 
       recipients: {
         roles,
         departments,
-        specificUsers: specificUsers.split(",").map(s => s.trim()).filter(s => s),
+        specificUsers: specificUsers.map(u => u.id),
         customEmails: customEmails.split(",").map(s => s.trim()).filter(s => s)
       }
     }
+  }
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query)
+    if (query.trim().length < 2) {
+      setSearchResults([])
+      return
+    }
+    setSearching(true)
+    try {
+      const res = await fetchApi(`/api/users?q=${encodeURIComponent(query)}`)
+      const data = await res.json()
+      if (res.ok && data.users) {
+        setSearchResults(data.users)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const selectUser = (user: any) => {
+    if (!specificUsers.find(u => u.id === user.id)) {
+      setSpecificUsers([...specificUsers, { id: user.id, name: user.name, email: user.email }])
+    }
+    setSearchQuery("")
+    setSearchResults([])
+  }
+
+  const removeUser = (id: string) => {
+    setSpecificUsers(specificUsers.filter(u => u.id !== id))
   }
 
   const handlePreview = async () => {
@@ -44,7 +80,7 @@ export function AnnouncementComposer({ onSuccess, onError }: { onSuccess: (msg: 
       onError("Subject and message are required.")
       return
     }
-    if (roles.length === 0 && specificUsers.trim() === "" && customEmails.trim() === "") {
+    if (roles.length === 0 && specificUsers.length === 0 && customEmails.trim() === "" && departments.length === 0) {
       onError("Please select at least one recipient group or enter specific users/emails.")
       return
     }
@@ -159,15 +195,42 @@ export function AnnouncementComposer({ onSuccess, onError }: { onSuccess: (msg: 
 
         {/* Specific People */}
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs uppercase tracking-wider text-[#bfa8a2] font-mono">Specific HC Users (UUIDs)</label>
-            <p className="text-[10px] text-[#bfa8a2] uppercase">Comma separated UUIDs</p>
-            <textarea
-              value={specificUsers}
-              onChange={e => setSpecificUsers(e.target.value)}
-              rows={3}
+          <div className="flex flex-col gap-2 relative">
+            <label className="text-xs uppercase tracking-wider text-[#bfa8a2] font-mono">Specific HC Users</label>
+            <p className="text-[10px] text-[#bfa8a2] uppercase">Search by name, email, or registration number</p>
+            
+            <div className="flex flex-wrap gap-2 mb-2">
+              {specificUsers.map(u => (
+                <div key={u.id} className="flex items-center gap-2 bg-[#ff5925]/20 text-[#ff5925] border border-[#ff5925]/50 px-2 py-1 text-xs font-mono">
+                  <span>{u.name} ({u.email})</span>
+                  <button onClick={() => removeUser(u.id)} className="hover:text-white">&times;</button>
+                </div>
+              ))}
+            </div>
+
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Type to search..."
               className="bg-[#111111] border border-[#2a2a2a] px-3 py-2 text-[#f4e4df] font-mono text-sm focus:border-[#ff5925] focus:outline-none transition-colors"
             />
+            {searching && <div className="text-xs text-[#bfa8a2] mt-1 font-mono">Searching...</div>}
+            
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-[#111111] border border-[#2a2a2a] z-10 shadow-lg">
+                {searchResults.map(user => (
+                  <div 
+                    key={user.id} 
+                    onClick={() => selectUser(user)}
+                    className="p-2 border-b border-[#2a2a2a] cursor-pointer hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <div className="text-sm text-[#f4e4df] font-mono">{user.name}</div>
+                    <div className="text-xs text-[#bfa8a2] font-mono">{user.email} | {user.registerNumber}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
