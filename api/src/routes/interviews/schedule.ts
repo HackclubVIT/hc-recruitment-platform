@@ -133,7 +133,7 @@ export const POST = async (req: Request, res: Response) => {
         data: {
           application_id: appIdBigInt,
           panel_id,
-          recruiter_id: BigInt(session.id),
+          recruiter_id: session.id,
           round: nextRound,
           date: new Date(date),
           start_time: startObj,

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/db"
 import { getSession } from "../lib/auth"
@@ -14,6 +15,7 @@ const applicationSchema = z.object({
   phone: z.string().min(10),
   department: z.string().min(2),
   registration_number: z.string().min(4),
+  yearOfStudy: z.string().optional(),
   resume_url: z.string().url().refine(val => val.startsWith('https://'), { message: "resume_url must use HTTPS protocol" }).optional().or(z.literal('')),
   form_id: z.number().int().positive(),
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional()
@@ -108,7 +110,7 @@ export const POST = async (req: Request, res: Response) => {
           throw new Error("DUPLICATE_APPLICATION")
         }
 
-        const newAppId = BigInt(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'));
+        const newAppId = crypto.randomBytes(8).readBigUInt64LE() & 0x7FFFFFFFFFFFFFFFn;
 
         return await tx.recruitmentApplication.create({
           data: {
@@ -120,7 +122,16 @@ export const POST = async (req: Request, res: Response) => {
             domain: existingUser.department || data.department,
             registerNumber: existingUser.registerNumber || data.registration_number,
             portfolio: data.resume_url || null,
-            yearOfStudy: "",
+            yearOfStudy: data.yearOfStudy || (() => {
+              const regMatch = (existingUser.registerNumber || data.registration_number).match(/^(\d{2})/);
+              if (regMatch) {
+                const startYear = 2000 + parseInt(regMatch[1], 10);
+                const currentYear = new Date().getFullYear();
+                const studyYear = currentYear - startYear;
+                return studyYear > 0 && studyYear <= 5 ? studyYear.toString() : "";
+              }
+              return "";
+            })(),
             status: "APPLIED",
             appliedDate: new Date().toISOString(),
             formSubmission: {
@@ -217,7 +228,7 @@ export const GET = async (req: Request, res: Response) => {
       where.interviews = {
         some: {
           assigned_members: {
-            some: { user_id: BigInt(session.id) }
+            some: { user_id: session.id }
           }
         }
       }

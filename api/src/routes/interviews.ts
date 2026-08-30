@@ -19,7 +19,7 @@ export const GET = async (req: Request, res: Response) => {
     if (session.role === "PANEL_MEMBER") {
       whereClause = {
         assigned_members: {
-          some: { user_id: BigInt(session.id) }
+          some: { user_id: session.id }
         }
       }
     } else if (session.role === "RECRUITER") {

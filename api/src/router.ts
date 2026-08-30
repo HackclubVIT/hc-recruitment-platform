@@ -7,7 +7,7 @@ const authLimiter = rateLimit({
   message: { error: 'Too many login attempts from this IP, please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.DEV_AUTH_BYPASS === 'true',
+  skip: () => process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS === 'true',
 });
 
 const submissionLimiter = rateLimit({
@@ -16,7 +16,7 @@ const submissionLimiter = rateLimit({
   message: { error: 'Too many applications submitted from this IP, please try again after an hour.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.DEV_AUTH_BYPASS === 'true',
+  skip: () => process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS === 'true',
 });
 
 // Analytics

@@ -14,18 +14,18 @@ export const GET = async (req: Request, res: Response) => {
 
     const [notifications, total] = await Promise.all([
       prisma.recruitmentNotification.findMany({
-        where: { user_id: BigInt(session.id) },
+        where: { user_id: session.id },
         orderBy: { created_at: 'desc' },
         skip,
         take: limit
       }),
       prisma.recruitmentNotification.count({
-        where: { user_id: BigInt(session.id) }
+        where: { user_id: session.id }
       })
     ])
 
     const unreadCount = await prisma.recruitmentNotification.count({
-      where: { user_id: BigInt(session.id), read: false }
+      where: { user_id: session.id, read: false }
     })
 
     const formattedNotifications = notifications.map(n => ({

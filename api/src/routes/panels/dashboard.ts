@@ -20,7 +20,7 @@ export const GET = async (req: Request, res: Response) => {
         },
         status: { not: "CANCELLED" },
         assigned_members: {
-          some: { user_id: BigInt(session.id) }
+          some: { user_id: session.id }
         }
       }
     })
@@ -33,13 +33,13 @@ export const GET = async (req: Request, res: Response) => {
         },
         status: { not: "CANCELLED" },
         assigned_members: {
-          some: { user_id: BigInt(session.id) }
+          some: { user_id: session.id }
         }
       }
     })
 
     const panelMemberRows = await prisma.recruitmentPanelMember.findMany({
-      where: { user_id: BigInt(session.id) }
+      where: { user_id: session.id }
     })
     const panelMemberIds = panelMemberRows.map((pm: any) => pm.id)
 
@@ -47,7 +47,7 @@ export const GET = async (req: Request, res: Response) => {
       where: {
         status: { in: ["COMPLETED", "FEEDBACK_PENDING"] },
         assigned_members: {
-          some: { user_id: BigInt(session.id) }
+          some: { user_id: session.id }
         },
         NOT: {
           feedback: {
@@ -67,7 +67,7 @@ export const GET = async (req: Request, res: Response) => {
         },
         status: { not: "CANCELLED" },
         assigned_members: {
-          some: { user_id: BigInt(session.id) }
+          some: { user_id: session.id }
         }
       },
       include: {

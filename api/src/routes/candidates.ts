@@ -32,7 +32,7 @@ export const GET = async (req: Request, res: Response) => {
       whereClause.interviews = {
         some: {
           assigned_members: {
-            some: { user_id: BigInt(session.id) }
+            some: { user_id: session.id }
           }
         }
       }
@@ -62,7 +62,7 @@ export const GET = async (req: Request, res: Response) => {
       includeClause = {
         interviews: {
           where: {
-            assigned_members: { some: { user_id: BigInt(session.id) } }
+            assigned_members: { some: { user_id: session.id } }
           }
         }
       }

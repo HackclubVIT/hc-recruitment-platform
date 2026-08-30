@@ -7,7 +7,7 @@ export async function logAudit(
   entity_id?: string | number
 ) {
   try {
-    const parsedUserId = user_id ? BigInt(user_id) : null;
+    const parsedUserId = user_id ? user_id : null;
     await prisma.recruitmentAuditLog.create({
       data: {
         user_id: parsedUserId,
