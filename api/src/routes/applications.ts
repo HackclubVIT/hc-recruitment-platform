@@ -95,6 +95,7 @@ export const POST = async (req: Request, res: Response) => {
 
     const existingApp = await prisma.recruitmentApplication.findFirst({
       where: {
+        recruitmentId: "recruitment-2026",
         OR: [
           { email: existingUser.email || data.email },
           { registerNumber: existingUser.registerNumber || data.registration_number }
@@ -144,7 +145,7 @@ export const POST = async (req: Request, res: Response) => {
     })
 
     for (const recruiter of recruiters) {
-      if (recruiter.departments.includes(data.department)) {
+      if (application.domain && recruiter.departments.includes(application.domain)) {
          await createNotification(
            recruiter.user_id.toString(),
            "New Application Submitted",

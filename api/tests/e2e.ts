@@ -758,6 +758,71 @@ async function runTests() {
 
   console.log("Identity matching and authoritative data overrides properly enforced.")
   
+  console.log("--------------------------------")
+  console.log(" MULTIPLE CAMPAIGNS AND DEPARTMENT NOTIFICATION REGRESSION TEST")
+  console.log("--------------------------------")
+
+  // Create HC User C (Department: CSE)
+  await prisma.user.create({ data: { id: BigInt(4003), name: 'Auth User C', email: 'c@test.com', registerNumber: 'C001', role: 'Member', password: 'pw', department: 'CSE' } })
+  
+  // Create 2025 Application for User C
+  await prisma.recruitmentApplication.create({
+    data: {
+      id: BigInt(9005),
+      recruitmentId: "recruitment-2025",
+      name: 'Auth User C',
+      email: 'c@test.com',
+      registerNumber: 'C001',
+      domain: 'CSE',
+      yearOfStudy: '',
+      status: 'APPLIED',
+      appliedDate: new Date().toISOString(),
+      phoneNumber: '1111111111'
+    }
+  })
+
+  // Create an ECE Recruiter and CSE Recruiter to test notifications
+  const eceRecruiter = await prisma.user.create({ data: { id: BigInt(4004), name: 'ECE Recruiter', email: 'ece@test.com', registerNumber: 'ECE1', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: eceRecruiter.id, role: 'RECRUITER', departments: ['ECE'], active: true } })
+  
+  const cseRecruiter = await prisma.user.create({ data: { id: BigInt(4005), name: 'CSE Recruiter', email: 'cse@test.com', registerNumber: 'CSE1', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: cseRecruiter.id, role: 'RECRUITER', departments: ['CSE'], active: true } })
+
+  // Clear previous notifications to test cleanly
+  await prisma.recruitmentNotification.deleteMany()
+
+  // Submit 2026 Application with mismatched browser department
+  const apply2026 = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Browser Name C', email: 'c@test.com', phone: '1234567890', department: 'ECE', registration_number: 'C001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (apply2026.status !== 201) throw new Error("Valid 2026 application blocked by 2025 application! Status: " + apply2026.status + " " + await apply2026.text())
+
+  // Duplicate 2026 Application (Should fail)
+  const applyDuplicate2026 = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Browser Name C', email: 'c@test.com', phone: '1234567890', department: 'ECE', registration_number: 'C001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (applyDuplicate2026.status !== 409) throw new Error("Duplicate 2026 application not blocked! Status: " + applyDuplicate2026.status)
+
+  // Verify Recruiter Notification Department Source
+  // Authoritative dept for C is CSE. Browser sent ECE.
+  // Notification must go to CSE recruiter, NOT ECE recruiter.
+  const notifications = await prisma.recruitmentNotification.findMany()
+  const cseNotified = notifications.some(n => n.user_id === cseRecruiter.id)
+  const eceNotified = notifications.some(n => n.user_id === eceRecruiter.id)
+
+  if (!cseNotified) throw new Error("CSE Recruiter (authoritative department) did not receive notification!")
+  if (eceNotified) throw new Error("ECE Recruiter (untrusted browser department) improperly received notification!")
+
+  console.log("Multiple campaigns isolation and Notification department routing verified.")
+  
   console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
 
