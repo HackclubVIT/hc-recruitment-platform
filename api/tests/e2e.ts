@@ -6,9 +6,25 @@ if (!process.env.TEST_DATABASE_URL) {
   console.error('CRITICAL ERROR: E2E tests MUST use an isolated TEST_DATABASE_URL to prevent destroying HC data.');
   process.exit(1);
 }
-if (process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
+function isSameDatabase(u1: string, u2: string) {
+  if (!u1 || !u2) return false;
+  try {
+    const p1 = new URL(u1);
+    const p2 = new URL(u2);
+    if (p1.hostname !== p2.hostname) return false;
+    if (p1.port !== p2.port) return false;
+    if (p1.pathname !== p2.pathname) return false;
+    const s1 = p1.searchParams.get('schema') || 'public';
+    const s2 = p2.searchParams.get('schema') || 'public';
+    return s1 === s2;
+  } catch (e) {
+    return u1 === u2;
+  }
+}
+
+if (isSameDatabase(process.env.TEST_DATABASE_URL, process.env.DATABASE_URL as string)) {
   console.error('CRITICAL ERROR: TEST_DATABASE_URL cannot be the same as DATABASE_URL. Safety check failed.');
-  // process.exit(1);
+  process.exit(1);
 }
 const prisma = new PrismaClient({
   datasources: { db: { url: process.env.TEST_DATABASE_URL } }
