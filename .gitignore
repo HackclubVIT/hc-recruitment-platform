@@ -9,7 +9,6 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-/guidance/
 
 # testing
 /coverage
@@ -43,3 +42,5 @@ next-env.d.ts
 
 api/node_modules
 api/dist
+
+eslint-report*.json

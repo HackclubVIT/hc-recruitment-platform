@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/Card"
 import { DiamondIcon } from "@/components/ui/Icons"
 import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
-import { applicationStatusVariant, formatDate } from "@/lib/utils"
 
 export default function RecruiterDashboard() {
   const router = useRouter()
@@ -111,15 +110,15 @@ export default function RecruiterDashboard() {
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{app.domain}</p>
                       </td>
                       <td className="p-4 text-[#f4ede4] font-medium">
-                        {app.appliedDate ? formatDate(app.appliedDate) : "-"}
+                        {app.registerNumber}
                       </td>
                       <td className="p-4">
-                        <StatusPill status={applicationStatusVariant(app.status)}>
+                        <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : app.status.toLowerCase().includes('select') ? 'active' : 'pending'}>
                           {app.status}
                         </StatusPill>
                       </td>
                       <td className="p-4">
-                        <Button variant="primary" className="py-2 px-4 text-xs" onClick={() => router.push(`/recruiter/candidates/${app.id}`)}>REVIEW</Button>
+                        <Button variant="primary" className="py-2 px-4 text-xs" onClick={() => router.push(`/recruiter/applications/${app.id}`)}>REVIEW</Button>
                       </td>
                     </tr>
                   ))

@@ -11,7 +11,15 @@ function getSecretKey() {
 
 const getEncodedKey = () => new TextEncoder().encode(getSecretKey())
 
-export async function signToken(payload: any) {
+export interface JWTPayload {
+  id: string;
+  email?: string;
+  role?: string;
+  departments?: string[];
+  [key: string]: unknown;
+}
+
+export async function signToken(payload: JWTPayload) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -32,9 +40,9 @@ export async function verifyToken(token: string | undefined = "") {
 
 interface SessionPayload {
   id: string
+  email: string
   role: string
   departments: string[]
-  [key: string]: any
 }
 
 export async function getSession(req?: Request): Promise<SessionPayload | null> {
@@ -61,13 +69,13 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: userIdBigInt }
+    where: { id: userId }
   })
   
   if (!user || user.status !== "Active") return null
 
   const assignment = await prisma.recruitmentRoleAssignment.findUnique({
-    where: { user_id: userIdBigInt }
+    where: { user_id: userId }
   })
 
   return {

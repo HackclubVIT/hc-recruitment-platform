@@ -5,7 +5,7 @@ import { getSession } from "../lib/auth"
 export const GET = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
-    if (!session) {
+    if (!session || session.role === "NONE") {
       return res.status(401).json({ error: "Unauthorized" })
     }
 
@@ -104,7 +104,7 @@ export const GET = async (req: Request, res: Response) => {
       includeClause = {
         interviews: {
           where: {
-            assigned_members: { some: { user_id: BigInt(session.id) } }
+            assigned_members: { some: { user_id: session.id } }
           }
         }
       }
@@ -122,11 +122,15 @@ export const GET = async (req: Request, res: Response) => {
     ])
 
     // Format for frontend compatibility - serialize BigInts
-    const candidates = applications.map((app: { id: bigint } & Record<string, unknown>) => ({
+    const candidates = applications.map(app => ({
       ...app,
       id: app.id.toString(),
       decided_by: app.decided_by?.toString() || null,
-      interviews: app.interviews
+      interviews: app.interviews ? app.interviews.map(i => ({
+        ...i,
+        application_id: i.application_id.toString(),
+        recruiter_id: i.recruiter_id?.toString() || null
+      })) : []
     }))
 
     return res.status(200).json({ 

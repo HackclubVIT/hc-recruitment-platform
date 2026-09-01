@@ -3,63 +3,9 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/db"
 import { getSession } from "../lib/auth"
 import { logAudit } from "../lib/audit"
-import { createNotification } from "../lib/notify"
+import { createNotification, getRecruitersByDepartment } from "../lib/notify"
+import { sendEmail } from "../lib/email"
 import { z } from "zod"
-
-export const GET = async (req: Request, res: Response) => {
-  try {
-    const session = await getSession(req)
-    if (!session || session.role !== "ADMIN") {
-      return res.status(403).json({ error: "Forbidden" })
-    }
-
-    const searchParams = new URLSearchParams(req.query as any)
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1)
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20))
-    const skip = (page - 1) * limit
-
-    const [items, total] = await Promise.all([
-      prisma.recruitmentFeedback.findMany({
-        include: {
-          interview: {
-            include: {
-              application: { select: { id: true, name: true, domain: true } },
-              panel: { select: { name: true } }
-            }
-          },
-          panel_member: { include: { user: { select: { name: true } } } }
-        },
-        orderBy: { id: "desc" },
-        skip,
-        take: limit
-      }),
-      prisma.recruitmentFeedback.count()
-    ])
-
-    const formatted = items.map((f: any) => ({
-      id: f.id,
-      decision: f.decision,
-      comments: f.comments,
-      technical_score: f.technical_score,
-      communication_score: f.communication_score,
-      problem_solving_score: f.problem_solving_score,
-      confidence_score: f.confidence_score,
-      teamwork_score: f.teamwork_score,
-      overall_score: Math.round((f.technical_score + f.communication_score + f.problem_solving_score + f.confidence_score + f.teamwork_score) / 5),
-      panelMemberName: f.panel_member?.user?.name || "Unknown",
-      candidateName: f.interview?.application?.name || "Unknown",
-      candidateId: f.interview?.application?.id?.toString() || null,
-      department: f.interview?.application?.domain || "-",
-      panelName: f.interview?.panel?.name || "-",
-      interviewId: f.interview_id
-    }))
-
-    return res.status(200).json({ feedback: formatted, page, limit, total, totalPages: Math.ceil(total / limit) })
-  } catch (error) {
-    console.error("Fetch feedback error:", error)
-    return res.status(500).json({ error: "Internal server error" })
-  }
-}
 
 const feedbackSchema = z.object({
   interview_id: z.number().int().positive(),
@@ -181,7 +127,7 @@ export const POST = async (req: Request, res: Response) => {
     const newFeedback = feedback.newFeedback
     const allSubmitted = feedback.allSubmitted
 
-    await logAudit(BigInt(session.id), "SUBMITTED_FEEDBACK", "Feedback", newFeedback.id.toString())
+    await logAudit(session.id, "SUBMITTED_FEEDBACK", "Feedback", newFeedback.id.toString())
 
     if (allSubmitted && interview.recruiter_id) {
       await createNotification(
@@ -191,9 +137,22 @@ export const POST = async (req: Request, res: Response) => {
       )
     }
 
-    const overallScore = Math.round((technical_score + communication_score + problem_solving_score + confidence_score + teamwork_score) / 5)
+    if (allSubmitted && interview.application.domain) {
+      const recruiters = await getRecruitersByDepartment(interview.application.domain);
+      for (const r of recruiters) {
+        if (r.email) {
+          sendEmail({
+            to: r.email,
+            subject: `HackClub VIT Recruitment - Feedback Complete for ${interview.application.name}`,
+            html: `All panel members have submitted feedback for candidate ${interview.application.name} (Round ${interview.round}).<br/><br/>The interview is now marked as COMPLETED. Please review the feedback and take further action.`,
+            eventType: "FEEDBACK_COMPLETED",
+            entityId: newFeedback.id.toString()
+          }).catch(console.error);
+        }
+      }
+    }
 
-    return res.status(201).json({ message: "Feedback submitted successfully", feedback: { ...newFeedback, overall_score: overallScore } })
+    return res.status(201).json({ message: "Feedback submitted successfully", feedback: newFeedback })
   } catch (error) {
     console.error("Submit feedback error:", error)
     return res.status(500).json({ error: "Internal server error" })

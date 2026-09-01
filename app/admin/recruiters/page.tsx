@@ -1,5 +1,4 @@
-"use client"
-import { api } from "@/api-client"
+import { redirect } from "next/navigation"
 
 import React, { useState, useEffect } from "react"
 import { Card } from "@/components/ui/Card"

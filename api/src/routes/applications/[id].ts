@@ -3,6 +3,7 @@ import prisma from "../../lib/db"
 import { getSession } from "../../lib/auth"
 import { logAudit } from "../../lib/audit"
 import { createNotification } from "../../lib/notify"
+import { sendEmail, templates } from "../../lib/email"
 import { z } from "zod"
 
 export const GET = async (req: Request, res: Response) => {
@@ -61,10 +62,16 @@ export const GET = async (req: Request, res: Response) => {
       const hasAccess = await prisma.recruitmentInterview.findFirst({
         where: {
           application_id: id,
-          assigned_members: { some: { user_id: BigInt(session.id) } }
+          assigned_members: { some: { user_id: session.id } }
         }
       })
       if (!hasAccess) {
+        return res.status(403).json({ error: "Forbidden" })
+      }
+    }
+
+    if (session.role === "NONE") {
+      if (application.email !== session.email) {
         return res.status(403).json({ error: "Forbidden" })
       }
     }
@@ -182,7 +189,7 @@ export const PUT = async (req: Request, res: Response) => {
 
     const isTrueFinal = ["SELECTED", "REJECTED", "WAITLISTED"].includes(status)
     if (isTrueFinal) {
-      updateData.decided_by = BigInt(session.id)
+      updateData.decided_by = session.id
       updateData.decided_at = new Date()
       if (reason) {
         updateData.decision_reason = reason
@@ -194,31 +201,35 @@ export const PUT = async (req: Request, res: Response) => {
       data: updateData
     })
 
-    await logAudit(BigInt(session.id), `UPDATED_APPLICATION_STATUS_TO_${status}`, "Application", id.toString())
+    await logAudit(session.id, `UPDATED_APPLICATION_STATUS_TO_${status}`, "Application", id.toString())
 
-    const candidateUser = await prisma.user.findUnique({ where: { id: application.id } })
+    // Notify Candidate via In-app and Email asynchronously
+    const notificationMessage = `Your application status has been updated to ${status}.`
+    const candidateUser = await prisma.user.findFirst({
+      where: { email: existingApplication.email }
+    })
+    
     if (candidateUser) {
-      if (status === "SHORTLISTED") {
-        await createNotification(candidateUser.id.toString(), "Application Shortlisted", `Your application has been shortlisted.`)
-      }
-      const finalDecisions = ["SELECTED", "WAITLISTED"]
-      if (finalDecisions.includes(status) || (status === "REJECTED" && currentStatus === "INTERVIEW_COMPLETED")) {
-        await createNotification(candidateUser.id.toString(), "Final Decision Made", `Your application status is now ${status}.`)
-      }
-    }
-    if ((status as string) === "INTERVIEW_COMPLETED") {
-      const latestInterview = await prisma.recruitmentInterview.findFirst({
-        where: { application_id: id },
-        orderBy: { round: 'desc' },
-        include: { assigned_members: true },
-      })
-      if (latestInterview) {
-        for (const m of latestInterview.assigned_members) {
-          await createNotification(m.user_id.toString(), "Feedback Pending", `Please submit feedback for interview #${latestInterview.id}.`)
+      prisma.recruitmentNotification.create({
+        data: {
+          user_id: candidateUser.id,
+          title: "Application Status Updated",
+          message: notificationMessage,
         }
-      }
+      }).catch(console.error);
     }
 
+    sendEmail({
+      to: existingApplication.email,
+      subject: "HackClub VIT Recruitment - Status Update",
+      html: templates.statusUpdated(existingApplication.name, status, reason),
+      eventType: "APPLICATION_STATUS_UPDATED",
+      entityId: id.toString()
+    }).catch(console.error);
+
+    // Create Notification logic can be ignored if the user isn't assigned to the recruitment app natively
+    // We notify recruiters 
+    // Format response to serialize BigInts
     const formattedApp = {
       ...application,
       id: application.id.toString(),

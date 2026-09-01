@@ -12,7 +12,7 @@ datasource db {
 // ==========================================
 
 model User {
-  id                 BigInt  @id
+  id String @id @default(uuid()) @db.Uuid
   name               String
   email              String? @unique
   password           String?
@@ -41,7 +41,6 @@ model User {
   recruitmentPanels  RecruitmentPanelMember[]
   recruitmentNotifs  RecruitmentNotification[]
   recruitmentAudit   RecruitmentAuditLog[]
-  recruitmentNotes   RecruitmentNote[]
   scheduledInterviews RecruitmentInterview[] @relation("RecruiterInterviews")
 
   @@map("users")
@@ -74,7 +73,7 @@ model Project {
 model ProjectRating {
   id        BigInt   @id
   projectId BigInt
-  adminId   BigInt
+  adminId            String  @db.Uuid
   adminName String
   rating    Float
   comment   String?
@@ -89,8 +88,8 @@ model RecruitmentApplication {
   id                         BigInt  @id
   recruitmentId              String  @default("recruitment-2026")
   name                       String
-  registerNumber             String  @unique
-  email                      String  @unique
+  registerNumber             String
+  email                      String
   phoneNumber                String?
   domain                     String?
   firstPreference            String?
@@ -115,15 +114,19 @@ model RecruitmentApplication {
   status                     String  @default("Pending")
   appliedDate                String?
 
-  decided_by                 BigInt?
+  decided_by         String? @db.Uuid
   decided_at                 DateTime?
   decision_reason            String?
 
   // Recruitment relations
   interviews                 RecruitmentInterview[]
   formSubmission             RecruitmentFormSubmission?
-  notes                      RecruitmentNote[]
 
+  @@index([recruitmentId])
+  @@index([status])
+  @@index([domain])
+  @@unique([recruitmentId, email])
+  @@unique([recruitmentId, registerNumber])
   @@map("recruitment_applications")
 }
 
@@ -149,7 +152,7 @@ model Collection {
 
 model RecruitmentRoleAssignment {
   id          Int      @id @default(autoincrement())
-  user_id     BigInt   @unique
+  user_id            String  @db.Uuid   @unique
   role        String   @default("NONE") // ADMIN, RECRUITER, PANEL_MEMBER, NONE
   departments String[] // For RECRUITER role
   active      Boolean  @default(true) // For disabling user access
@@ -158,6 +161,7 @@ model RecruitmentRoleAssignment {
 
   user        User     @relation(fields: [user_id], references: [id])
 
+  @@index([role])
   @@map("recruitment_role_assignments")
 }
 
@@ -204,19 +208,6 @@ model RecruitmentFormSubmission {
   @@map("recruitment_form_submissions")
 }
 
-model RecruitmentNote {
-  id              Int      @id @default(autoincrement())
-  application_id  BigInt
-  author_id       BigInt
-  content         String
-  created_at      DateTime @default(now())
-
-  application     RecruitmentApplication @relation(fields: [application_id], references: [id])
-  author          User                   @relation(fields: [author_id], references: [id])
-
-  @@map("recruitment_notes")
-}
-
 model RecruitmentFormAnswer {
   id              Int      @id @default(autoincrement())
   submission_id   Int
@@ -245,7 +236,7 @@ model RecruitmentPanel {
 model RecruitmentPanelMember {
   id       Int    @id @default(autoincrement())
   panel_id Int
-  user_id  BigInt
+  user_id            String  @db.Uuid
   active   Boolean @default(true)
 
   panel    RecruitmentPanel @relation(fields: [panel_id], references: [id])
@@ -261,7 +252,7 @@ model RecruitmentInterview {
   id             Int      @id @default(autoincrement())
   application_id BigInt
   panel_id       Int
-  recruiter_id   BigInt?
+  recruiter_id       String? @db.Uuid
   round          Int      @default(1)
   date           DateTime
   start_time     DateTime
@@ -276,6 +267,8 @@ model RecruitmentInterview {
   feedback         RecruitmentFeedback[]
   assigned_members RecruitmentPanelMember[] @relation("InterviewAssignments")
 
+  @@index([application_id])
+  @@index([date])
   @@map("recruitment_interviews")
 }
 
@@ -294,13 +287,14 @@ model RecruitmentFeedback {
   interview            RecruitmentInterview   @relation(fields: [interview_id], references: [id])
   panel_member         RecruitmentPanelMember @relation(fields: [panel_member_id], references: [id])
 
+  @@index([interview_id])
   @@unique([interview_id, panel_member_id])
   @@map("recruitment_feedback")
 }
 
 model RecruitmentNotification {
   id         Int      @id @default(autoincrement())
-  user_id    BigInt
+  user_id            String  @db.Uuid
   title      String
   message    String
   read       Boolean  @default(false)
@@ -308,12 +302,13 @@ model RecruitmentNotification {
 
   user       User     @relation(fields: [user_id], references: [id])
 
+  @@index([user_id])
   @@map("recruitment_notifications")
 }
 
 model RecruitmentAuditLog {
   id         Int      @id @default(autoincrement())
-  user_id    BigInt?
+  user_id String? @db.Uuid
   action     String
   entity     String
   entity_id  String?
@@ -321,5 +316,19 @@ model RecruitmentAuditLog {
 
   user       User?    @relation(fields: [user_id], references: [id])
 
+  @@index([timestamp])
   @@map("recruitment_audit_logs")
+}
+
+model RecruitmentEmailLog {
+  id              Int      @id @default(autoincrement())
+  event_type      String
+  entity_id       String?
+  recipient_count Int
+  status          String
+  error_message   String?
+  timestamp       DateTime @default(now())
+
+  @@index([timestamp])
+  @@map("recruitment_email_logs")
 }

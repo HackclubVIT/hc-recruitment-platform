@@ -2,6 +2,7 @@ import React from "react"
 import { Navbar } from "@/components/layout/Navbar"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { MobileNav } from "@/components/layout/MobileNav"
+import { SessionGuard } from "@/components/layout/SessionGuard"
 
 const ADMIN_LINKS = [
   { label: "DASHBOARD", href: "/admin/dashboard" },
@@ -12,9 +13,9 @@ const ADMIN_LINKS = [
   { label: "INTERVIEWS", href: "/admin/interviews" },
   { label: "RECRUITERS", href: "/admin/recruiters" },
   { label: "PANELS", href: "/admin/panels" },
-  { label: "FEEDBACK", href: "/admin/feedback" },
   { label: "ANALYTICS", href: "/admin/analytics" },
   { label: "AUDIT LOGS", href: "/admin/audit-logs" },
+  { label: "EMAIL SETTINGS", href: "/admin/settings/email" },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +26,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <MobileNav links={ADMIN_LINKS} title="Admin Menu" />
         <Sidebar links={ADMIN_LINKS} />
         <main className="flex-1 p-4 lg:p-10 overflow-y-auto max-w-[1180px] mx-auto w-full">
-          {children}
+          <SessionGuard requiredRole="ADMIN">
+            {children}
+          </SessionGuard>
         </main>
       </div>
     </div>

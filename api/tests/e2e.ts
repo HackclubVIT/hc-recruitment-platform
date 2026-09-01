@@ -6,7 +6,23 @@ if (!process.env.TEST_DATABASE_URL) {
   console.error('CRITICAL ERROR: E2E tests MUST use an isolated TEST_DATABASE_URL to prevent destroying HC data.');
   process.exit(1);
 }
-if (process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
+function isSameDatabase(u1: string, u2: string) {
+  if (!u1 || !u2) return false;
+  try {
+    const p1 = new URL(u1);
+    const p2 = new URL(u2);
+    if (p1.hostname !== p2.hostname) return false;
+    if (p1.port !== p2.port) return false;
+    if (p1.pathname !== p2.pathname) return false;
+    const s1 = p1.searchParams.get('schema') || 'public';
+    const s2 = p2.searchParams.get('schema') || 'public';
+    return s1 === s2;
+  } catch (e) {
+    return u1 === u2;
+  }
+}
+
+if (isSameDatabase(process.env.TEST_DATABASE_URL, process.env.DATABASE_URL as string)) {
   console.error('CRITICAL ERROR: TEST_DATABASE_URL cannot be the same as DATABASE_URL. Safety check failed.');
   process.exit(1);
 }
@@ -16,8 +32,9 @@ const prisma = new PrismaClient({
 
 const API_URL = "http://localhost:3001/api"
 
-async function makeRequest(path: string, method: string, payload?: any, role: string = 'ADMIN', userId: string = 'admin-1', departments: string[] = []) {
-  const token = await signToken({ id: userId, role, departments })
+async function makeRequest(path: string, method: string, payload?: any, _roleIgnored: string = 'ADMIN', userId: string | bigint = 'admin-1', _departmentsIgnored: string[] = []) {
+  // We place a generic base payload into the JWT. The backend getSession() must independently resolve the true authoritative role from RecruitmentRoleAssignment.
+  const token = await signToken({ id: userId.toString(), role: 'NONE', departments: [] })
   
   const res = await fetch(`${API_URL}${path}`, {
     method,
@@ -48,6 +65,8 @@ async function runTests() {
   await prisma.recruitmentInterview.deleteMany({});
   await prisma.recruitmentPanelMember.deleteMany({});
   await prisma.recruitmentPanel.deleteMany({ where: { name: { contains: 'Panel' } } });
+  await prisma.recruitmentFormAnswer.deleteMany({});
+  await prisma.recruitmentFormSubmission.deleteMany({});
   await prisma.recruitmentApplication.deleteMany({ where: { email: { endsWith: '@test.com' } } });
   await prisma.recruitmentFormQuestion.deleteMany({});
   await prisma.recruitmentForm.deleteMany({});
@@ -56,10 +75,11 @@ async function runTests() {
 
   
   // Seed basic users as standard HC Members
-  const admin = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Admin', email: 'admin@test.com', role: 'Member', password: 'pw' } })
-  const recruiter = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'Recruiter', email: 'recruiter@test.com', role: 'Member', password: 'pw' } })
-  const panelMemberA = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_A', email: 'a@test.com', role: 'Member', password: 'pw' } })
-  const panelMemberB = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_B', email: 'b@test.com', role: 'Member', password: 'pw' } })
+  const admin = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'Admin', email: 'admin@test.com', role: 'Member', password: 'pw' } })
+  const recruiter = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'Recruiter', email: 'recruiter@test.com', role: 'Member', password: 'pw' } })
+  const panelMemberA = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_A', email: 'pma@test.com', role: 'Member', password: 'pw' } })
+  
+  const panelMemberB = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_B', email: 'pmb@test.com', role: 'Member', password: 'pw' } })
   
   // Assign Recruitment Roles
   await prisma.recruitmentRoleAssignment.create({ data: { user_id: admin.id, role: 'ADMIN', departments: [], active: true } })
@@ -115,6 +135,7 @@ async function runTests() {
   if (pubGetPublic.status !== 200) throw new Error("Public failed to retrieve PUBLISHED form! Status: " + pubGetPublic.status)
 
   // Public Apply (Candidate A)
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001001", name: 'Candidate A', email: 'candA@test.com', role: 'Member', password: 'pw', registerNumber: 'REG001' } })
   const applyResA = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -154,6 +175,7 @@ async function runTests() {
   if (dupApply.status !== 409) throw new Error("Duplicate rejection failed. Status: " + dupApply.status)
   
   // Public Apply (Candidate B) - Unrelated department
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001002", name: 'Candidate B', email: 'candB@test.com', role: 'Member', password: 'pw', registerNumber: 'REG002' } })
   const applyResB = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -185,7 +207,6 @@ async function runTests() {
 
   // SCHEDULE INTERVIEW A
   const schedARes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candA!.id,
     application_id: appA,
     panel_id: panelA.id,
     date: '2026-10-15',
@@ -196,6 +217,7 @@ async function runTests() {
   
   // Double Booking Test (Req 42)
   // Create Cand C to book the same slot for Panel A
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001003", name: 'Candidate C', email: 'candC@test.com', role: 'Member', password: 'pw', registerNumber: 'REG003' } })
   const applyResC = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -210,7 +232,6 @@ async function runTests() {
   await makeRequest(`/applications/${appC}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const doubleSched = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candC!.id,
     application_id: appC,
     panel_id: panelA.id,
     date: '2026-10-15',
@@ -225,7 +246,8 @@ async function runTests() {
   
   // NEW PANEL MEMBER TEST (Req 6)
   // Interview 1 has A and B assigned. We add a new member D to the live panel A.
-  const pmD = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_D', email: 'd@test.com', role: 'PANEL_MEMBER', password: 'pw' } })
+  const pmD = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_D', email: 'pmd@test.com', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmD.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   await prisma.recruitmentPanelMember.create({ data: { user_id: pmD.id, panel_id: panelA.id } })
   
   // Verify D is NOT added to assigned_members
@@ -289,7 +311,7 @@ async function runTests() {
   
   // Verify audit logs and decided_by
   const decApp = await prisma.recruitmentApplication.findUnique({ where: { id: appA } })
-  if (decApp!.decided_by !== recruiter.id.toString()) throw new Error("decided_by not set")
+  if (decApp!.decided_by?.toString() !== recruiter.id.toString()) throw new Error("decided_by not set")
   
   // FURTHER ROUND TEST (Req 41)
   const urResB = await makeRequest(`/applications/${appB}`, 'PUT', { status: 'UNDER_REVIEW' }, 'ADMIN', admin.id.toString())
@@ -299,7 +321,7 @@ async function runTests() {
   if (slResB.status !== 200) throw new Error("Admin shortlisting B failed: " + JSON.stringify(slResB.data))
 
   const schedBRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candB!.id, application_id: appB, panel_id: panelA.id,
+    application_id: appB, panel_id: panelA.id,
     date: '2026-10-16', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedBRes.status !== 201) throw new Error("Admin scheduling B failed: " + JSON.stringify(schedBRes.data))
@@ -339,7 +361,7 @@ async function runTests() {
   
   // Schedule next round
   const schedB2Res = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candB!.id, application_id: appB, panel_id: panelB.id,
+    application_id: appB, panel_id: panelB.id,
     date: '2026-10-17', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedB2Res.status !== 201) throw new Error("Admin scheduling B round 2 failed: " + JSON.stringify(schedB2Res.data))
@@ -348,10 +370,12 @@ async function runTests() {
   // NEW INTERVIEW CONFLICT TEST (Req 14)
   // Panel A currently has A and B (Wait, it actually has A and B, we added them at line 48).
   // Let's add C to Panel A.
-  const pmC = await prisma.user.create({ data: { id: BigInt(Date.now() + Math.floor(Math.random() * 10000)), name: 'PM_C', email: 'c@test.com', role: 'PANEL_MEMBER', password: 'pw' } })
+  const pmC = await prisma.user.create({ data: { id: crypto.randomUUID(), name: 'PM_C', email: 'pmc@test.com', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: pmC.id, role: 'PANEL_MEMBER', departments: [], active: true } })
   const panelMemberC = await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelA.id } })
   
   // Create Cand D
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001004", name: 'Candidate D', email: 'candD@test.com', role: 'Member', password: 'pw', registerNumber: 'REG004' } })
   const applyResD = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -367,7 +391,7 @@ async function runTests() {
 
   // Schedule Int D for Panel A (now has A, B, C)
   const schedDRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candD!.id, application_id: appD, panel_id: panelA.id,
+    application_id: appD, panel_id: panelA.id,
     date: '2026-10-20', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedDRes.status !== 201) throw new Error("Scheduling D failed: " + JSON.stringify(schedDRes.data))
@@ -380,7 +404,8 @@ async function runTests() {
   await prisma.recruitmentPanelMember.create({ data: { user_id: pmC.id, panel_id: panelB.id } })
 
   // Schedule Int E for Panel B at same time as Int D
-  // Create Cand E
+  // Create Cand E (Wait, G?)
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001005", name: 'Candidate G', email: 'candG@test.com', role: 'Member', password: 'pw', registerNumber: 'REG007' } })
   const applyResG = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -395,7 +420,7 @@ async function runTests() {
   await makeRequest(`/applications/${appG}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const schedERes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candG!.id, application_id: appG, panel_id: panelB.id,
+    application_id: appG, panel_id: panelB.id,
     date: '2026-10-20', start_time: '10:00' // SAME TIME AS INT D
   }, 'ADMIN', admin.id.toString())
   
@@ -430,7 +455,7 @@ async function runTests() {
 
   // Panel Member A CANNOT access newly assigned interviews
   const schedCRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candC!.id, application_id: appC, panel_id: panelA.id,
+    application_id: appC, panel_id: panelA.id,
     date: '2026-10-18', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedCRes.status !== 201) throw new Error("Scheduling C failed: " + JSON.stringify(schedCRes.data))
@@ -462,6 +487,7 @@ async function runTests() {
   const emptyPanel = await prisma.recruitmentPanel.create({ data: { name: 'Empty Panel', status: 'ACTIVE' } })
   
   // Create fresh candidate E2 for conflict test
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001006", name: 'Candidate E2', email: 'candE2@test.com', role: 'Member', password: 'pw', registerNumber: 'REG010' } })
   const applyResE2 = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -478,12 +504,13 @@ async function runTests() {
   await makeRequest(`/applications/${appE2}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const emptyInt1 = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candE2!.id, application_id: appE2, panel_id: emptyPanel.id,
+    application_id: appE2, panel_id: emptyPanel.id,
     date: '2026-11-01', start_time: '12:00'
   }, 'ADMIN', admin.id.toString())
   if (emptyInt1.status !== 201) throw new Error("Could not schedule on empty panel: " + JSON.stringify(emptyInt1.data))
   
   // Create fresh Candidate H for the second conflict
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001007", name: 'Candidate H', email: 'candH@test.com', role: 'Member', password: 'pw', registerNumber: 'REG008' } })
   const applyResH = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -498,7 +525,7 @@ async function runTests() {
   await makeRequest(`/applications/${appH}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const emptyInt2 = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candH!.id, application_id: appH, panel_id: emptyPanel.id,
+    application_id: appH, panel_id: emptyPanel.id,
     date: '2026-11-01', start_time: '12:00'
   }, 'ADMIN', admin.id.toString())
   
@@ -506,10 +533,10 @@ async function runTests() {
 
   // TRUE JWT REVOCATION TEST (Req 13)
   // We need to use the EXACT same token before and after deactivation
-  const cToken = await signToken({ id: pmC.id, role: 'PANEL_MEMBER', departments: [] })
+  const cToken = await signToken({ id: pmC.id.toString(), role: 'PANEL_MEMBER', departments: [] })
   
   // Ensure C is active
-  await prisma.user.update({ where: { id: pmC.id }, data: {  } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: pmC.id }, data: { active: true } })
   
   const jwtTestBefore = await fetch(`${API_URL}/interviews/${intD.id}`, {
     headers: { 'Cookie': `session=${cToken}` }
@@ -517,7 +544,7 @@ async function runTests() {
   if (jwtTestBefore.status !== 200) throw new Error("C could not access interview initially with explicit JWT")
 
   // Deactivate C
-  await prisma.user.update({ where: { id: pmC.id }, data: { active: false } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: pmC.id }, data: { active: false } })
   
   const jwtTestAfter = await fetch(`${API_URL}/interviews/${intD.id}`, {
     headers: { 'Cookie': `session=${cToken}` }
@@ -527,10 +554,12 @@ async function runTests() {
   // FINAL SMALL SECURITY FIX (Req 7)
   // pmB is still an active PanelMember on Panel A.
   // We globally deactivate User B.
-  await prisma.user.update({ where: { id: panelMemberB.id.toString() }, data: { active: false } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: panelMemberB.id }, data: { active: false } })
+  await prisma.recruitmentPanelMember.updateMany({ where: { user_id: panelMemberB.id.toString() }, data: { active: false } })
   
   // Schedule a new interview (use candE2 since they are available again if we use a different date or they don't have overlapping times)
   // Actually let's create a new candidate I to be safe.
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001008", name: 'Candidate I', email: 'candI@test.com', role: 'Member', password: 'pw', registerNumber: 'REG011' } })
   const applyResI = await fetch(`${API_URL}/applications`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -544,7 +573,7 @@ async function runTests() {
   await makeRequest(`/applications/${appI}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const schedIRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candI!.id, application_id: appI, panel_id: panelA.id,
+    application_id: appI, panel_id: panelA.id,
     date: '2026-11-05', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedIRes.status !== 201) throw new Error("Scheduling I failed: " + JSON.stringify(schedIRes.data))
@@ -552,14 +581,16 @@ async function runTests() {
 
   // Verify B is NOT in assigned_members
   const verifyI = await prisma.recruitmentInterview.findUnique({ where: { id: intI.id }, include: { assigned_members: true } })
-  if (verifyI!.assigned_members.some((m: any) => m.user_id === panelMemberB.id.toString())) {
+  if (verifyI!.assigned_members.some((m: any) => m.user_id.toString() === panelMemberB.id.toString())) {
     throw new Error("Globally deactivated User B was improperly assigned to new interview!")
   }
 
   // Reactivate User B
-  await prisma.user.update({ where: { id: panelMemberB.id.toString() }, data: {  } })
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: panelMemberB.id }, data: { active: true } })
+  await prisma.recruitmentPanelMember.updateMany({ where: { user_id: panelMemberB.id.toString() }, data: { active: true } })
 
   // Schedule another
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000001009", name: 'Candidate J', email: 'candJ@test.com', role: 'Member', password: 'pw', registerNumber: 'REG012' } })
   const applyResJ = await fetch(`${API_URL}/applications`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -573,7 +604,7 @@ async function runTests() {
   await makeRequest(`/applications/${appJ}`, 'PUT', { status: 'SHORTLISTED' }, 'RECRUITER', recruiter.id.toString(), ['Engineering'])
 
   const schedJRes = await makeRequest('/interviews/schedule', 'POST', {
-    candidate_id: candJ!.id, application_id: appJ, panel_id: panelA.id,
+    application_id: appJ, panel_id: panelA.id,
     date: '2026-11-06', start_time: '10:00'
   }, 'ADMIN', admin.id.toString())
   if (schedJRes.status !== 201) throw new Error("Scheduling J failed: " + JSON.stringify(schedJRes.data))
@@ -581,11 +612,351 @@ async function runTests() {
 
   // Verify B IS in assigned_members
   const verifyJ = await prisma.recruitmentInterview.findUnique({ where: { id: intJ.id }, include: { assigned_members: true } })
-  if (!verifyJ!.assigned_members.some((m: any) => m.user_id === panelMemberB.id.toString())) {
+  if (!verifyJ!.assigned_members.some((m: any) => m.user_id.toString() === panelMemberB.id.toString())) {
     throw new Error("Reactivated User B was improperly excluded from new interview!")
   }
 
-  console.log("All Security and E2E Tests Passed Successfully!")
+  // RECRUITIE DASHBOARD ISOLATION TEST
+  // Candidate I tries to access Candidate J's application using API
+  const tokenCandI = await signToken({ id: '00000000-0000-0000-0000-000000001008', role: 'NONE', departments: [] }) // Cand I has id 1008
+  const CandIAccessCandJ = await fetch(`${API_URL}/applications/${appJ}`, {
+    headers: { 'Cookie': `session=${tokenCandI}` }
+  })
+  if (CandIAccessCandJ.status !== 403) throw new Error("Recruitie Isolation Failed! Cand I accessed Cand J: " + CandIAccessCandJ.status)
+
+  // Cand I accesses their own application using /applications/me
+  const CandIAccessSelf = await fetch(`${API_URL}/applications/me`, {
+    headers: { 'Cookie': `session=${tokenCandI}` }
+  })
+  if (CandIAccessSelf.status !== 200) throw new Error("Recruitie failed to access their own dashboard: " + CandIAccessSelf.status)
+
+  // RECRUITIE APPLICATION LOOKUP TEST (CRITICAL BUG 1 FIX)
+  // Create an explicit mismatch: HC User ID = 2001, App ID = 9001
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000002001", name: 'Mismatch User', email: 'mismatch@test.com', role: 'Member', password: 'pw', registerNumber: 'MISMATCH1' } })
+  await prisma.recruitmentApplication.create({
+    data: {
+      id: 9001,
+      recruitmentId: "recruitment-2026",
+      name: "Mismatch User",
+      email: "mismatch@test.com",
+      phoneNumber: "1234567890",
+      domain: "Engineering",
+      registerNumber: "MISMATCH1",
+      yearOfStudy: "1",
+      status: "APPLIED"
+    }
+  })
+  
+  const tokenMismatch = await signToken({ id: '00000000-0000-0000-0000-000000002001', role: 'NONE', departments: [] })
+  const mismatchLookup = await fetch(`${API_URL}/applications/me`, {
+    headers: { 'Cookie': `session=${tokenMismatch}` }
+  })
+  if (mismatchLookup.status !== 200) throw new Error("Recruitie lookup failed with ID mismatch! Status: " + mismatchLookup.status)
+  
+  const mismatchData = await mismatchLookup.json()
+  if (mismatchData.application.id !== '9001') {
+    throw new Error(`CRITICAL BUG: Looked up application returned ID ${mismatchData.application.id} instead of 9001!`)
+  }
+
+  console.log("--------------------------------")
+  console.log(" ROLE REGRESSION TEST")
+  console.log("--------------------------------")
+
+  // 1. Create a member with NONE in JWT, but PANEL_MEMBER in DB
+  const roleTestUser = await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000003001", name: 'Role Test', email: 'roletest@test.com', role: 'Member', password: 'pw' } })
+  const roleAssignment = await prisma.recruitmentRoleAssignment.create({ data: { user_id: roleTestUser.id, role: 'PANEL_MEMBER', departments: [], active: true } })
+  
+  // Make a request. The JWT has role='NONE'. It should resolve to PANEL_MEMBER on the backend.
+  const roleJwt = await signToken({ id: roleTestUser.id.toString(), role: 'NONE', departments: [] })
+  
+  const meRes1 = await fetch(`${API_URL}/auth/me`, { headers: { 'Cookie': `session=${roleJwt}` } })
+  const meData1 = await meRes1.json()
+  if (meData1.user.role !== 'PANEL_MEMBER') throw new Error("Role Regression Failed: Expected PANEL_MEMBER, got " + meData1.user.role)
+
+  // 2. Change assignment to RECRUITER
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: roleTestUser.id }, data: { role: 'RECRUITER', departments: ['Engineering'] } })
+  
+  const meRes2 = await fetch(`${API_URL}/auth/me`, { headers: { 'Cookie': `session=${roleJwt}` } })
+  const meData2 = await meRes2.json()
+  if (meData2.user.role !== 'RECRUITER') throw new Error("Role Regression Failed: Expected RECRUITER, got " + meData2.user.role)
+
+  // 3. Change assignment to NONE
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: roleTestUser.id }, data: { role: 'NONE' } })
+  
+  const meRes3 = await fetch(`${API_URL}/auth/me`, { headers: { 'Cookie': `session=${roleJwt}` } })
+  const meData3 = await meRes3.json()
+  if (meData3.user.role !== 'NONE') throw new Error("Role Regression Failed: Expected NONE, got " + meData3.user.role)
+
+  console.log("Role database priority properly verified.")
+  
+  console.log("--------------------------------")
+  console.log(" REVOKE ACCESS & REACTIVATION TEST")
+  console.log("--------------------------------")
+
+  // Assign RECRUITER to roleTestUser
+  await prisma.recruitmentRoleAssignment.update({ where: { user_id: roleTestUser.id }, data: { role: 'RECRUITER', active: true, departments: ['Engineering'] } })
+  const revokeTargetToken = await signToken({ id: roleTestUser.id.toString(), role: 'NONE', departments: [] })
+
+  // Verify access works
+  const preRevokeTest = await fetch(`${API_URL}/applications`, { headers: { 'Cookie': `session=${revokeTargetToken}` } })
+  if (preRevokeTest.status !== 200) throw new Error("Revoke Test Setup Failed: Could not access applications as RECRUITER.")
+
+  // Admin revokes access
+  const adminToken = await signToken({ id: admin.id.toString(), role: 'ADMIN', departments: [] })
+  const revokeRes = await fetch(`${API_URL}/users`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', 'Cookie': `session=${adminToken}` },
+    body: JSON.stringify({ id: roleTestUser.id.toString() })
+  })
+  if (revokeRes.status !== 200) throw new Error("Revoke Access API Failed: " + await revokeRes.text())
+
+  // Verify DB state
+  const revokedAssignment = await prisma.recruitmentRoleAssignment.findUnique({ where: { user_id: roleTestUser.id } })
+  if (revokedAssignment!.active !== false || revokedAssignment!.role !== 'NONE') {
+    throw new Error("Revoke Access did not properly set active=false and role=NONE!")
+  }
+
+  // Verify HC User still exists and role is Member
+  const stillUser = await prisma.user.findUnique({ where: { id: roleTestUser.id } })
+  if (!stillUser || stillUser.role !== 'Member') throw new Error("Revoke Access improperly deleted the HC User or modified the HC Role!")
+
+  // Verify access is now blocked
+  const postRevokeTest = await fetch(`${API_URL}/applications`, { headers: { 'Cookie': `session=${revokeTargetToken}` } })
+  if (postRevokeTest.status === 200) throw new Error("Revoked user can still access restricted endpoints!")
+
+  // Reactivate using API
+  const reactivateRes = await fetch(`${API_URL}/users`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Cookie': `session=${adminToken}` },
+    body: JSON.stringify({ id: roleTestUser.id.toString(), role: 'RECRUITER', active: true, departments: ['Engineering'] })
+  })
+  if (reactivateRes.status !== 200) throw new Error("Reactivation API Failed: " + await reactivateRes.text())
+
+  // Verify access returns
+  const postReactivateTest = await fetch(`${API_URL}/applications`, { headers: { 'Cookie': `session=${revokeTargetToken}` } })
+  if (postReactivateTest.status !== 200) throw new Error("Reactivated user cannot access restricted endpoints!")
+
+  console.log("Revoke and Reactivation behaviors correctly enforced.")
+
+  console.log("--------------------------------")
+  console.log(" APPLICATION IDENTITY INTEGRITY TEST")
+  console.log("--------------------------------")
+
+  // Create HC User A
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004001", name: 'Auth User A', email: 'a@test.com', registerNumber: 'A001', role: 'Member', password: 'pw', department: 'HC Department A' } })
+  // Create HC User B
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004002", name: 'Auth User B', email: 'b@test.com', registerNumber: 'B001', role: 'Member', password: 'pw', department: 'HC Department B' } })
+
+  // 1. Mismatched identity
+  const applyMismatch = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Browser Name', email: 'a@test.com', phone: '1234567890', department: 'Browser Dept', registration_number: 'B001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (applyMismatch.status !== 403) throw new Error("Mismatched identity not rejected! Status: " + applyMismatch.status)
+
+  // 2. Exact match identity (HC Data Source Test)
+  const applyMatch = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Fake Browser Name', email: 'a@test.com', phone: '9999999999', department: 'Fake Browser Dept', registration_number: 'A001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (applyMatch.status !== 201) throw new Error("Exact identity match failed: " + await applyMatch.text())
+
+  const appAId = (await applyMatch.json()).applicationId
+  
+  // Verify Data Source Integrity
+  const appARecord = await prisma.recruitmentApplication.findUnique({ where: { id: appAId } })
+  if (appARecord!.name !== 'Auth User A') throw new Error("Application name did not use authoritative HC User name!")
+  if (appARecord!.domain !== 'HC Department A') throw new Error("Application department did not use authoritative HC User department!")
+  
+  // Verify Year of Study is NOT hardcoded to "1"
+  if (appARecord!.yearOfStudy === "1") throw new Error("Year of Study was illegally hardcoded to '1' without authoritative data!")
+
+  console.log("Identity matching and authoritative data overrides properly enforced.")
+  
+  console.log("--------------------------------")
+  console.log(" MULTIPLE CAMPAIGNS AND DEPARTMENT NOTIFICATION REGRESSION TEST")
+  console.log("--------------------------------")
+
+  // Create HC User C (Department: CSE)
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004003", name: 'Auth User C', email: 'c@test.com', registerNumber: 'C001', role: 'Member', password: 'pw', department: 'CSE' } })
+  
+  // Create 2025 Application for User C
+  await prisma.recruitmentApplication.create({
+    data: {
+      id: 9005,
+      recruitmentId: "recruitment-2025",
+      name: 'Auth User C',
+      email: 'c@test.com',
+      registerNumber: 'C001',
+      domain: 'CSE',
+      yearOfStudy: '',
+      status: 'APPLIED',
+      appliedDate: new Date().toISOString(),
+      phoneNumber: '1111111111'
+    }
+  })
+
+  // Create an ECE Recruiter and CSE Recruiter to test notifications
+  const eceRecruiter = await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004004", name: 'ECE Recruiter', email: 'ece@test.com', registerNumber: 'ECE1', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: eceRecruiter.id, role: 'RECRUITER', departments: ['ECE'], active: true } })
+  
+  const cseRecruiter = await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004005", name: 'CSE Recruiter', email: 'cse@test.com', registerNumber: 'CSE1', role: 'Member', password: 'pw' } })
+  await prisma.recruitmentRoleAssignment.create({ data: { user_id: cseRecruiter.id, role: 'RECRUITER', departments: ['CSE'], active: true } })
+
+  // Clear previous notifications to test cleanly
+  await prisma.recruitmentNotification.deleteMany()
+
+  // Submit 2026 Application with mismatched browser department
+  const apply2026 = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Browser Name C', email: 'c@test.com', phone: '1234567890', department: 'ECE', registration_number: 'C001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (apply2026.status !== 201) throw new Error("Valid 2026 application blocked by 2025 application! Status: " + apply2026.status + " " + await apply2026.text())
+
+  // Duplicate 2026 Application (Should fail)
+  const applyDuplicate2026 = await fetch(`${API_URL}/applications`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      form_id: form.id, name: 'Browser Name C', email: 'c@test.com', phone: '1234567890', department: 'ECE', registration_number: 'C001',
+      answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+    })
+  })
+  if (applyDuplicate2026.status !== 409) throw new Error("Duplicate 2026 application not blocked! Status: " + applyDuplicate2026.status)
+
+  // Verify Recruiter Notification Department Source
+  // Authoritative dept for C is CSE. Browser sent ECE.
+  // Notification must go to CSE recruiter, NOT ECE recruiter.
+  const notifications = await prisma.recruitmentNotification.findMany()
+  const cseNotified = notifications.some(n => n.user_id === cseRecruiter.id)
+  const eceNotified = notifications.some(n => n.user_id === eceRecruiter.id)
+
+  if (!cseNotified) throw new Error("CSE Recruiter (authoritative department) did not receive notification!")
+  if (eceNotified) throw new Error("ECE Recruiter (untrusted browser department) improperly received notification!")
+
+  console.log("Multiple campaigns isolation and Notification department routing verified.")
+  
+  console.log("--------------------------------")
+  console.log(" CONCURRENT SUBMISSION RACE CONDITION TEST")
+  console.log("--------------------------------")
+  
+  // Create HC User D
+  await prisma.user.create({ data: { id: "00000000-0000-0000-0000-000000004006", name: 'Auth User D', email: 'd@test.com', registerNumber: 'D001', role: 'Member', password: 'pw', department: 'CSE' } })
+  
+  const payloadD = {
+    form_id: form.id, name: 'Browser Name D', email: 'd@test.com', phone: '1234567890', department: 'CSE', registration_number: 'D001',
+    answers: { [q1.id.toString()]: "Text", [q2.id.toString()]: ['A'] }
+  }
+
+  // Fire two simultaneous requests
+  const [res1, res2] = await Promise.all([
+    fetch(`${API_URL}/applications`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadD) }),
+    fetch(`${API_URL}/applications`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadD) })
+  ])
+  
+  const statusCodes = [res1.status, res2.status].sort()
+  if (statusCodes[0] !== 201 || statusCodes[1] !== 409) {
+    throw new Error(`Concurrent submission test failed! Expected exactly one 201 and one 409, got: ${res1.status} and ${res2.status}`)
+  }
+  console.log("Concurrent submission safely blocked by database-level constraints.")
+
+  console.log("--------------------------------")
+  console.log(" ID UNIQUENESS TEST")
+  console.log("--------------------------------")
+  if (appAId === appB) {
+    throw new Error("CRITICAL BUG: Application IDs for Candidate A and Candidate B are identical!")
+  }
+  console.log("Application IDs are unique.")
+
+  console.log("--------------------------------")
+  console.log(" ADMIN EMAIL SETTINGS TEST")
+  console.log("--------------------------------")
+
+  // Test 1: Only ADMIN can access settings
+  const emailSettingsRes1 = await makeRequest('/settings/email', 'GET', undefined, 'RECRUITER', recruiter.id.toString())
+  if (emailSettingsRes1.status !== 403) throw new Error(`Email settings GET endpoint allowed non-admin access! Status: ${emailSettingsRes1.status}`)
+
+  const emailSettingsRes2 = await makeRequest('/settings/email', 'POST', {
+    host: "smtp.gmail.com", port: 587, secure: false, user: "test@gmail.com", pass: "app_pw", fromEmail: "test@gmail.com", fromName: "Admin"
+  }, 'RECRUITER', recruiter.id.toString())
+  if (emailSettingsRes2.status !== 403) throw new Error(`Email settings POST endpoint allowed non-admin access! Status: ${emailSettingsRes2.status}`)
+
+  // Test 2: Admin can save settings safely without returning password
+  const emailSettingsRes3 = await makeRequest('/settings/email', 'POST', {
+    host: "smtp.gmail.com", port: 587, secure: false, user: "admin@gmail.com", pass: "secure_app_password_123", fromEmail: "admin@gmail.com", fromName: "HC Admin"
+  }, 'ADMIN', admin.id.toString())
+  if (emailSettingsRes3.status !== 200) throw new Error(`Admin failed to save email settings! Status: ${emailSettingsRes3.status}`)
+  
+  if (emailSettingsRes3.data.settings.pass !== "********") {
+    throw new Error("CRITICAL SECURITY FLAW: Email settings POST endpoint returned the raw SMTP password!")
+  }
+
+  // Test 3: Admin GET settings does not return password
+  const emailSettingsRes4 = await makeRequest('/settings/email', 'GET', undefined, 'ADMIN', admin.id.toString())
+  if (emailSettingsRes4.status !== 200) throw new Error(`Admin failed to get email settings! Status: ${emailSettingsRes4.status}`)
+  if (emailSettingsRes4.data.pass !== "********") {
+    throw new Error("CRITICAL SECURITY FLAW: Email settings GET endpoint returned the raw SMTP password!")
+  }
+
+  // Test 4: Interview creation succeeds even if SMTP fails
+  console.log("Testing SMTP Failure Isolation during interview scheduling...")
+  // (SMTP will fail natively since "admin@gmail.com" with a fake password is not valid and our test env doesn't actually have valid creds)
+  
+  await makeRequest(`/applications/${appAId}`, 'PUT', { status: 'UNDER_REVIEW' }, 'ADMIN', admin.id.toString())
+  await makeRequest(`/applications/${appAId}`, 'PUT', { status: 'SHORTLISTED' }, 'ADMIN', admin.id.toString())
+
+  const scheduleResTest = await makeRequest('/interviews/schedule', 'POST', {
+    application_id: appAId.toString(),
+    panel_id: panelA.id,
+    date: '2026-10-01',
+    start_time: '10:00',
+    end_time: '10:30'
+  }, 'ADMIN', admin.id.toString())
+  
+  if (scheduleResTest.status !== 201) {
+    throw new Error(`Interview scheduling failed! Likely due to SMTP exception. Status: ${scheduleResTest.status}. Details: ${JSON.stringify(scheduleResTest.data)}`)
+  }
+
+  console.log("SMTP isolated securely. Interviews succeed despite fake credentials.")
+
+  // Test 5: Verify SMTP Test endpoint obscures raw technical errors
+  console.log("Testing SMTP Test Error Obfuscation...")
+  const emailTestRes = await makeRequest('/settings/email/test', 'POST', {
+    host: "invalid.domain.xyz", port: 587, secure: false, user: "admin@gmail.com", pass: "wrong_password", fromEmail: "admin@gmail.com", fromName: "Admin", testRecipient: "candidate@test.com"
+  }, 'ADMIN', admin.id.toString())
+  
+  if (emailTestRes.status !== 400) throw new Error(`Email test should fail with 400. Status: ${emailTestRes.status}`)
+  
+  const testDataStr = JSON.stringify(emailTestRes.data).toLowerCase()
+  if (testDataStr.includes("econnrefused") || testDataStr.includes("enotfound") || testDataStr.includes("auth")) {
+    throw new Error("CRITICAL SECURITY FLAW: SMTP test endpoint leaked raw technical error messages to the client!")
+  }
+  if (!emailTestRes.data.details || emailTestRes.data.details !== "Unable to connect to the configured SMTP server.") {
+    throw new Error("CRITICAL SECURITY FLAW: SMTP test endpoint did not return the generic sanitized error message!")
+  }
+  console.log("SMTP raw errors are securely hidden from API responses.")
+
+  // Test 6: Verify SMTP_ENCRYPTION_KEY is required and no fallback exists
+  console.log("Verifying SMTP encryption key enforcement...")
+  const fs = await import('fs');
+  const encryptionFile = fs.readFileSync('./src/lib/encryption.ts', 'utf-8');
+  if (encryptionFile.includes('fallback_secret_only_for_dev_do_not_use')) {
+    throw new Error("CRITICAL SECURITY FLAW: Found hardcoded fallback encryption key in encryption.ts!");
+  }
+  if (!encryptionFile.includes('process.env.SMTP_ENCRYPTION_KEY')) {
+    throw new Error("CRITICAL SECURITY FLAW: SMTP_ENCRYPTION_KEY is not used in encryption.ts!");
+  }
+  console.log("SMTP encryption strictness verified.")
+
+  console.log("\nALL E2E TESTS PASSED SUCCESSFULLY!")
 }
 
 runTests().catch(e => {

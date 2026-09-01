@@ -1,15 +1,19 @@
 import React from "react"
 import Link from "next/link"
-import prisma from "../../api/src/lib/db"
 import { Navbar } from "@/components/layout/Navbar"
-
 export const dynamic = "force-dynamic"
 
 export default async function RecruitmentLandingPage() {
-  const publishedForms = await prisma.recruitmentForm.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { created_at: "desc" }
-  })
+  let publishedForms: any[] = [];
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/forms/published`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      publishedForms = data.forms || [];
+    }
+  } catch (err) {
+    console.error("Failed to fetch published forms:", err);
+  }
 
   return (
     <div className="min-h-screen bg-[#020000] flex flex-col font-sans">

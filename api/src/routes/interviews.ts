@@ -5,16 +5,21 @@ import { getSession } from "../lib/auth"
 export const GET = async (req: Request, res: Response) => {
   try {
     const session = await getSession(req)
-    if (!session) {
+    if (!session || session.role === "NONE") {
       return res.status(401).json({ error: "Unauthorized" })
     }
+
+    const searchParams = new URLSearchParams(req.query as Record<string, string>)
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "100") || 100))
+    const skip = (page - 1) * limit
 
     let whereClause: any = {}
 
     if (session.role === "PANEL_MEMBER") {
       whereClause = {
         assigned_members: {
-          some: { user_id: BigInt(session.id) }
+          some: { user_id: session.id }
         }
       }
     } else if (session.role === "RECRUITER") {
@@ -44,11 +49,16 @@ export const GET = async (req: Request, res: Response) => {
       includeClause.application = true
     }
 
-    const interviews = await prisma.recruitmentInterview.findMany({
-      where: whereClause,
-      include: includeClause,
-      orderBy: { date: 'asc' }
-    })
+    const [interviews, total] = await Promise.all([
+      prisma.recruitmentInterview.findMany({
+        where: whereClause,
+        include: includeClause,
+        orderBy: { date: 'asc' },
+        skip,
+        take: limit
+      }),
+      prisma.recruitmentInterview.count({ where: whereClause })
+    ])
 
     // Format response to serialize BigInts
     const formattedInterviews = interviews.map((i: any) => {
@@ -67,7 +77,13 @@ export const GET = async (req: Request, res: Response) => {
       return interview;
     })
 
-    return res.status(200).json({ interviews: formattedInterviews })
+    return res.status(200).json({ 
+      interviews: formattedInterviews,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    })
   } catch (error) {
     console.error("Error fetching interviews:", error)
     return res.status(500).json({ error: "Internal server error" })

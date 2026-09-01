@@ -145,7 +145,7 @@ export default function AdminCandidatesPage() {
                     <tr key={candidate.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                       <td className="p-4">
                         <Link href={`/admin/candidates/${candidate.id}`} className="text-[#d07d22] font-mono text-[13px] font-bold hover:underline">
-                          {candidate.registerNumber || candidate.registration_number || "-"}
+                          {candidate.registration_number}
                         </Link>
                       </td>
                       <td className="p-4">
@@ -154,7 +154,7 @@ export default function AdminCandidatesPage() {
                         </Link>
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{candidate.email}</p>
                       </td>
-                      <td className="p-4 text-[#bfa8a2]">{candidate.domain || candidate.department || "-"}</td>
+                      <td className="p-4 text-[#bfa8a2]">{candidate.department}</td>
                       <td className="p-4">
                         <StatusPill status={appStatus.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
                           {appStatus}

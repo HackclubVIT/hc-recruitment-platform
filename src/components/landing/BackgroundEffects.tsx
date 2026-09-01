@@ -32,7 +32,7 @@ export function BackgroundEffects() {
       
       {/* CSS Starfield */}
       {mounted && (
-        <div className="absolute inset-0 opacity-40 mix-blend-screen">
+        <div className="absolute inset-0 opacity-40 mix-blend-screen hidden md:block motion-reduce:hidden">
           <div 
             className="w-[1px] h-[1px] bg-transparent animate-stars"
             style={{ boxShadow: stars1 }}
@@ -46,7 +46,7 @@ export function BackgroundEffects() {
 
       {/* Radial glow top left - Aurora Effect 1 */}
       <div 
-        className="absolute w-[800px] h-[800px] rounded-full mix-blend-screen opacity-50 blur-[60px] animate-aurora-1"
+        className="absolute w-[400px] md:w-[800px] h-[400px] md:h-[800px] rounded-full mix-blend-screen opacity-30 md:opacity-50 blur-[40px] md:blur-[60px] animate-aurora-1 motion-reduce:animate-none"
         style={{
           top: "-300px",
           left: "-200px"
@@ -55,7 +55,7 @@ export function BackgroundEffects() {
       
       {/* Radial glow bottom right - Aurora Effect 2 */}
       <div 
-        className="absolute w-[900px] h-[900px] rounded-full mix-blend-screen opacity-40 blur-[80px] animate-aurora-2"
+        className="absolute w-[450px] md:w-[900px] h-[450px] md:h-[900px] rounded-full mix-blend-screen opacity-20 md:opacity-40 blur-[50px] md:blur-[80px] animate-aurora-2 motion-reduce:animate-none hidden sm:block"
         style={{
           bottom: "-400px",
           right: "-300px"

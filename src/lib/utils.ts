@@ -25,19 +25,3 @@ export function formatDate(dateStr: string | Date): string {
 export function formatDateTime(dateStr: string | Date): string {
   return `${formatDate(dateStr)} ${formatTime(dateStr)}`
 }
-
-const APPLICATION_STATUS_VARIANT: Record<string, "active" | "pending" | "inactive" | "scheduled" | "completed" | "cancelled" | "rejected" | "selected"> = {
-  APPLIED: "pending",
-  UNDER_REVIEW: "pending",
-  SHORTLISTED: "scheduled",
-  INTERVIEW_SCHEDULED: "scheduled",
-  INTERVIEW_COMPLETED: "completed",
-  FURTHER_ROUND: "pending",
-  WAITLISTED: "pending",
-  SELECTED: "selected",
-  REJECTED: "rejected",
-}
-
-export function applicationStatusVariant(status: string): "active" | "pending" | "inactive" | "scheduled" | "completed" | "cancelled" | "rejected" | "selected" {
-  return APPLICATION_STATUS_VARIANT[status] ?? "pending"
-}

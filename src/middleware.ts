@@ -8,11 +8,14 @@ export async function middleware(request: NextRequest) {
 
   // Paths that are explicitly public
   if (
+    pathname === "/" ||
     pathname.startsWith("/login") || 
     pathname.startsWith("/recruitment") || 
     pathname.startsWith("/application-success") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon.ico")
+    pathname.startsWith("/images") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/icon.svg")
   ) {
     // If logged in user tries to access /login, redirect to their dashboard
     if (pathname === "/login" && token) {
@@ -21,6 +24,7 @@ export async function middleware(request: NextRequest) {
         if (payload.role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
         if (payload.role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
         if (payload.role === "PANEL_MEMBER") return NextResponse.redirect(new URL("/panel/dashboard", request.url))
+        return NextResponse.redirect(new URL("/recruitie/dashboard", request.url))
       }
     }
     return NextResponse.next()
@@ -57,6 +61,12 @@ export async function middleware(request: NextRequest) {
     if (role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
     if (role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
     return NextResponse.redirect(new URL("/login", request.url))
+  }
+
+  if (pathname.startsWith("/recruitie") && role !== "NONE") {
+    if (role === "ADMIN") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+    if (role === "RECRUITER") return NextResponse.redirect(new URL("/recruiter/dashboard", request.url))
+    if (role === "PANEL_MEMBER") return NextResponse.redirect(new URL("/panel/dashboard", request.url))
   }
 
   return NextResponse.next()
