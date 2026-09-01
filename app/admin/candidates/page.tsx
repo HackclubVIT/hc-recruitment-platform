@@ -15,19 +15,36 @@ export default function AdminCandidatesPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [departmentFilter, setDepartmentFilter] = useState("ALL")
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(15)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCandidates, setTotalCandidates] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, statusFilter, departmentFilter, limit])
 
   useEffect(() => {
     fetchCandidates()
-  }, [search, statusFilter, departmentFilter])
+  }, [debouncedSearch, statusFilter, departmentFilter, page, limit])
 
   const fetchCandidates = async () => {
     setLoading(true)
     try {
       const deptQuery = departmentFilter !== "ALL" ? `&department=${departmentFilter}` : ""
-      const res = await fetchApi(`/api/candidates?q=${search}&status=${statusFilter}${deptQuery}`)
+      const res = await fetchApi(`/api/candidates?page=${page}&limit=${limit}&q=${debouncedSearch}&status=${statusFilter}${deptQuery}`)
       const data = await res.json()
-      setCandidates(data.candidates || [])
+      setCandidates(data.candidates || data.items || [])
+      setTotalPages(data.totalPages || 1)
+      setTotalCandidates(data.total || 0)
     } catch (err) {
       console.error(err)
     } finally {
@@ -36,8 +53,8 @@ export default function AdminCandidatesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out]">
-      <header className="flex items-end justify-between">
+    <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out] pb-10">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3 text-[#d07d22] font-mono text-[11.5px] uppercase tracking-[0.2em]">
             <DiamondIcon />
@@ -46,6 +63,9 @@ export default function AdminCandidatesPage() {
           <h1 className="font-display font-bold text-[32px] sm:text-[40px] leading-tight text-[#f4ede4]">
             All Candidates
           </h1>
+        </div>
+        <div className="font-mono text-[13px] text-[#d07d22] bg-[#120202] px-4 py-2 rounded-lg border border-[#2a0d0d]">
+          Total Candidates: <span className="font-bold text-[#f4ede4]">{totalCandidates}</span>
         </div>
       </header>
 
@@ -64,14 +84,12 @@ export default function AdminCandidatesPage() {
             onChange={(e) => setDepartmentFilter(e.target.value)}
           >
             <option value="ALL">All Departments</option>
-            <option value="Web Development">Web Development</option>
-            <option value="AI/ML">AI/ML</option>
-            <option value="App Development">App Development</option>
-            <option value="Design">Design</option>
-            <option value="Events">Events</option>
+            <option value="Projects">Projects</option>
             <option value="Operations">Operations</option>
-            <option value="Competitive Programming">Competitive Programming</option>
-            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="Technical">Technical</option>
+            <option value="Finance">Finance</option>
+            <option value="Research and Development">Research and Development</option>
+            <option value="Design & Social Media">Design & Social Media</option>
           </select>
         </div>
         <div className="w-full sm:w-1/4">
@@ -85,6 +103,18 @@ export default function AdminCandidatesPage() {
             <option value="SHORTLISTED">Shortlisted</option>
             <option value="REJECTED">Rejected</option>
             <option value="SELECTED">Selected</option>
+          </select>
+        </div>
+        <div className="w-full sm:w-1/6">
+          <select
+            className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono text-[12px] focus:outline-none focus:border-[#d07d22]"
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+          >
+            <option value={15}>15 / page</option>
+            <option value={25}>25 / page</option>
+            <option value={50}>50 / page</option>
+            <option value={100}>100 / page</option>
           </select>
         </div>
         <Button variant="ghost" className="w-full sm:w-auto h-[46px]" onClick={fetchCandidates}>
@@ -138,6 +168,29 @@ export default function AdminCandidatesPage() {
           </table>
         </div>
       </Card>
+
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-between items-center bg-[#120202] p-4 rounded-xl border border-[#2a0d0d]">
+          <Button
+            variant="ghost"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            PREV
+          </Button>
+          <span className="font-mono text-[#bfa8a2] text-[12px]">
+            PAGE {page} OF {totalPages} ({totalCandidates} Candidates Total)
+          </span>
+          <Button
+            variant="ghost"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            NEXT
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

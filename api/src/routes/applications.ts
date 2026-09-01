@@ -185,45 +185,90 @@ export const GET = async (req: Request, res: Response) => {
 
     const skip = (page - 1) * limit
 
-    const where: Prisma.RecruitmentApplicationWhereInput = { recruitmentId: "recruitment-2026" }
+    function buildDepartmentCondition(deptNames: string[]) {
+      const allVariants = new Set<string>();
+      for (const d of deptNames) {
+        allVariants.add(d);
+        if (d.toLowerCase().includes("research")) {
+          allVariants.add("Research and Development");
+          allVariants.add("Research & Development");
+          allVariants.add("R&D");
+        }
+        if (d.toLowerCase().includes("design")) {
+          allVariants.add("Design & Social Media");
+          allVariants.add("Design and Social Media");
+          allVariants.add("Design");
+        }
+        if (d.toLowerCase().includes("technical")) {
+          allVariants.add("Technical");
+          allVariants.add("Web Development");
+        }
+      }
 
-    if (department) {
+      const conditions: any[] = [];
+      for (const variant of allVariants) {
+        conditions.push(
+          { domain: { equals: variant, mode: "insensitive" } },
+          { firstPreference: { equals: variant, mode: "insensitive" } },
+          { secondPreference: { equals: variant, mode: "insensitive" } }
+        );
+      }
+      return { OR: conditions };
+    }
+
+    const andConditions: any[] = [
+      { recruitmentId: "recruitment-2026" }
+    ];
+
+    if (department && department !== "ALL") {
       if (session.role === "RECRUITER") {
-        if (session.departments.includes(department)) {
-          where.domain = department
+        const matchesDept = session.departments.some(d => d.toLowerCase() === department.toLowerCase() || d === "*")
+        if (matchesDept) {
+          andConditions.push(buildDepartmentCondition([department]));
         } else {
           return res.status(403).json({ error: "Forbidden: Department not assigned" })
         }
       } else if (session.role === "ADMIN") {
-        where.domain = department
+        andConditions.push(buildDepartmentCondition([department]));
       }
     } else if (session.role === "RECRUITER") {
-      where.domain = { in: session.departments }
+      if (!session.departments.includes("*") && session.departments.length > 0) {
+        andConditions.push(buildDepartmentCondition(session.departments));
+      }
     } else if (session.role === "PANEL_MEMBER") {
-      where.interviews = {
-        some: {
-          assigned_members: {
-            some: { user_id: BigInt(session.id) }
+      andConditions.push({
+        interviews: {
+          some: {
+            assigned_members: {
+              some: { user_id: BigInt(session.id) }
+            }
           }
         }
-      }
+      });
     }
 
     if (search) {
-      where.name = { contains: search, mode: "insensitive" }
+      andConditions.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+          { registerNumber: { contains: search, mode: "insensitive" } }
+        ]
+      });
     }
 
     if (status) {
-      where.status = status
+      andConditions.push({ status });
     }
 
     if (date_from || date_to) {
       const dateFilter: Record<string, string> = {}
       if (date_from) dateFilter.gte = date_from
       if (date_to) dateFilter.lte = date_to
-      // appliedDate is stored as ISO string, lexicographic range works
-      ;(where as any).appliedDate = dateFilter
+      andConditions.push({ appliedDate: dateFilter });
     }
+
+    const where: Prisma.RecruitmentApplicationWhereInput = { AND: andConditions };
 
     let orderBy: Prisma.RecruitmentApplicationOrderByWithRelationInput = { id: "desc" }
     if (sort) {

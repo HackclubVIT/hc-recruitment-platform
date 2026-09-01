@@ -14,41 +14,83 @@ export const GET = async (req: Request, res: Response) => {
     const status = searchParams.get("status") || "ALL"
     const department = searchParams.get("department")
 
-    const whereClause: any = { recruitmentId: "recruitment-2026" }
+    function buildDepartmentCondition(deptNames: string[]) {
+      const allVariants = new Set<string>();
+      for (const d of deptNames) {
+        allVariants.add(d);
+        if (d.toLowerCase().includes("research")) {
+          allVariants.add("Research and Development");
+          allVariants.add("Research & Development");
+          allVariants.add("R&D");
+        }
+        if (d.toLowerCase().includes("design")) {
+          allVariants.add("Design & Social Media");
+          allVariants.add("Design and Social Media");
+          allVariants.add("Design");
+        }
+        if (d.toLowerCase().includes("technical")) {
+          allVariants.add("Technical");
+          allVariants.add("Web Development");
+        }
+      }
+
+      const conditions: any[] = [];
+      for (const variant of allVariants) {
+        conditions.push(
+          { domain: { equals: variant, mode: "insensitive" } },
+          { firstPreference: { equals: variant, mode: "insensitive" } },
+          { secondPreference: { equals: variant, mode: "insensitive" } }
+        );
+      }
+      return { OR: conditions };
+    }
+
+    const andConditions: any[] = [
+      { recruitmentId: "recruitment-2026" }
+    ];
     
-    if (department) {
+    if (department && department !== "ALL") {
       if (session.role === "RECRUITER") {
-        if (session.departments.includes(department)) {
-          whereClause.domain = department
+        const matchesDept = session.departments.some(d => d.toLowerCase() === department.toLowerCase() || d === "*")
+        if (matchesDept) {
+          andConditions.push(buildDepartmentCondition([department]));
         } else {
           return res.status(403).json({ error: "Forbidden: Department not assigned" })
         }
       } else if (session.role === "ADMIN") {
-        whereClause.domain = department
+        andConditions.push(buildDepartmentCondition([department]));
       }
     } else if (session.role === "RECRUITER") {
-      whereClause.domain = { in: session.departments }
+      if (!session.departments.includes("*") && session.departments.length > 0) {
+        andConditions.push(buildDepartmentCondition(session.departments));
+      }
     } else if (session.role === "PANEL_MEMBER") {
-      whereClause.interviews = {
-        some: {
-          assigned_members: {
-            some: { user_id: BigInt(session.id) }
+      andConditions.push({
+        interviews: {
+          some: {
+            assigned_members: {
+              some: { user_id: BigInt(session.id) }
+            }
           }
         }
-      }
+      });
     } 
     
     if (status !== "ALL") {
-       whereClause.status = status
+       andConditions.push({ status });
     }
 
     if (q) {
-      whereClause.OR = [
-        { name: { contains: q, mode: 'insensitive' } },
-        { email: { contains: q, mode: 'insensitive' } },
-        { registerNumber: { contains: q, mode: 'insensitive' } },
-      ]
+      andConditions.push({
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+          { registerNumber: { contains: q, mode: 'insensitive' } },
+        ]
+      });
     }
+
+    const whereClause: any = { AND: andConditions };
 
     const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1)
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10") || 10))

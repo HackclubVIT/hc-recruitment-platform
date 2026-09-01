@@ -197,14 +197,12 @@ export default function RecruiterApplicationsPage() {
             onChange={(e) => { setDepartment(e.target.value); setPage(1); }}
           >
             <option value="">All Assigned Depts</option>
-            <option value="Web Development">Web Development</option>
-            <option value="AI/ML">AI/ML</option>
-            <option value="App Development">App Development</option>
-            <option value="Design">Design</option>
-            <option value="Events">Events</option>
+            <option value="Projects">Projects</option>
             <option value="Operations">Operations</option>
-            <option value="Competitive Programming">Competitive Programming</option>
-            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="Technical">Technical</option>
+            <option value="Finance">Finance</option>
+            <option value="Research and Development">Research and Development</option>
+            <option value="Design & Social Media">Design & Social Media</option>
           </select>
           <input type="date" className="bg-[#1a0606] border border-[#2a0d0d] rounded-lg px-4 py-2.5 text-[#f4ede4] font-mono text-[12px] focus:outline-none focus:border-[#ac120c]" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} placeholder="From" />
           <input type="date" className="bg-[#1a0606] border border-[#2a0d0d] rounded-lg px-4 py-2.5 text-[#f4ede4] font-mono text-[12px] focus:outline-none focus:border-[#ac120c]" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} placeholder="To" />

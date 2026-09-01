@@ -16,50 +16,44 @@ export default function CandidatesPage() {
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [departmentFilter, setDepartmentFilter] = useState("ALL")
   const [dateFilter, setDateFilter] = useState("")
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(15)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCandidates, setTotalCandidates] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, statusFilter, departmentFilter, dateFilter, limit])
 
   useEffect(() => {
     fetchCandidates()
-  }, [search, statusFilter, departmentFilter, dateFilter])
+  }, [debouncedSearch, statusFilter, departmentFilter, dateFilter, page, limit])
 
   const fetchCandidates = async () => {
     setLoading(true)
     try {
-      // In a real app, pass search and statusFilter to API as query params
-      const res = await fetchApi(`/api/candidates`)
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        q: debouncedSearch,
+        status: statusFilter,
+      })
+      if (departmentFilter !== "ALL") params.append("department", departmentFilter)
+
+      const res = await fetchApi(`/api/candidates?${params.toString()}`)
       const data = await res.json()
       
-      // Client side filtering for completeness
-      let filtered = data.candidates || []
-      
-      if (search) {
-        filtered = filtered.filter((c: RecruitmentApplication) => 
-          c.name.toLowerCase().includes(search.toLowerCase()) || 
-          c.email.toLowerCase().includes(search.toLowerCase()) ||
-          c.registerNumber?.toLowerCase().includes(search.toLowerCase())
-        )
-      }
-      
-      if (statusFilter !== "ALL") {
-        filtered = filtered.filter((c: RecruitmentApplication) => {
-          const appStatus = c.status || "APPLIED"
-          return appStatus === statusFilter
-        })
-      }
-      
-      if (departmentFilter !== "ALL") {
-        filtered = filtered.filter((c: RecruitmentApplication) => c.domain === departmentFilter)
-      }
-
-      if (dateFilter) {
-        filtered = filtered.filter((c: RecruitmentApplication) => {
-          const appDate = c.appliedDate
-          if (!appDate) return false
-          return new Date(appDate).toISOString().split('T')[0] === dateFilter
-        })
-      }
-      
-      setCandidates(filtered)
+      setCandidates(data.candidates || data.items || [])
+      setTotalPages(data.totalPages || 1)
+      setTotalCandidates(data.total || 0)
     } catch (err) {
       console.error(err)
     } finally {
@@ -68,8 +62,8 @@ export default function CandidatesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out]">
-      <header className="flex items-end justify-between">
+    <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out] pb-10">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3 text-[#d07d22] font-mono text-[11.5px] uppercase tracking-[0.2em]">
             <DiamondIcon />
@@ -78,6 +72,9 @@ export default function CandidatesPage() {
           <h1 className="font-display font-bold text-[32px] sm:text-[40px] leading-tight text-[#f4ede4]">
             Candidates Pool
           </h1>
+        </div>
+        <div className="font-mono text-[13px] text-[#d07d22] bg-[#120202] px-4 py-2 rounded-lg border border-[#2a0d0d]">
+          Total Candidates: <span className="font-bold text-[#f4ede4]">{totalCandidates}</span>
         </div>
       </header>
 
@@ -97,14 +94,12 @@ export default function CandidatesPage() {
             onChange={(e) => setDepartmentFilter(e.target.value)}
           >
             <option value="ALL">All Depts</option>
-            <option value="Web Development">Web Development</option>
-            <option value="AI/ML">AI/ML</option>
-            <option value="App Development">App Development</option>
-            <option value="Design">Design</option>
-            <option value="Events">Events</option>
+            <option value="Projects">Projects</option>
             <option value="Operations">Operations</option>
-            <option value="Competitive Programming">Competitive Programming</option>
-            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="Technical">Technical</option>
+            <option value="Finance">Finance</option>
+            <option value="Research and Development">Research and Development</option>
+            <option value="Design & Social Media">Design & Social Media</option>
           </select>
         </div>
         <div className="w-full sm:w-1/5">
@@ -120,11 +115,16 @@ export default function CandidatesPage() {
           </select>
         </div>
         <div className="w-full sm:w-1/5">
-          <Input 
-            type="date"
-            value={dateFilter}
-            onChange={(e: any) => setDateFilter(e.target.value)}
-          />
+          <select
+            className="w-full bg-[#120202] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-[8px] font-mono text-[12px] focus:outline-none focus:border-[#d07d22]"
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+          >
+            <option value={15}>15 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </select>
         </div>
         <Button variant="ghost" className="w-full sm:w-auto h-[46px]" onClick={fetchCandidates}>
           REFRESH
@@ -178,6 +178,29 @@ export default function CandidatesPage() {
           </table>
         </div>
       </Card>
+
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-between items-center bg-[#120202] p-4 rounded-xl border border-[#2a0d0d]">
+          <Button
+            variant="ghost"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            PREV
+          </Button>
+          <span className="font-mono text-[#bfa8a2] text-[12px]">
+            PAGE {page} OF {totalPages} ({totalCandidates} Candidates Total)
+          </span>
+          <Button
+            variant="ghost"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            NEXT
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

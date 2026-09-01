@@ -8,8 +8,7 @@ import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 
 const DEPARTMENTS = [
-  "Web Development", "AI/ML", "App Development", "Design", "Events",
-  "Operations", "Competitive Programming", "Cybersecurity"
+  "Projects", "Operations", "Technical", "Finance", "Research and Development", "Design & Social Media"
 ]
 
 export default function AdminRecruitersPage() {

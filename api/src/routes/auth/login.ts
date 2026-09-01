@@ -21,7 +21,7 @@ export const POST = async (req: Request, res: Response) => {
           id: "dev-mock-id-" + devUser.role.toLowerCase(),
           email: email,
           role: devUser.role,
-          departments: ["TECHNICAL", "MANAGEMENT", "DESIGN"], // Allow full access for dev testing
+          departments: ["Projects", "Operations", "Technical", "Finance", "Research and Development", "Design & Social Media", "*"],
         });
 
         res.cookie("session", token, {

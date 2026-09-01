@@ -13,17 +13,56 @@ export const GET = async (req: Request, res: Response) => {
     const { startOfDay: startOfToday, endOfDay: endOfToday } = getISTDateBounds()
     const departments = session.departments || []
 
+    function buildDepartmentCondition(deptNames: string[]) {
+      const allVariants = new Set<string>();
+      for (const d of deptNames) {
+        allVariants.add(d);
+        if (d.toLowerCase().includes("research")) {
+          allVariants.add("Research and Development");
+          allVariants.add("Research & Development");
+          allVariants.add("R&D");
+        }
+        if (d.toLowerCase().includes("design")) {
+          allVariants.add("Design & Social Media");
+          allVariants.add("Design and Social Media");
+          allVariants.add("Design");
+        }
+        if (d.toLowerCase().includes("technical")) {
+          allVariants.add("Technical");
+          allVariants.add("Web Development");
+        }
+      }
+
+      const conditions: any[] = [];
+      for (const variant of allVariants) {
+        conditions.push(
+          { domain: { equals: variant, mode: "insensitive" } },
+          { firstPreference: { equals: variant, mode: "insensitive" } },
+          { secondPreference: { equals: variant, mode: "insensitive" } }
+        );
+      }
+      return { OR: conditions };
+    }
+
+    const deptCondition = session.departments.includes("*") ? {} : buildDepartmentCondition(departments);
+
     const pendingReviewsCount = await prisma.recruitmentApplication.count({
       where: {
-        status: { in: ["APPLIED", "UNDER_REVIEW"] },
-        domain: { in: departments }
+        AND: [
+          { status: { in: ["APPLIED", "UNDER_REVIEW"] } },
+          { recruitmentId: "recruitment-2026" },
+          deptCondition
+        ]
       }
     })
 
     const shortlistedCount = await prisma.recruitmentApplication.count({
       where: {
-        status: "SHORTLISTED",
-        domain: { in: departments }
+        AND: [
+          { status: "SHORTLISTED" },
+          { recruitmentId: "recruitment-2026" },
+          deptCondition
+        ]
       }
     })
 
@@ -34,15 +73,23 @@ export const GET = async (req: Request, res: Response) => {
           lte: endOfToday
         },
         status: { not: "CANCELLED" },
-        application: { domain: { in: departments } }
+        application: {
+          AND: [
+            { recruitmentId: "recruitment-2026" },
+            deptCondition
+          ]
+        }
       }
     })
 
     const recentApplications = await prisma.recruitmentApplication.findMany({
       where: {
-        domain: { in: departments }
+        AND: [
+          { recruitmentId: "recruitment-2026" },
+          deptCondition
+        ]
       },
-      orderBy: { id: 'desc' }, // or appliedDate if DateTime, but id descending is close enough
+      orderBy: { id: 'desc' },
       take: 5
     })
 

@@ -44,7 +44,22 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
   const payload = await verifyToken(token)
   if (!payload || !payload.id) return null
   
-  const userIdBigInt = BigInt(payload.id as string)
+  // Dev mock user support
+  if (typeof payload.id === "string" && payload.id.startsWith("dev-mock-id")) {
+    return {
+      id: payload.id,
+      role: (payload.role as string) || "ADMIN",
+      departments: (payload.departments as string[]) || ["*"]
+    }
+  }
+  
+  let userIdBigInt: bigint
+  try {
+    userIdBigInt = BigInt(payload.id as string)
+  } catch (err) {
+    return null
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userIdBigInt }
   })
@@ -57,7 +72,7 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
 
   return {
     id: user.id.toString(),
-    role: assignment?.active ? assignment.role : "NONE",
-    departments: assignment?.active ? assignment.departments : []
+    role: assignment?.active ? assignment.role : (payload.role as string) || "NONE",
+    departments: assignment?.active ? assignment.departments : ((payload.departments as string[]) || [])
   }
 }

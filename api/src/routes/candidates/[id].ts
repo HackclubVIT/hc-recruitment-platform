@@ -37,9 +37,22 @@ export const GET = async (req: Request, res: Response) => {
 
     if (!application) return res.status(404).json({ error: "Not found" })
 
-    // Access control: Recruiter can only view their own department
-    if (session.role === "RECRUITER" && !session.departments.includes(application.domain as string)) {
-      return res.status(403).json({ error: "Forbidden" })
+    // Access control: Recruiter can view if 1st pref, 2nd pref, or domain matches their departments
+    if (session.role === "RECRUITER" && !session.departments.includes("*")) {
+      const allowedDepts = new Set(session.departments.map(d => d.toLowerCase()));
+      const matches = [application.domain, application.firstPreference, application.secondPreference]
+        .filter(Boolean)
+        .some(d => {
+          const str = (d as string).toLowerCase();
+          return allowedDepts.has(str) || 
+                 (str.includes("research") && Array.from(allowedDepts).some(ad => ad.includes("research"))) ||
+                 (str.includes("design") && Array.from(allowedDepts).some(ad => ad.includes("design"))) ||
+                 (str.includes("technical") && Array.from(allowedDepts).some(ad => ad.includes("technical")));
+        });
+
+      if (!matches) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
     }
 
     // Access control: Panel Member

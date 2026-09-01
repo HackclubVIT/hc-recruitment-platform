@@ -37,12 +37,17 @@ export default function LoginPage() {
         throw new Error(data.error || "Failed to login")
       }
 
-      if (data.user.role === "ADMIN") router.push("/admin/dashboard")
-      else if (data.user.role === "RECRUITER") router.push("/recruiter/dashboard")
-      else if (data.user.role === "PANEL_MEMBER") router.push("/panel/dashboard")
+      let targetUrl = ""
+      if (data.user.role === "ADMIN") targetUrl = "/admin/dashboard"
+      else if (data.user.role === "RECRUITER") targetUrl = "/recruiter/dashboard"
+      else if (data.user.role === "PANEL_MEMBER") targetUrl = "/panel/dashboard"
       else {
         setError("You do not have recruitment staff permissions.")
+        setLoading(false)
+        return
       }
+
+      window.location.href = targetUrl
 
     } catch (err: any) {
       setError(err.message)

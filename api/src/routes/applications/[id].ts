@@ -39,10 +39,21 @@ export const GET = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Application not found" })
     }
 
-    // Authorization
-    if (session.role === "RECRUITER") {
-      if (!session.departments?.includes(application.domain as string)) {
-        return res.status(403).json({ error: "Forbidden" })
+    // Authorization: Recruiter can view if 1st pref, 2nd pref, or domain matches their departments
+    if (session.role === "RECRUITER" && !session.departments?.includes("*")) {
+      const allowedDepts = new Set((session.departments || []).map(d => d.toLowerCase()));
+      const matches = [application.domain, application.firstPreference, application.secondPreference]
+        .filter(Boolean)
+        .some(d => {
+          const str = (d as string).toLowerCase();
+          return allowedDepts.has(str) || 
+                 (str.includes("research") && Array.from(allowedDepts).some(ad => ad.includes("research"))) ||
+                 (str.includes("design") && Array.from(allowedDepts).some(ad => ad.includes("design"))) ||
+                 (str.includes("technical") && Array.from(allowedDepts).some(ad => ad.includes("technical")));
+        });
+
+      if (!matches) {
+        return res.status(403).json({ error: "Forbidden" });
       }
     }
 
