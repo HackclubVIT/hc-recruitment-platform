@@ -213,6 +213,8 @@ export const GET = async (req: Request, res: Response) => {
     const search = searchParams.get("search") || ""
     const status = searchParams.get("status") || ""
     const department = searchParams.get("department") || ""
+    const date_from = searchParams.get("date_from") || ""
+    const date_to = searchParams.get("date_to") || ""
     
     // We don't have date filtering here easily because appliedDate is a string in HC DB schema
     

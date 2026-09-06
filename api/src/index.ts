@@ -1,14 +1,23 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// MUST run before any other local imports that may initialize Prisma
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config(); // fallback for cwd .env
+
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { router } from './router.js';
 
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
-
-dotenv.config();
 
 // Production Safety Checks
 if (process.env.NODE_ENV === 'production') {
@@ -31,9 +40,6 @@ if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   }
 }
-
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -73,8 +79,6 @@ app.use(cors({
 
 // Routes
 app.use('/api', router);
-
-
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

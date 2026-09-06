@@ -37,15 +37,12 @@ export default function LoginPage() {
         throw new Error(data.error || "Failed to login")
       }
 
-      let targetUrl = ""
-      if (data.user.role === "ADMIN") targetUrl = "/admin/dashboard"
-      else if (data.user.role === "RECRUITER") targetUrl = "/recruiter/dashboard"
-      else if (data.user.role === "PANEL_MEMBER") targetUrl = "/panel/dashboard"
-      else {
-        setError("You do not have recruitment staff permissions.")
-        setLoading(false)
-        return
-      }
+      const userRole = (data.user?.role || "NONE").toUpperCase()
+      let targetUrl = "/recruitie/dashboard"
+      if (userRole === "ADMIN") targetUrl = "/admin/dashboard"
+      else if (userRole === "RECRUITER") targetUrl = "/recruiter/dashboard"
+      else if (userRole === "PANEL_MEMBER") targetUrl = "/panel/dashboard"
+      else targetUrl = "/recruitie/dashboard"
 
       window.location.href = targetUrl
 

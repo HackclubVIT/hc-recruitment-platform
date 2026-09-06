@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button"
 export default function RecruiterDashboard() {
   const router = useRouter()
   const [data, setData] = useState<{
-    stats: { pendingReviewsCount: number, shortlistedCount: number, interviewsTodayCount: number };
+    stats: { pendingReviewsCount: number, shortlistedCount: number, selectedCount: number, interviewsTodayCount: number };
     recentApplications: RecruitmentApplication[];
     departments: string[];
   } | null>(null)
@@ -39,7 +39,7 @@ export default function RecruiterDashboard() {
     return <div className="p-8 text-[#bfa8a2] font-mono">LOADING RECRUITER DASHBOARD...</div>
   }
 
-  const { stats, recentApplications, departments } = data || { stats: { pendingReviewsCount: 0, shortlistedCount: 0, interviewsTodayCount: 0 }, recentApplications: [], departments: [] }
+  const { stats, recentApplications, departments } = data || { stats: { pendingReviewsCount: 0, shortlistedCount: 0, selectedCount: 0, interviewsTodayCount: 0 }, recentApplications: [], departments: [] }
 
   return (
     <div className="flex flex-col gap-10 animate-[fadeIn_0.5s_ease-out]">
@@ -56,7 +56,7 @@ export default function RecruiterDashboard() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="flex flex-col justify-between min-h-[120px] group">
           <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Pending Reviews</span>
           <div className="flex items-end justify-between mt-2">
@@ -66,7 +66,13 @@ export default function RecruiterDashboard() {
         <Card className="flex flex-col justify-between min-h-[120px] group">
           <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Shortlisted</span>
           <div className="flex items-end justify-between mt-2">
-            <span className="font-display font-black text-[36px] leading-none text-[#2e7d32]">{stats.shortlistedCount}</span>
+            <span className="font-display font-black text-[36px] leading-none text-[#f39c12]">{stats.shortlistedCount}</span>
+          </div>
+        </Card>
+        <Card className="flex flex-col justify-between min-h-[120px] group">
+          <span className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-[0.06em]">Selected</span>
+          <div className="flex items-end justify-between mt-2">
+            <span className="font-display font-black text-[36px] leading-none text-[#2ecc71]">{stats.selectedCount || 0}</span>
           </div>
         </Card>
         <Card className="flex flex-col justify-between min-h-[120px] group">

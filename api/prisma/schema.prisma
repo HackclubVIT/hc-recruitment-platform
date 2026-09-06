@@ -12,7 +12,7 @@ datasource db {
 // ==========================================
 
 model User {
-  id String @id @default(uuid()) @db.Uuid
+  id                 BigInt  @id
   name               String
   email              String? @unique
   password           String?
@@ -73,7 +73,7 @@ model Project {
 model ProjectRating {
   id        BigInt   @id
   projectId BigInt
-  adminId            String  @db.Uuid
+  adminId   BigInt
   adminName String
   rating    Float
   comment   String?
@@ -114,7 +114,7 @@ model RecruitmentApplication {
   status                     String  @default("Pending")
   appliedDate                String?
 
-  decided_by         String? @db.Uuid
+  decided_by         BigInt?
   decided_at                 DateTime?
   decision_reason            String?
 
@@ -152,7 +152,7 @@ model Collection {
 
 model RecruitmentRoleAssignment {
   id          Int      @id @default(autoincrement())
-  user_id            String  @db.Uuid   @unique
+  user_id     BigInt   @unique
   role        String   @default("NONE") // ADMIN, RECRUITER, PANEL_MEMBER, NONE
   departments String[] // For RECRUITER role
   active      Boolean  @default(true) // For disabling user access
@@ -236,7 +236,7 @@ model RecruitmentPanel {
 model RecruitmentPanelMember {
   id       Int    @id @default(autoincrement())
   panel_id Int
-  user_id            String  @db.Uuid
+  user_id  BigInt
   active   Boolean @default(true)
 
   panel    RecruitmentPanel @relation(fields: [panel_id], references: [id])
@@ -252,7 +252,7 @@ model RecruitmentInterview {
   id             Int      @id @default(autoincrement())
   application_id BigInt
   panel_id       Int
-  recruiter_id       String? @db.Uuid
+  recruiter_id   BigInt?
   round          Int      @default(1)
   date           DateTime
   start_time     DateTime
@@ -294,7 +294,7 @@ model RecruitmentFeedback {
 
 model RecruitmentNotification {
   id         Int      @id @default(autoincrement())
-  user_id            String  @db.Uuid
+  user_id    BigInt
   title      String
   message    String
   read       Boolean  @default(false)
@@ -308,7 +308,7 @@ model RecruitmentNotification {
 
 model RecruitmentAuditLog {
   id         Int      @id @default(autoincrement())
-  user_id String? @db.Uuid
+  user_id    BigInt?
   action     String
   entity     String
   entity_id  String?
@@ -331,4 +331,17 @@ model RecruitmentEmailLog {
 
   @@index([timestamp])
   @@map("recruitment_email_logs")
+}
+
+model RecruitmentAnnouncement {
+  id            Int      @id @default(autoincrement())
+  department    String
+  target_status String   @default("SHORTLISTED")
+  title         String
+  message       String
+  created_by    String?
+  created_at    DateTime @default(now())
+
+  @@index([department])
+  @@map("recruitment_announcements")
 }

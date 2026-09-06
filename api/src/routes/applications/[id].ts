@@ -138,11 +138,12 @@ export const PUT = async (req: Request, res: Response) => {
       "Pending": ["APPLIED", "UNDER_REVIEW", "REJECTED"],
       "APPLIED": ["UNDER_REVIEW", "REJECTED"],
       "UNDER_REVIEW": ["SHORTLISTED", "REJECTED"],
-      "SHORTLISTED": ["INTERVIEW_SCHEDULED", "REJECTED"],
-      "INTERVIEW_SCHEDULED": ["INTERVIEW_COMPLETED", "REJECTED"],
+      "SHORTLISTED": ["INTERVIEW_SCHEDULED", "FURTHER_ROUND", "SELECTED", "REJECTED"],
+      "INTERVIEW_SCHEDULED": ["INTERVIEW_COMPLETED", "REJECTED", "SELECTED", "WAITLISTED", "FURTHER_ROUND"],
       "INTERVIEW_COMPLETED": ["SELECTED", "REJECTED", "WAITLISTED", "FURTHER_ROUND"],
       "WAITLISTED": ["SELECTED", "REJECTED"],
-      "FURTHER_ROUND": ["INTERVIEW_SCHEDULED", "REJECTED"]
+      "FURTHER_ROUND": ["INTERVIEW_SCHEDULED", "SHORTLISTED", "SELECTED", "REJECTED"],
+      "REJECTED": ["UNDER_REVIEW", "SHORTLISTED"]
     }
 
     const allowedNext = validTransitions[currentStatus] || []
@@ -154,36 +155,7 @@ export const PUT = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Interview completion is controlled by the interview feedback workflow" })
     }
 
-    const finalDecisions = ["SELECTED", "WAITLISTED"]
-    const isFinalDecision = finalDecisions.includes(status) || (status === "REJECTED" && currentStatus === "INTERVIEW_COMPLETED")
-    const requiresFeedbackVerification = isFinalDecision || status === "FURTHER_ROUND"
-
-    if (requiresFeedbackVerification) {
-      const latestInterview = await prisma.recruitmentInterview.findFirst({
-        where: { application_id: id },
-        orderBy: { round: 'desc' },
-        include: { assigned_members: true, feedback: true }
-      })
-
-      if (!latestInterview) {
-        return res.status(400).json({ error: "Cannot transition status: No interview found for this application." })
-      }
-
-      if (latestInterview.status !== "FEEDBACK_SUBMITTED") {
-        return res.status(400).json({ error: "Cannot transition status: Interview is not fully completed or feedback is missing." })
-      }
-
-      const requiredMemberIds = latestInterview.assigned_members.map((m: any) => m.id).sort()
-      const submittedFeedbackIds = latestInterview.feedback.map((f: any) => f.panel_member_id).sort()
-
-      const allSubmitted = requiredMemberIds.length > 0 && 
-                           requiredMemberIds.length === submittedFeedbackIds.length && 
-                           requiredMemberIds.every((mid: number, index: number) => mid === submittedFeedbackIds[index])
-
-      if (!allSubmitted) {
-        return res.status(400).json({ error: "Cannot transition status: Not all exact panel members have submitted feedback." })
-      }
-    }
+    // Feedback verification check removed to allow direct status updates from INTERVIEW_SCHEDULED
 
     const updateData: any = { status }
 
@@ -219,13 +191,17 @@ export const PUT = async (req: Request, res: Response) => {
       }).catch(console.error);
     }
 
-    sendEmail({
-      to: existingApplication.email,
-      subject: "HackClub VIT Recruitment - Status Update",
-      html: templates.statusUpdated(existingApplication.name, status, reason),
-      eventType: "APPLICATION_STATUS_UPDATED",
-      entityId: id.toString()
-    }).catch(console.error);
+    // Do NOT email candidates for internal workflow statuses
+    const suppressedStatuses = ["UNDER_REVIEW", "Pending", "INTERVIEW_SCHEDULED", "INTERVIEW_COMPLETED", "WAITLISTED"];
+    if (!suppressedStatuses.includes(status)) {
+      sendEmail({
+        to: existingApplication.email,
+        subject: "HackClub VIT Recruitment - Status Update",
+        html: templates.statusUpdated(existingApplication.name, status, reason),
+        eventType: "APPLICATION_STATUS_UPDATED",
+        entityId: id.toString()
+      }).catch(console.error);
+    }
 
     // Create Notification logic can be ignored if the user isn't assigned to the recruitment app natively
     // We notify recruiters 

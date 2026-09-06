@@ -66,6 +66,16 @@ export const GET = async (req: Request, res: Response) => {
       }
     })
 
+    const selectedCount = await prisma.recruitmentApplication.count({
+      where: {
+        AND: [
+          { status: "SELECTED" },
+          { recruitmentId: "recruitment-2026" },
+          deptCondition
+        ]
+      }
+    })
+
     const interviewsTodayCount = await prisma.recruitmentInterview.count({
       where: {
         date: {
@@ -103,6 +113,7 @@ export const GET = async (req: Request, res: Response) => {
       stats: {
         pendingReviewsCount,
         shortlistedCount,
+        selectedCount,
         interviewsTodayCount
       },
       recentApplications: serializedApplications,

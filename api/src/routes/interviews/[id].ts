@@ -7,7 +7,7 @@ import { parseISTDateToUTC } from "../../lib/timezone"
 const VALID_INTERVIEW_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FEEDBACK_PENDING", "FEEDBACK_SUBMITTED"]
 
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
-  "SCHEDULED": ["IN_PROGRESS", "CANCELLED"],
+  "SCHEDULED": ["IN_PROGRESS", "COMPLETED", "CANCELLED"],
   "IN_PROGRESS": ["COMPLETED", "CANCELLED"],
   "COMPLETED": ["FEEDBACK_PENDING"],
   "FEEDBACK_PENDING": ["FEEDBACK_SUBMITTED"],
@@ -228,6 +228,13 @@ export const PUT = async (req: Request, res: Response) => {
         include: { application: true, assigned_members: { include: { user: true } } }
       })
 
+      if (status === "COMPLETED" && existingInterview.application_id) {
+        await tx.recruitmentApplication.update({
+          where: { id: existingInterview.application_id },
+          data: { status: "INTERVIEW_COMPLETED" }
+        })
+      }
+
       return updatedInterview
     })
 
@@ -278,22 +285,6 @@ export const PUT = async (req: Request, res: Response) => {
         eventType: "INTERVIEW_RESCHEDULED",
         entityId: interview.id.toString()
       }).catch(console.error);
-    }
-    
-    // Email relevant department recruiters
-    if (interview.application.domain && (status === "CANCELLED" || (date && start_time))) {
-      const recruiters = await getRecruitersByDepartment(interview.application.domain);
-      for (const r of recruiters) {
-        if (r.email) {
-           sendEmail({
-             to: r.email,
-             subject: `HackClub VIT Recruitment - Interview ${action.charAt(0).toUpperCase() + action.slice(1)} for ${interview.application.domain}`,
-             html: `The interview for candidate ${interview.application.name} (Round ${interview.round}) has been ${action}.<br/>${date ? `New Date: ${date}<br/>New Time: ${start_time}<br/>` : ''}`,
-             eventType: status === "CANCELLED" ? "INTERVIEW_CANCELLED" : "INTERVIEW_RESCHEDULED",
-             entityId: interview.id.toString()
-           }).catch(console.error);
-        }
-      }
     }
 
     return res.status(200).json({ interview: { ...interview, application_id: interview.application_id.toString() } })

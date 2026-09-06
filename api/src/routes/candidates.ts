@@ -126,8 +126,12 @@ export const GET = async (req: Request, res: Response) => {
       ...app,
       id: app.id.toString(),
       decided_by: app.decided_by?.toString() || null,
+      // Aliases for frontend compatibility
+      registration_number: app.registerNumber,
+      department: app.domain || app.firstPreference || '',
       interviews: app.interviews ? app.interviews.map(i => ({
         ...i,
+        id: typeof i.id === 'bigint' ? i.id.toString() : i.id,
         application_id: i.application_id.toString(),
         recruiter_id: i.recruiter_id?.toString() || null
       })) : []

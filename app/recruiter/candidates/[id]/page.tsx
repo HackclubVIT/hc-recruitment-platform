@@ -56,6 +56,28 @@ export default function RecruiterCandidateProfile() {
     }
   }
 
+  const markInterviewCompleted = async (interviewId: number) => {
+    if (!confirm("Are you sure you want to mark this interview as COMPLETED?")) return;
+    setActionLoading(true)
+    setError("")
+    try {
+      const res = await fetchApi(`/api/interviews/${interviewId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" })
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || "Failed to complete interview")
+      }
+      fetchCandidate()
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)))
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   if (loading) return <div className="p-8 text-center text-[#bfa8a2] font-mono">LOADING PROFILE...</div>
   if (!candidate) return <div className="p-8 text-center text-[#bfa8a2] font-mono">CANDIDATE NOT FOUND.</div>
 
@@ -115,7 +137,7 @@ export default function RecruiterCandidateProfile() {
                   )}
                 </div>
                 <div className="flex gap-2 flex-wrap border-t border-[#2a0d0d] pt-3 mt-4">
-                  {(app.status === "APPLIED") && (
+                  {(app.status === "APPLIED" || app.status === "Pending") && (
                     <>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "UNDER_REVIEW")} disabled={actionLoading} className="text-[#3498db] border border-[#3498db] hover:bg-[#3498db] hover:text-[#0a0202]">Mark Under Review</Button>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
@@ -128,19 +150,36 @@ export default function RecruiterCandidateProfile() {
                     </>
                   )}
                   
-                  {(app.status === "SHORTLISTED" || app.status === "FURTHER_ROUND") && (
+                  {(app.status === "SHORTLISTED") && (
                     <>
                       <Button variant="primary" onClick={() => router.push(`/recruiter/meetings?scheduleFor=${candidate.id}`)} disabled={actionLoading}>Schedule Interview</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "FURTHER_ROUND")} disabled={actionLoading} className="text-[#3498db] border border-[#3498db] hover:bg-[#3498db] hover:text-[#0a0202]">Advance to Next Round</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "SELECTED")} disabled={actionLoading} className="text-[#2ecc71] border border-[#2ecc71] hover:bg-[#2ecc71] hover:text-[#0a0202]">Select</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
+                    </>
+                  )}
+
+                  {(app.status === "FURTHER_ROUND") && (
+                    <>
+                      <Button variant="primary" onClick={() => router.push(`/recruiter/meetings?scheduleFor=${candidate.id}`)} disabled={actionLoading}>Schedule Interview</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "SELECTED")} disabled={actionLoading} className="text-[#2ecc71] border border-[#2ecc71] hover:bg-[#2ecc71] hover:text-[#0a0202]">Select</Button>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
                     </>
                   )}
                   
-                  {(app.status === "INTERVIEW_COMPLETED" || app.status === "WAITLISTED") && (
+                  {(app.status === "INTERVIEW_SCHEDULED" || app.status === "INTERVIEW_COMPLETED" || app.status === "WAITLISTED") && (
                     <>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "SELECTED")} disabled={actionLoading} className="text-[#2ecc71] border border-[#2ecc71] hover:bg-[#2ecc71] hover:text-[#0a0202]">Select</Button>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "WAITLISTED")} disabled={actionLoading} className="text-[#f1c40f] border border-[#f1c40f] hover:bg-[#f1c40f] hover:text-[#0a0202]">Waitlist</Button>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "FURTHER_ROUND")} disabled={actionLoading} className="text-[#3498db] border border-[#3498db] hover:bg-[#3498db] hover:text-[#0a0202]">Further Round</Button>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>
+                    </>
+                  )}
+                  
+                  {(app.status === "REJECTED") && (
+                    <>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "UNDER_REVIEW")} disabled={actionLoading} className="text-[#3498db] border border-[#3498db] hover:bg-[#3498db] hover:text-[#0a0202]">Undo: Mark Under Review</Button>
+                      <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "SHORTLISTED")} disabled={actionLoading} className="text-[#d07d22] border border-[#d07d22] hover:bg-[#d07d22] hover:text-[#0a0202]">Undo: Shortlist</Button>
                     </>
                   )}
                 </div>
@@ -165,9 +204,21 @@ export default function RecruiterCandidateProfile() {
                 
                 <div className="flex flex-col gap-2">
                   <p className="text-[#bfa8a2] text-sm">Time: {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - {new Date(interview.end_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}</p>
-                  {interview.meeting_link && (
-                    <a href={interview.meeting_link} target="_blank" rel="noreferrer" className="text-[#d07d22] text-sm underline">Join Meeting</a>
-                  )}
+                  <div className="flex gap-4 items-center">
+                    {interview.meeting_link && (
+                      <a href={interview.meeting_link} target="_blank" rel="noreferrer" className="text-[#d07d22] text-sm underline">Join Meeting</a>
+                    )}
+                    {interview.status !== 'COMPLETED' && interview.status !== 'CANCELLED' && (
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => markInterviewCompleted(interview.id)} 
+                        disabled={actionLoading}
+                        className="text-[#2ecc71] border border-[#2ecc71] hover:bg-[#2ecc71] hover:text-[#0a0202] text-xs py-1 px-3"
+                      >
+                        ✓ Mark Interview Completed
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {interview.feedback && interview.feedback.length > 0 && (

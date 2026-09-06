@@ -132,27 +132,94 @@ export const templates = {
     <p>Best regards,<br/>HackClub VIT</p>
   `,
   
-  statusUpdated: (name: string, status: string, message?: string) => `
-    <h2>Application Update</h2>
-    <p>Hi ${name},</p>
-    <p>Your application status has been updated to: <strong>${status}</strong>.</p>
-    ${message ? `<p>${message}</p>` : ''}
-    <br/>
-    <p>Best regards,<br/>HackClub VIT</p>
-  `,
+  statusUpdated: (name: string, status: string, message?: string) => {
+    if (status === "SHORTLISTED") {
+      return `
+        <h2>Congratulations! 🎉</h2>
+        <p>Hi ${name},</p>
+        <p><strong>Your application has been shortlisted.</strong></p>
+        <p>We are pleased to inform you that you have successfully moved to the next stage of the selection process.</p>
+        ${message ? `<p>${message}</p>` : ''}
+        <p>Our team will reach out to you shortly with further details about the next steps.</p>
+        <br/>
+        <p>Best regards,<br/><strong>HackClub VIT Recruitment Team</strong></p>
+      `;
+    }
+    if (status === "SELECTED") {
+      return `
+        <h2>🎉 Congratulations, ${name}!</h2>
+        <p>We are thrilled to inform you that you have been <strong>selected</strong> as part of <strong>HackClub VIT</strong>!</p>
+        <p>Your skills, passion, and dedication truly stood out during the selection process, and we're excited to have you on board.</p>
+        ${message ? `<p>${message}</p>` : ''}
+        <p>Our team will reach out to you shortly with the onboarding details and next steps.</p>
+        <p>Welcome to the team! 🚀</p>
+        <br/>
+        <p>Best regards,<br/><strong>HackClub VIT Recruitment Team</strong></p>
+      `;
+    }
+    if (status === "REJECTED") {
+      return `
+        <h2>Application Update</h2>
+        <p>Hi ${name},</p>
+        <p>Thank you for your interest in <strong>HackClub VIT</strong> and for taking the time to go through our recruitment process.</p>
+        <p>After careful consideration, we regret to inform you that we are unable to move forward with your application at this time.</p>
+        ${message ? `<p><strong>Feedback:</strong> ${message}</p>` : ''}
+        <p>We encourage you to continue building your skills and apply again in future recruitment cycles. We wish you all the best in your future endeavours!</p>
+        <br/>
+        <p>Best regards,<br/><strong>HackClub VIT Recruitment Team</strong></p>
+      `;
+    }
+    if (status === "WAITLISTED") {
+      return `
+        <h2>Application Update</h2>
+        <p>Hi ${name},</p>
+        <p>Thank you for your interest in <strong>HackClub VIT</strong>.</p>
+        <p>After careful review, your application has been placed on the <strong>waitlist</strong>. This means you are still being considered and may be selected if positions become available.</p>
+        ${message ? `<p>${message}</p>` : ''}
+        <p>We will keep you updated on any changes. Thank you for your patience!</p>
+        <br/>
+        <p>Best regards,<br/><strong>HackClub VIT Recruitment Team</strong></p>
+      `;
+    }
+    if (status === "FURTHER_ROUND") {
+      return `
+        <h2>Next Round of Interview 📋</h2>
+        <p>Hi ${name},</p>
+        <p>Thank you for your participation in the interview process for <strong>HackClub VIT</strong>.</p>
+        <p>We are pleased to inform you that you have been advanced to the <strong>next round</strong> of interviews.</p>
+        ${message ? `<p>${message}</p>` : ''}
+        <p>Our team will reach out to you shortly with the details for your next interview. Stay tuned!</p>
+        <br/>
+        <p>Best of luck! 🚀<br/><strong>HackClub VIT Recruitment Team</strong></p>
+      `;
+    }
+    return `
+      <h2>Application Update</h2>
+      <p>Hi ${name},</p>
+      <p>Your application status has been updated to: <strong>${status}</strong>.</p>
+      ${message ? `<p>${message}</p>` : ''}
+      <br/>
+      <p>Best regards,<br/><strong>HackClub VIT Recruitment Team</strong></p>
+    `;
+  },
 
-  interviewScheduled: (name: string, date: string, time: string, duration: number, round: number, link: string) => `
-    <h2>Interview Scheduled (Round ${round})</h2>
+
+  interviewScheduled: (name: string, date: string, time: string, duration: number, round: number, link: string, department?: string) => `
+    <h2>🎉 Interview Scheduled</h2>
     <p>Hi ${name},</p>
-    <p>Your interview has been scheduled.</p>
-    <ul>
-      <li><strong>Date:</strong> ${date}</li>
-      <li><strong>Time:</strong> ${time}</li>
-      <li><strong>Duration:</strong> ~${duration} mins</li>
-      <li><strong>Meeting Link:</strong> <a href="${link}">${link}</a></li>
-    </ul>
+    <p>Congratulations! Your application for <strong>HackClub VIT Recruitment${department ? ` – ${department} Department` : ''}</strong> has been shortlisted, and we're pleased to invite you for an interview.</p>
+    <p>Please find your interview details below:</p>
+    <p>
+      📅 <strong>Date:</strong> ${date}<br/>
+      ⏰ <strong>Time:</strong> ${time}<br/>
+      ⏱ <strong>Duration:</strong> Approximately ${duration} minutes<br/>
+      💻 <strong>Mode:</strong> Online<br/>
+      🔗 <strong>Meeting Link:</strong> <a href="${link}">Click here to join</a>
+    </p>
+    <p>Please make sure to join the meeting a few minutes before the scheduled time and ensure that your camera, microphone, and internet connection are working properly.</p>
+    <p>We look forward to meeting you and learning more about you!</p>
     <br/>
-    <p>Best regards,<br/>HackClub VIT</p>
+    <p>Best of luck! 🚀<br/><strong>HackClub VIT Recruitment Team</strong></p>
   `,
 
   interviewRescheduled: (name: string, date: string, time: string, round: number, link: string) => `

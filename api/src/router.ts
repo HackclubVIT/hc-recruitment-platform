@@ -64,6 +64,7 @@ import { GET as getEmailSettings, POST as updateEmailSettings } from './routes/s
 import { POST as testEmailSettings } from './routes/settings/email-test.js';
 import { GET as getEmailLogs } from './routes/settings/email-logs.js';
 import { POST as sendEmailAnnouncement } from './routes/settings/email-announcement.js';
+import { GET as getAnnouncements, POST as createAnnouncement } from './routes/announcements.js';
 
 export const router = Router();
 
@@ -136,3 +137,7 @@ router.post('/settings/email', updateEmailSettings);
 router.post('/settings/email/test', testEmailSettings);
 router.get('/settings/email/logs', getEmailLogs);
 router.post('/settings/email/announcement', sendEmailAnnouncement);
+
+// Department Announcements & Tasks
+router.get('/announcements', getAnnouncements);
+router.post('/announcements', createAnnouncement);

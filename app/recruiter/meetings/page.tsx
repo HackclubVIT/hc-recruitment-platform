@@ -286,13 +286,24 @@ export default function RecruiterMeetingsPage() {
                         {interview.status !== "CANCELLED" && interview.status !== "COMPLETED" && (
                           <>
                             <button 
+                              onClick={async () => {
+                                if(confirm("Mark this interview as COMPLETED?")) {
+                                  await fetchApi(`/api/interviews/${interview.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "COMPLETED" }) })
+                                  fetchInterviews()
+                                }
+                              }}
+                              className="text-[#2ecc71] font-mono text-[10px] ml-4 hover:underline uppercase"
+                            >
+                              COMPLETE
+                            </button>
+                            <button 
                               onClick={() => setRescheduleData({ 
                                 id: interview.id, 
                                 panel_id: interview.panel_id,
                                 date: new Date(interview.date).toISOString().split('T')[0],
                                 start_time: new Date(interview.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) 
                               })}
-                              className="text-[#d07d22] font-mono text-[10px] ml-4 hover:underline uppercase"
+                              className="text-[#d07d22] font-mono text-[10px] ml-2 hover:underline uppercase"
                             >
                               RESCHEDULE
                             </button>

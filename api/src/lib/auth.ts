@@ -61,16 +61,17 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
     }
   }
   
-  let userIdBigInt: bigint
+  // Convert payload.id to a bigint for Prisma lookup
+  let userId: bigint;
   try {
-    userIdBigInt = BigInt(payload.id as string)
+    userId = BigInt(payload.id as string);
   } catch (err) {
-    return null
+    return null;
   }
 
   const user = await prisma.user.findUnique({
     where: { id: userId }
-  })
+  });
   
   if (!user || user.status !== "Active") return null
 
@@ -80,6 +81,7 @@ export async function getSession(req?: Request): Promise<SessionPayload | null> 
 
   return {
     id: user.id.toString(),
+    email: user.email,
     role: assignment?.active ? assignment.role : (payload.role as string) || "NONE",
     departments: assignment?.active ? assignment.departments : ((payload.departments as string[]) || [])
   }

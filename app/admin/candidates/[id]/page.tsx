@@ -115,7 +115,7 @@ export default function AdminCandidateProfile() {
                   )}
                 </div>
                 <div className="flex gap-2 flex-wrap border-t border-[#2a0d0d] pt-3 mt-4">
-                  {(app.status === "APPLIED") && (
+                  {(app.status === "APPLIED" || app.status === "Pending") && (
                     <>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "UNDER_REVIEW")} disabled={actionLoading} className="text-[#3498db] border border-[#3498db] hover:bg-[#3498db] hover:text-[#0a0202]">Mark Under Review</Button>
                       <Button variant="ghost" onClick={() => updateApplicationStatus(app.id, "REJECTED")} disabled={actionLoading} className="text-[#ac120c] border border-[#ac120c] hover:bg-[#ac120c] hover:text-[#f4ede4]">Reject</Button>

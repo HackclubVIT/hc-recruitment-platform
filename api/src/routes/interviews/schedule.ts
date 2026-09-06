@@ -153,6 +153,8 @@ export const POST = async (req: Request, res: Response) => {
       })
 
       return newInterview
+    }, {
+      timeout: 15000 // 15 seconds to allow for serverless DB latency
     })
 
     await logAudit(session.id, "SCHEDULED_INTERVIEW", "Interview", interview.id)
@@ -176,31 +178,15 @@ export const POST = async (req: Request, res: Response) => {
       }
     }
 
-    // Email candidate
+    // Email candidate strictly (not broadcasting to other users)
     if (application.email) {
       sendEmail({
         to: application.email,
-        subject: `HackClub VIT Recruitment - Interview Scheduled (Round ${interview.round})`,
-        html: templates.interviewScheduled(application.name, date, start_time, 10, interview.round, meeting_link || "TBD"),
+        subject: `HackClub VIT Recruitment - Interview Scheduled`,
+        html: templates.interviewScheduled(application.name, date, start_time, 10, interview.round, meeting_link || "TBD", application.domain || undefined),
         eventType: "INTERVIEW_SCHEDULED",
         entityId: interview.id.toString()
       }).catch(console.error);
-    }
-
-    // Email relevant department recruiters
-    if (application.domain) {
-      const recruiters = await getRecruitersByDepartment(application.domain);
-      for (const r of recruiters) {
-        if (r.email) {
-           sendEmail({
-             to: r.email,
-             subject: `HackClub VIT Recruitment - Interview Scheduled for ${application.domain}`,
-             html: `An interview has been scheduled for candidate ${application.name} (Round ${interview.round}).<br/>Date: ${date}<br/>Time: ${start_time}<br/>Link: ${meeting_link || "TBD"}`,
-             eventType: "INTERVIEW_SCHEDULED",
-             entityId: interview.id.toString()
-           }).catch(console.error);
-        }
-      }
     }
 
     return res.status(201).json({ message: "Interview scheduled successfully", interview: { ...interview, application_id: interview.application_id.toString() } })

@@ -63,9 +63,33 @@ export const GET = async (req: Request, res: Response) => {
     const serializedApplication = {
       ...application,
       id: application.id.toString(),
+      decided_by: application.decided_by?.toString() || null,
+      interviews: (application as any).interviews?.map((i: any) => ({
+        ...i,
+        id: typeof i.id === 'bigint' ? i.id.toString() : i.id,
+        application_id: i.application_id?.toString() || null,
+        recruiter_id: i.recruiter_id?.toString() || null,
+        panel_id: typeof i.panel_id === 'bigint' ? i.panel_id.toString() : i.panel_id,
+        feedback: i.feedback?.map((f: any) => ({
+          ...f,
+          id: typeof f.id === 'bigint' ? f.id.toString() : f.id,
+          interview_id: f.interview_id?.toString() || null,
+          user_id: f.user_id?.toString() || null,
+        })) || [],
+      })) || [],
+      formSubmission: (application as any).formSubmission ? {
+        ...(application as any).formSubmission,
+        id: typeof (application as any).formSubmission.id === 'bigint' ? (application as any).formSubmission.id.toString() : (application as any).formSubmission.id,
+        application_id: (application as any).formSubmission.application_id?.toString() || null,
+        answers: (application as any).formSubmission.answers?.map((a: any) => ({
+          ...a,
+          id: typeof a.id === 'bigint' ? a.id.toString() : a.id,
+          submission_id: a.submission_id?.toString() || null,
+        })) || [],
+      } : null,
     };
 
-    return res.status(200).json(serializedApplication)
+    return res.status(200).json({ candidate: serializedApplication })
   } catch (error) {
     console.error("Fetch candidate error:", error)
     return res.status(500).json({ error: "Internal server error" })
