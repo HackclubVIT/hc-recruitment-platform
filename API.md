@@ -4,9 +4,9 @@
 This project utilizes a strictly separated API architecture:
 
 - **Main Website**: Static/informational site (ignored in this document).
-- **Recruitment Frontend**: Built with Next.js, React, and TailwindCSS. Communicates exclusively with the independent Express API using `src/api-client.ts`. It does not use Next.js API routes (`app/api` is strictly forbidden) and has absolutely zero direct access to PostgreSQL.
-- **Independent Express API**: The true backend. Built with Express.js and TypeScript inside the `api/` directory. All database operations, business logic, and authentications happen here.
-- **Database**: PostgreSQL accessed purely via Prisma ORM on the Express API layer.
+- **Recruitment Frontend**: Built with Next.js, React, and TailwindCSS. Communicates exclusively with the backend REST API using `src/api-client.ts`. It does not use Next.js API routes (`app/api` is strictly forbidden) and has absolutely zero direct access to PostgreSQL.
+- **Backend API**: Hosted in [`hc-api`](../hc-api). All database operations, recruitment business logic, notifications, and authentications happen here.
+- **Database**: PostgreSQL accessed purely via Prisma ORM on the `hc-api` layer.
 
 The frontend configures its connection via the `NEXT_PUBLIC_API_URL` environment variable.
 

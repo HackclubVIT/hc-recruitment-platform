@@ -69,12 +69,10 @@ export function clearToken() {
   // It's handled by POST /api/auth/logout now
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-if (!process.env.NEXT_PUBLIC_API_URL) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("NEXT_PUBLIC_API_URL must be defined in production.");
-  }
-  console.warn("NEXT_PUBLIC_API_URL is not defined! Defaulting to http://localhost:3001.");
+const rawBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE = rawBase.replace(/\/api\/?$/, "").replace(/\/$/, "");
+if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== "undefined") {
+  console.warn("NEXT_PUBLIC_API_URL is not defined! Defaulting to http://localhost:5000.");
 }
 
 export const fetchApi = async (path: string, options: RequestInit = {}) => {

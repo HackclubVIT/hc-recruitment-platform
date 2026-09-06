@@ -1,19 +1,30 @@
-import React from "react"
+"use client"
+
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { Navbar } from "@/components/layout/Navbar"
-export const dynamic = "force-dynamic"
+import { fetchApi } from "@/api-client"
 
-export default async function RecruitmentLandingPage() {
-  let publishedForms: any[] = [];
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/forms/published`, { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      publishedForms = data.forms || [];
+export default function RecruitmentLandingPage() {
+  const [publishedForms, setPublishedForms] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadForms() {
+      try {
+        const res = await fetchApi('/api/forms/published')
+        if (res.ok) {
+          const data = await res.json()
+          setPublishedForms(data.forms || [])
+        }
+      } catch (err) {
+        console.error("Failed to fetch published forms:", err)
+      } finally {
+        setLoading(false)
+      }
     }
-  } catch (err) {
-    console.error("Failed to fetch published forms:", err);
-  }
+    loadForms()
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#020000] flex flex-col font-sans">
@@ -31,7 +42,11 @@ export default async function RecruitmentLandingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-          {publishedForms.length === 0 ? (
+          {loading ? (
+            <div className="col-span-1 md:col-span-2 text-[#bfa8a2] font-mono border border-[#2a0d0d] bg-[#120202] p-10 rounded-xl">
+              Loading active recruitment cycles...
+            </div>
+          ) : publishedForms.length === 0 ? (
             <div className="col-span-1 md:col-span-2 text-[#bfa8a2] font-mono border border-[#2a0d0d] bg-[#120202] p-10 rounded-xl">
               No recruitment cycles are currently active. Please check back later.
             </div>

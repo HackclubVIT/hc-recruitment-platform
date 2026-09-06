@@ -15,59 +15,38 @@ PostgreSQL
        |
 Recruitment Website
 
-- **Recruitment Frontend**: Built with Next.js (App Router), deployed independently. Handles purely presentation and UX. All recruitment data is fetched securely from the Independent Express API.
-- **Independent Express API**: Located in `api/`. This is the authoritative source for authentication, authorization, session management, scheduling, candidate logic, and database interactions.
-- **Database**: PostgreSQL (managed via Prisma ORM exclusively inside the API).
+- **Recruitment Frontend**: Built with Next.js (App Router), deployed independently. Handles purely presentation and UX. All recruitment data is fetched securely from the HackClub API (`hc-api`).
+- **Backend API**: Hosted in [`hc-api`](../hc-api). This is the authoritative source for authentication, authorization, session management, scheduling, candidate logic, and database interactions.
+- **Database**: PostgreSQL (managed via Prisma ORM inside `hc-api`).
 
 ---
 
 ## Setup Instructions
 
-### 1. Database & Environment
-
-Ensure you have a PostgreSQL instance running.
+### 1. Environment Configuration
 
 Create a `.env` file at the root of the project for the Frontend:
 ```env
 # Frontend Configuration
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
 
-Create a `.env` file inside `api/` for the Backend:
-```env
-# Backend Configuration
-PORT=3001
-DATABASE_URL="postgresql://user:password@localhost:5432/hackclub_db"
-JWT_SECRET="your-super-secret-jwt-key"
-FRONTEND_URL="http://localhost:3000"
-```
+### 2. Backend Setup (`hc-api`)
 
-### 2. Independent API Setup
-
-The API is fully self-contained and strictly decoupled from the frontend. It has its own `package.json` and `pnpm-lock.yaml`.
+The backend REST API is housed in the `hc-api` repository.
 
 ```bash
-cd api
+cd ../hc-api
 pnpm install
 npx prisma generate
 npx prisma db push
+pnpm dev
 ```
-
-#### Running the API (Development)
-```bash
-pnpm run dev
-```
-*The API will start on `http://localhost:3001`.*
-
-#### Building the API (Production)
-```bash
-pnpm run build
-pnpm run start
-```
+*The API runs on `http://localhost:5000`.*
 
 ### 3. Frontend Setup
 
-The frontend consumes the Independent API via the centralized `fetchApi` client. It requires the API to be running to function properly.
+The frontend consumes the API via the centralized `fetchApi` client (`src/api-client.ts`).
 
 ```bash
 # From the root directory
@@ -99,8 +78,8 @@ pnpm run start
 
 ## Local Development & Testing
 
-- Always run the API (`cd api && pnpm dev`) and the Frontend (`pnpm dev`) concurrently during local development.
-- Utilize standard local tools (e.g., Postman) targeting `http://localhost:3001` for direct API testing.
+- Always run the API (`cd ../hc-api && pnpm dev`) and the Frontend (`pnpm dev`) concurrently during local development.
+- Utilize standard local tools (e.g., Postman) targeting `http://localhost:5000` for direct API testing.
 - Test workflows end-to-end starting from Public Form application submission to Final Decision. Ensure strict isolation mechanisms are respected by switching between Admin, Recruiter, and Panel Member accounts.
 
 ## API Documentation
