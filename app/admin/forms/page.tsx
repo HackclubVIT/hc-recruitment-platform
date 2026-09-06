@@ -3,6 +3,7 @@ import { fetchApi } from "@/api-client"
 
 
 import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/Card"
 import { DiamondIcon } from "@/components/ui/Icons"
 import { StatusPill } from "@/components/ui/StatusPill"
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/Input"
 import { Modal } from "@/components/ui/Modal"
 
 export default function FormsPage() {
+  const router = useRouter()
   const [forms, setForms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -111,7 +113,7 @@ export default function FormsPage() {
                       {f.questions?.length || 0} Questions
                     </td>
                     <td className="p-4 flex gap-2">
-                      <Button variant="ghost" className="py-2 px-4 text-xs" onClick={() => window.location.href=`/admin/forms/${f.id}`}>MANAGE</Button>
+                      <Button variant="ghost" className="py-2 px-4 text-xs" onClick={() => router.push(`/admin/forms/${f.id}`)}>MANAGE</Button>
                       {f.status === "DRAFT" && (
                         <Button variant="ghost" className="py-2 px-4 text-xs text-[#2e7d32]" onClick={() => handleStatusChange(f.id, "PUBLISHED")}>PUBLISH</Button>
                       )}

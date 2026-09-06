@@ -44,7 +44,7 @@ export default function LoginPage() {
       else if (userRole === "PANEL_MEMBER") targetUrl = "/panel/dashboard"
       else targetUrl = "/recruitie/dashboard"
 
-      window.location.href = targetUrl
+      router.push(targetUrl)
 
     } catch (err: any) {
       setError(err.message)

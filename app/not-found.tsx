@@ -9,9 +9,29 @@ export default function NotFound() {
   const [redirecting, setRedirecting] = useState(false)
 
   useEffect(() => {
-    // If a user navigated to a dynamic route like /admin/candidates/123 on static hosting
-    const path = window.location.pathname
-    const match = path.match(/\/(admin|recruiter)\/candidates\/(\d+)/) || path.match(/\/recruitment\/(\d+)/)
+    // If a user navigated to a dynamic route on static hosting
+    let path = window.location.pathname
+    const configuredBasePath = process.env.NEXT_PUBLIC_BASE_PATH || ""
+    let cleanBasePath = ""
+    if (configuredBasePath) {
+      try {
+        cleanBasePath = (configuredBasePath.startsWith("http://") || configuredBasePath.startsWith("https://"))
+          ? new URL(configuredBasePath).pathname
+          : configuredBasePath
+      } catch {}
+      cleanBasePath = cleanBasePath.replace(/\/+$/, "")
+      if (cleanBasePath && !cleanBasePath.startsWith("/")) {
+        cleanBasePath = `/${cleanBasePath}`
+      }
+    }
+    if (cleanBasePath && path.startsWith(cleanBasePath)) {
+      path = path.slice(cleanBasePath.length) || "/"
+    }
+
+    const match = path.match(/\/(admin|recruiter)\/candidates\/([^/]+)/) ||
+                  path.match(/\/(admin|recruiter|panel)\/(interview|feedback|forms)\/([^/]+)/) ||
+                  path.match(/\/recruitment\/([^/]+)/)
+
     if (match) {
       setRedirecting(true)
       router.replace(path)

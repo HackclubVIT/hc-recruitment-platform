@@ -2,6 +2,7 @@
 import { fetchApi, RecruitmentApplication } from "@/api-client"
 
 import React, { useState, useEffect } from "react"
+import Link from "next/link"
 import { Card } from "@/components/ui/Card"
 import { DiamondIcon, SearchIcon } from "@/components/ui/Icons"
 import { StatusPill } from "@/components/ui/StatusPill"
@@ -147,9 +148,9 @@ export default function AdminApplicationsPage() {
                         </StatusPill>
                       </td>
                       <td className="p-4 text-right">
-                        <a href={`/admin/applications/${app.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
+                        <Link href={`/admin/candidates/${app.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
                           VIEW PROFILE
-                        </a>
+                        </Link>
                       </td>
                     </tr>
                   )

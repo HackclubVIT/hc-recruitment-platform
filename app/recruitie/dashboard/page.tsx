@@ -2,11 +2,13 @@
 import { fetchApi, RecruitmentApplication, api } from "@/api-client"
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/Card"
 import { DiamondIcon } from "@/components/ui/Icons"
 import { StatusPill } from "@/components/ui/StatusPill"
 
 export default function RecruitieDashboard() {
+  const router = useRouter()
   const [data, setData] = useState<{ application: RecruitmentApplication | null; announcements?: any[] } | null>(null)
   const [currentUser, setCurrentUser] = useState<{ name?: string; email?: string } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -31,7 +33,7 @@ export default function RecruitieDashboard() {
         const json = await res.json()
         setData(json)
       } else if (res.status === 401 || res.status === 403) {
-        window.location.href = "/login"
+        router.push("/login")
       } else if (res.status === 404) {
         // No application found for this account
         setData({ application: null, announcements: [] })
@@ -53,9 +55,9 @@ export default function RecruitieDashboard() {
   const handleLogout = async () => {
     try {
       await fetchApi("/api/auth/logout", { method: "POST" })
-      window.location.href = "/login"
+      router.push("/login")
     } catch (err) {
-      window.location.href = "/login"
+      router.push("/login")
     }
   }
 

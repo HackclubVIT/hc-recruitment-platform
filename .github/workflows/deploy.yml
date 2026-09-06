@@ -32,6 +32,7 @@ jobs:
           cache: "pnpm"
 
       - name: Setup GitHub Pages Configuration
+        id: pages
         uses: actions/configure-pages@v5
 
       - name: Install Dependencies
@@ -40,7 +41,7 @@ jobs:
       - name: Build Static Export
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || secrets.NEXT_PUBLIC_API_URL || 'https://hackclub-vit-api.onrender.com' }}
-          NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH || '' }}
+          NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH || steps.pages.outputs.base_path || '/hc-recruitment-platform' }}
         run: pnpm run build
 
       - name: Disable Jekyll on GitHub Pages
