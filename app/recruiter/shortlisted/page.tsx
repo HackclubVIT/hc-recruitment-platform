@@ -218,7 +218,7 @@ export default function ShortlistedCandidatesPage() {
                         <Link href={`/recruiter/meetings/schedule?candidate=${candidate.id}`}>
                           <Button variant="cta" className="py-2 px-4 text-xs">SCHEDULE</Button>
                         </Link>
-                        <Link href={`/recruiter/candidates/${candidate.id}`}>
+                        <Link href={`/recruiter/candidates/view?id=${candidate.id}`}>
                           <Button variant="ghost" className="py-2 px-4 text-xs">VIEW</Button>
                         </Link>
                       </td>

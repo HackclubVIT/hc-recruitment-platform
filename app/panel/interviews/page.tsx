@@ -88,11 +88,11 @@ export default function PanelInterviewsPage() {
                       </StatusPill>
                     </td>
                     <td className="p-4 flex gap-3">
-                      <Link href={`/panel/interview/${interview.id}`}>
+                      <Link href={`/panel/interview/room?id=${interview.id}`}>
                         <Button variant="ghost" className="py-2 px-4 text-xs">VIEW</Button>
                       </Link>
                       {interview.status !== "FEEDBACK_SUBMITTED" && (
-                        <Link href={`/panel/feedback/${interview.id}`}>
+                        <Link href={`/panel/feedback/submit?id=${interview.id}`}>
                           <Button variant="primary" className="py-2 px-4 text-xs">EVALUATE</Button>
                         </Link>
                       )}

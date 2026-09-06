@@ -149,7 +149,7 @@ export default function RecruiterApplicationsPage() {
                         </StatusPill>
                       </td>
                       <td className="p-4 text-right">
-                        <Link href={`/recruiter/candidates/${c?.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
+                        <Link href={`/recruiter/candidates/view?id=${c?.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
                           VIEW PROFILE
                         </Link>
                       </td>

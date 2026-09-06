@@ -148,7 +148,7 @@ export default function AdminApplicationsPage() {
                         </StatusPill>
                       </td>
                       <td className="p-4 text-right">
-                        <Link href={`/admin/candidates/${app.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
+                        <Link href={`/admin/candidates/view?id=${app.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
                           VIEW PROFILE
                         </Link>
                       </td>

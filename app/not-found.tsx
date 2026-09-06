@@ -28,13 +28,39 @@ export default function NotFound() {
       path = path.slice(cleanBasePath.length) || "/"
     }
 
-    const match = path.match(/\/(admin|recruiter)\/candidates\/([^/]+)/) ||
-                  path.match(/\/(admin|recruiter|panel)\/(interview|feedback|forms)\/([^/]+)/) ||
-                  path.match(/\/recruitment\/([^/]+)/)
-
-    if (match) {
+    const candMatch = path.match(/^\/(admin|recruiter)\/candidates\/([^/?#]+)/)
+    if (candMatch && candMatch[2] !== "view") {
       setRedirecting(true)
-      router.replace(path)
+      router.replace(`/${candMatch[1]}/candidates/view?id=${candMatch[2]}`)
+      return
+    }
+
+    const formMatch = path.match(/^\/admin\/forms\/([^/?#]+)/)
+    if (formMatch && formMatch[1] !== "builder") {
+      setRedirecting(true)
+      router.replace(`/admin/forms/builder?id=${formMatch[1]}`)
+      return
+    }
+
+    const interviewMatch = path.match(/^\/panel\/interview\/([^/?#]+)/)
+    if (interviewMatch && interviewMatch[1] !== "room") {
+      setRedirecting(true)
+      router.replace(`/panel/interview/room?id=${interviewMatch[1]}`)
+      return
+    }
+
+    const feedbackMatch = path.match(/^\/panel\/feedback\/([^/?#]+)/)
+    if (feedbackMatch && feedbackMatch[1] !== "submit") {
+      setRedirecting(true)
+      router.replace(`/panel/feedback/submit?id=${feedbackMatch[1]}`)
+      return
+    }
+
+    const recruitMatch = path.match(/^\/recruitment\/([^/?#]+)/)
+    if (recruitMatch && recruitMatch[1] !== "apply") {
+      setRedirecting(true)
+      router.replace(`/recruitment/apply?formId=${recruitMatch[1]}`)
+      return
     }
   }, [router])
 

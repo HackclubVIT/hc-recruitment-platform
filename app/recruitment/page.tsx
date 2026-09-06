@@ -53,7 +53,7 @@ export default function RecruitmentLandingPage() {
           ) : (
             publishedForms.map(form => (
               <Link 
-                href={`/recruitment/${form.id}`} 
+                href={`/recruitment/apply?formId=${form.id}`} 
                 key={form.id}
                 className="group flex flex-col text-left border border-[#2a0d0d] bg-[#120202] rounded-xl p-8 transition-all duration-300 hover:-translate-y-2 hover:border-[#ac120c]/40 shadow-lg hover:shadow-[0_0_20px_rgba(172,18,12,0.15)]"
               >

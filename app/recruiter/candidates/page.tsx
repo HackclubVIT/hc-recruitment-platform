@@ -166,7 +166,7 @@ export default function CandidatesPage() {
                         </StatusPill>
                       </td>
                       <td className="p-4">
-                        <Link href={`/recruiter/candidates/${candidate.id}`}>
+                        <Link href={`/recruiter/candidates/view?id=${candidate.id}`}>
                           <Button variant="ghost" className="py-2 px-4 text-xs">VIEW PROFILE</Button>
                         </Link>
                       </td>

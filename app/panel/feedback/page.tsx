@@ -92,11 +92,11 @@ export default function PanelFeedbackPage() {
                     </td>
                     <td className="p-4 flex gap-3">
                       {interview.status !== "FEEDBACK_SUBMITTED" ? (
-                        <Link href={`/panel/feedback/${interview.id}`}>
+                        <Link href={`/panel/feedback/submit?id=${interview.id}`}>
                           <Button variant="cta" className="py-2 px-4 text-xs">EVALUATE</Button>
                         </Link>
                       ) : (
-                        <Link href={`/panel/interview/${interview.id}`}>
+                        <Link href={`/panel/interview/room?id=${interview.id}`}>
                           <Button variant="ghost" className="py-2 px-4 text-xs text-[#2e7d32]">REVIEW SUBMISSION</Button>
                         </Link>
                       )}
