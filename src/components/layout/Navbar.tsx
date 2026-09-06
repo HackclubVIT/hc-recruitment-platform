@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { DiamondIcon, BellIcon } from "@/components/ui/Icons"
-import { fetchApi } from "@/api-client"
+import { fetchApi, clearToken } from "@/api-client"
 
 export const Navbar = () => {
   const [notifications, setNotifications] = useState<any[]>([])
@@ -54,9 +54,8 @@ export const Navbar = () => {
 
   const markAsRead = async (id: number) => {
     try {
-      await fetchApi("/api/notifications/read", {
-        method: "PUT",
-        body: JSON.stringify({ id })
+      await fetchApi(`/api/notifications/${id}/read`, {
+        method: "PUT"
       })
       setUnreadCount(prev => Math.max(0, prev - 1))
       setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))
@@ -69,6 +68,7 @@ export const Navbar = () => {
     } catch (err) {
       console.error("Logout failed", err)
     } finally {
+      clearToken()
       router.push("/login")
     }
   }

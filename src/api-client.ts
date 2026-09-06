@@ -61,12 +61,21 @@ export interface BackendInterview {
   }>;
 }
 
-export function getToken() {
-  return typeof document !== "undefined" ? document.cookie.includes("session=") : false;
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("hc_session_token");
+}
+
+export function setToken(token: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("hc_session_token", token);
+  }
 }
 
 export function clearToken() {
-  // It's handled by POST /api/auth/logout now
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("hc_session_token");
+  }
 }
 
 const rawBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -79,13 +88,18 @@ export const fetchApi = async (path: string, options: RequestInit = {}) => {
   const base = API_BASE.replace(/\/$/, "");
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${cleanPath}`;
+  
+  const token = typeof window !== "undefined" ? localStorage.getItem("hc_session_token") : null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
   const res = await fetch(url, {
     ...options,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
   return res;
 };
@@ -107,10 +121,18 @@ export const api = {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) throw new Error("Invalid credentials");
-    return res.json();
+    const json = await res.json();
+    if (json.token) {
+      setToken(json.token);
+    }
+    return json;
   },
   logout: async () => {
-    await fetchApi("/api/auth/logout", { method: "POST" });
+    try {
+      await fetchApi("/api/auth/logout", { method: "POST" });
+    } finally {
+      clearToken();
+    }
   },
 
   // Users

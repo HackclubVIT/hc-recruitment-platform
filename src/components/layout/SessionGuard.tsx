@@ -36,8 +36,10 @@ export function SessionGuard({ children, requiredRole }: { children: React.React
         }
 
         setAuthorized(true)
-      } catch (err) {
-        console.error('Session guard error:', err)
+      } catch (err: any) {
+        if (err?.message !== "Not logged in") {
+          console.warn('Session check:', err)
+        }
         router.push('/login')
       } finally {
         setLoading(false)

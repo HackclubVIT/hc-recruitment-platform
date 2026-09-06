@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi } from "@/api-client"
+import { fetchApi, setToken } from "@/api-client"
 
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -35,6 +35,10 @@ export default function LoginPage() {
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to login")
+      }
+
+      if (data.token) {
+        setToken(data.token)
       }
 
       const userRole = (data.user?.role || "NONE").toUpperCase()

@@ -1,5 +1,5 @@
 "use client"
-import { fetchApi, RecruitmentApplication, api } from "@/api-client"
+import { fetchApi, RecruitmentApplication, api, clearToken } from "@/api-client"
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -55,8 +55,10 @@ export default function RecruitieDashboard() {
   const handleLogout = async () => {
     try {
       await fetchApi("/api/auth/logout", { method: "POST" })
-      router.push("/login")
     } catch (err) {
+      console.error("Logout failed:", err)
+    } finally {
+      clearToken()
       router.push("/login")
     }
   }
