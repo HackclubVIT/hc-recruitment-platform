@@ -9,14 +9,30 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { DiamondIcon } from "@/components/ui/Icons"
 
+function extractFormId(searchParams: URLSearchParams | null): number | null {
+  if (typeof window !== "undefined") {
+    const urlParams = new URLSearchParams(window.location.search);
+    const q = urlParams.get("formId") || urlParams.get("id");
+    if (q && !isNaN(parseInt(q, 10))) {
+      return parseInt(q, 10);
+    }
+  }
+  if (searchParams) {
+    const q = searchParams.get("formId") || searchParams.get("id");
+    if (q && !isNaN(parseInt(q, 10))) {
+      return parseInt(q, 10);
+    }
+  }
+  return null;
+}
+
 function DynamicRecruitmentPageContent() {
   const searchParams = useSearchParams();
-  const formIdQuery = searchParams.get("formId") || searchParams.get("id");
-  const router = useRouter()
+  const router = useRouter();
   
-  const [formId, setFormId] = useState<number>(1)
-  const [questions, setQuestions] = useState<any[]>([])
-  const [formInfo, setFormInfo] = useState<any>(null)
+  const [formId, setFormId] = useState<number | null>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [formInfo, setFormInfo] = useState<any>(null);
   
   const [formData, setFormData] = useState<Record<string, string>>({
     name: "",
@@ -25,89 +41,119 @@ function DynamicRecruitmentPageContent() {
     registration_number: "",
     department: "CSE",
     resume_url: "",
-  })
-  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState("")
+  });
+  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (formIdQuery) {
-      setFormId(parseInt(formIdQuery, 10))
-    }
-  }, [formIdQuery])
+    let cancelled = false;
 
-  useEffect(() => {
-    if (formId) {
-      fetchQuestions()
-    }
-  }, [formId])
+    async function loadForm() {
+      setLoading(true);
+      setError("");
 
-  const fetchQuestions = async () => {
-    try {
-      const res = await fetchApi(`/api/forms/${formId}`)
-      if (!res.ok) throw new Error("Form not found")
-      const data = await res.json()
-      
-      if (data.form?.status !== "PUBLISHED") {
-        throw new Error("This recruitment form is not currently open for applications.")
+      let targetId = extractFormId(searchParams as any);
+
+      // If no formId in query params, fetch the first active published form
+      if (!targetId) {
+        try {
+          const pubRes = await fetchApi('/api/forms/published');
+          if (pubRes.ok) {
+            const pubData = await pubRes.json();
+            if (pubData.forms && pubData.forms.length > 0) {
+              targetId = pubData.forms[0].id;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load published forms:", err);
+        }
       }
 
-      setFormInfo(data.form)
-      setQuestions(data.form?.questions || [])
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      if (!targetId) {
+        targetId = 1;
+      }
+
+      if (cancelled) return;
+      setFormId(targetId);
+
+      try {
+        const res = await fetchApi(`/api/forms/${targetId}`);
+        if (!res.ok) throw new Error("Recruitment form not found or currently unavailable");
+        const data = await res.json();
+        
+        if (data.form?.status !== "PUBLISHED") {
+          throw new Error("This recruitment form is not currently open for applications.");
+        }
+
+        if (cancelled) return;
+        setFormInfo(data.form);
+        setQuestions(data.form?.questions || []);
+      } catch (err: any) {
+        if (cancelled) return;
+        setError(err.message || "Failed to load form questions");
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  }
+
+    loadForm();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   const handleBaseChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  const handleDynamicChange = (questionId: string, value: string | string[]) => {
-    setDynamicAnswers({ ...dynamicAnswers, [questionId]: value as string })
+  const handleDynamicChange = (questionId: string, value: any) => {
+    setDynamicAnswers(prev => ({ ...prev, [questionId]: value }));
   }
 
   const handleCheckboxChange = (questionId: string, option: string, checked: boolean) => {
-    const current = (dynamicAnswers[questionId] as unknown as string[]) || []
-    if (checked) {
-      handleDynamicChange(questionId, [...current, option] as unknown as string)
-    } else {
-      handleDynamicChange(questionId, current.filter(o => o !== option) as unknown as string)
-    }
+    const raw = dynamicAnswers[questionId];
+    const current: string[] = Array.isArray(raw) ? raw : (typeof raw === "string" && raw ? [raw] : []);
+    const updated = checked
+      ? [...current, option]
+      : current.filter(o => o !== option);
+    handleDynamicChange(questionId, updated);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError("")
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
 
     try {
+      const activeFormId = formId || extractFormId(searchParams as any) || 1;
       const payload = {
         ...formData,
-        form_id: formId,
+        form_id: activeFormId,
         answers: dynamicAnswers
-      }
+      };
 
       const res = await fetchApi(`/api/applications`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to submit application")
+        throw new Error(data.error || "Failed to submit application");
       }
 
-      router.push("/application-success")
+      router.push("/application-success");
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || "Failed to submit application");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
@@ -116,10 +162,10 @@ function DynamicRecruitmentPageContent() {
       <div className="min-h-screen bg-[#0a0202] flex items-center justify-center">
         <DiamondIcon className="text-[#ac120c] animate-pulse w-10 h-10" />
       </div>
-    )
+    );
   }
 
-  // If there's an error and we have NO formInfo, or it's not PUBLISHED, show a fatal error state instead of the form.
+  // If there's an error and we have NO formInfo, or it's not PUBLISHED, show error state
   if (error && (!formInfo || formInfo.status !== "PUBLISHED")) {
     return (
       <div className="min-h-screen bg-[#0a0202] flex flex-col items-center justify-center p-6 text-center gap-6">
@@ -136,7 +182,7 @@ function DynamicRecruitmentPageContent() {
           RETRY CONNECTION
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -217,84 +263,89 @@ function DynamicRecruitmentPageContent() {
               <div className="flex flex-col gap-6">
                 <h3 className="font-display text-[#d07d22] text-sm uppercase tracking-widest border-b border-[#2a0d0d] pb-2">Technical Evaluation</h3>
                 
-                {questions.map((q) => (
-                  <div key={q.id} className="flex flex-col gap-2">
-                    <label className="font-mono text-[10px] text-[#bfa8a2] uppercase tracking-[0.2em]">
-                      {q.question} {q.required && <span className="text-[#ac120c]">*</span>}
-                    </label>
-                    
-                    {q.type === "TEXT" && (
-                      <Input 
-                        value={dynamicAnswers[q.id] || ""} 
-                        onChange={(e) => handleDynamicChange(q.id.toString(), e.target.value)} 
-                        required={q.required} 
-                      />
-                    )}
-                    
-                    {q.type === "PARAGRAPH" && (
-                      <textarea 
-                        value={dynamicAnswers[q.id] || ""} 
-                        onChange={(e) => handleDynamicChange(q.id.toString(), e.target.value)} 
-                        required={q.required}
-                        className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors min-h-[100px]"
-                      />
-                    )}
+                {questions.map((q) => {
+                  const qKey = String(q.id);
+                  return (
+                    <div key={q.id} className="flex flex-col gap-2">
+                      <label className="font-mono text-[10px] text-[#bfa8a2] uppercase tracking-[0.2em]">
+                        {q.question} {q.required && <span className="text-[#ac120c]">*</span>}
+                      </label>
+                      
+                      {q.type === "TEXT" && (
+                        <Input 
+                          value={dynamicAnswers[qKey] || ""} 
+                          onChange={(e) => handleDynamicChange(qKey, e.target.value)} 
+                          required={q.required} 
+                        />
+                      )}
+                      
+                      {q.type === "PARAGRAPH" && (
+                        <textarea 
+                          value={dynamicAnswers[qKey] || ""} 
+                          onChange={(e) => handleDynamicChange(qKey, e.target.value)} 
+                          required={q.required}
+                          className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors min-h-[100px]"
+                        />
+                      )}
 
-                    {q.type === "RADIO" && q.options && (
-                      <div className="flex flex-col gap-2 mt-2">
-                        {q.options.map((opt: string, idx: number) => (
-                          <label key={idx} className="flex items-center gap-3 cursor-pointer group">
-                            <input 
-                              type="radio" 
-                              name={`question_${q.id}`} 
-                              value={opt}
-                              checked={dynamicAnswers[q.id] === opt}
-                              onChange={() => handleDynamicChange(q.id.toString(), opt)}
-                              required={q.required && !dynamicAnswers[q.id]}
-                              className="appearance-none w-4 h-4 rounded-full border border-[#d07d22] checked:bg-[#ac120c] transition-all"
-                            />
-                            <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-
-                    {q.type === "DROPDOWN" && q.options && (
-                      <select
-                        value={dynamicAnswers[q.id] || ""}
-                        onChange={(e) => handleDynamicChange(q.id.toString(), e.target.value)}
-                        required={q.required}
-                        className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
-                      >
-                        <option value="" disabled>Select an option...</option>
-                        {q.options.map((opt: string, idx: number) => (
-                          <option key={idx} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    )}
-
-                    {q.type === "CHECKBOX" && q.options && (
-                      <div className="flex flex-col gap-2 mt-2">
-                        {q.options.map((opt: string, idx: number) => {
-                          const currentAnswers = (dynamicAnswers[q.id] as unknown as string[]) || [];
-                          return (
-                            <label key={idx} className="flex items-center gap-3 cursor-pointer group">
+                      {q.type === "RADIO" && q.options && (
+                        <div className="flex flex-col gap-2.5 mt-2">
+                          {q.options.map((opt: string, idx: number) => (
+                            <label key={idx} className="flex items-center gap-3 cursor-pointer group select-none">
                               <input 
-                                type="checkbox" 
+                                type="radio" 
                                 name={`question_${q.id}`} 
                                 value={opt}
-                                checked={currentAnswers.includes(opt)}
-                                onChange={(e) => handleCheckboxChange(q.id.toString(), opt, e.target.checked)}
-                                className="appearance-none w-4 h-4 border border-[#d07d22] checked:bg-[#ac120c] transition-all rounded-sm"
+                                checked={dynamicAnswers[qKey] === opt}
+                                onChange={() => handleDynamicChange(qKey, opt)}
+                                required={q.required && !dynamicAnswers[qKey]}
+                                className="w-4 h-4 accent-[#ac120c] cursor-pointer"
                               />
                               <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
                             </label>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          ))}
+                        </div>
+                      )}
+
+                      {q.type === "DROPDOWN" && q.options && (
+                        <select
+                          value={dynamicAnswers[qKey] || ""}
+                          onChange={(e) => handleDynamicChange(qKey, e.target.value)}
+                          required={q.required}
+                          className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
+                        >
+                          <option value="" disabled>Select an option...</option>
+                          {q.options.map((opt: string, idx: number) => (
+                            <option key={idx} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {q.type === "CHECKBOX" && q.options && (
+                        <div className="flex flex-col gap-2.5 mt-2">
+                          {q.options.map((opt: string, idx: number) => {
+                            const currentAnswers: string[] = Array.isArray(dynamicAnswers[qKey]) 
+                              ? dynamicAnswers[qKey] 
+                              : [];
+                            return (
+                              <label key={idx} className="flex items-center gap-3 cursor-pointer group select-none">
+                                <input 
+                                  type="checkbox" 
+                                  name={`question_${q.id}`} 
+                                  value={opt}
+                                  checked={currentAnswers.includes(opt)}
+                                  onChange={(e) => handleCheckboxChange(qKey, opt, e.target.checked)}
+                                  className="w-4 h-4 accent-[#ac120c] cursor-pointer rounded-sm"
+                                />
+                                <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -308,7 +359,7 @@ function DynamicRecruitmentPageContent() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 export default function DynamicRecruitmentPage() {

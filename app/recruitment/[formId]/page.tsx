@@ -12,7 +12,7 @@ import { DiamondIcon } from "@/components/ui/Icons"
 export default function DynamicRecruitmentPage() {
   const router = useRouter()
   const params = useParams()
-  const [formId, setFormId] = useState<number>(1)
+  const [formId, setFormId] = useState<number | null>(null)
   const [questions, setQuestions] = useState<any[]>([])
   const [formInfo, setFormInfo] = useState<any>(null)
   
@@ -25,88 +25,117 @@ export default function DynamicRecruitmentPage() {
     resume_url: "",
   })
   
-  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({})
+  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (params?.formId) {
-      setFormId(parseInt(params.formId as string, 10))
-    }
-  }, [params])
+    let cancelled = false;
 
-  useEffect(() => {
-    if (formId) {
-      fetchQuestions()
-    }
-  }, [formId])
+    async function loadForm() {
+      setLoading(true);
+      setError("");
 
-  const fetchQuestions = async () => {
-    try {
-      const res = await fetchApi(`/api/forms/${formId}`)
-      if (!res.ok) throw new Error("Form not found")
-      const data = await res.json()
-      
-      if (data.form?.status !== "PUBLISHED") {
-        throw new Error("This recruitment form is not currently open for applications.")
+      let targetId: number | null = null;
+      if (params?.formId && !isNaN(parseInt(params.formId as string, 10))) {
+        targetId = parseInt(params.formId as string, 10);
+      } else if (typeof window !== "undefined") {
+        const match = window.location.pathname.match(/\/recruitment\/(\d+)/);
+        if (match && match[1]) {
+          targetId = parseInt(match[1], 10);
+        } else {
+          const urlParams = new URLSearchParams(window.location.search);
+          const q = urlParams.get("formId") || urlParams.get("id");
+          if (q && !isNaN(parseInt(q, 10))) {
+            targetId = parseInt(q, 10);
+          }
+        }
       }
 
-      setFormInfo(data.form)
-      setQuestions(data.form?.questions || [])
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      if (!targetId) {
+        targetId = 1;
+      }
+
+      if (cancelled) return;
+      setFormId(targetId);
+
+      try {
+        const res = await fetchApi(`/api/forms/${targetId}`);
+        if (!res.ok) throw new Error("Recruitment form not found or currently unavailable");
+        const data = await res.json();
+        
+        if (data.form?.status !== "PUBLISHED") {
+          throw new Error("This recruitment form is not currently open for applications.");
+        }
+
+        if (cancelled) return;
+        setFormInfo(data.form);
+        setQuestions(data.form?.questions || []);
+      } catch (err: any) {
+        if (cancelled) return;
+        setError(err.message || "Failed to load form questions");
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  }
+
+    loadForm();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params])
 
   const handleBaseChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  const handleDynamicChange = (questionId: string, value: string | string[]) => {
-    setDynamicAnswers({ ...dynamicAnswers, [questionId]: value as string })
+  const handleDynamicChange = (questionId: string, value: any) => {
+    setDynamicAnswers(prev => ({ ...prev, [questionId]: value }));
   }
 
   const handleCheckboxChange = (questionId: string, option: string, checked: boolean) => {
-    const current = (dynamicAnswers[questionId] as unknown as string[]) || []
-    if (checked) {
-      handleDynamicChange(questionId, [...current, option] as unknown as string)
-    } else {
-      handleDynamicChange(questionId, current.filter(o => o !== option) as unknown as string)
-    }
+    const raw = dynamicAnswers[questionId];
+    const current: string[] = Array.isArray(raw) ? raw : (typeof raw === "string" && raw ? [raw] : []);
+    const updated = checked
+      ? [...current, option]
+      : current.filter(o => o !== option);
+    handleDynamicChange(questionId, updated);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError("")
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
 
     try {
+      const activeFormId = formId || 1;
       const payload = {
         ...formData,
-        form_id: formId,
+        form_id: activeFormId,
         answers: dynamicAnswers
-      }
+      };
 
       const res = await fetchApi(`/api/applications`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to submit application")
+        throw new Error(data.error || "Failed to submit application");
       }
 
-      router.push("/application-success")
+      router.push("/application-success");
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || "Failed to submit application");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
@@ -216,84 +245,89 @@ export default function DynamicRecruitmentPage() {
               <div className="flex flex-col gap-6">
                 <h3 className="font-display text-[#d07d22] text-sm uppercase tracking-widest border-b border-[#2a0d0d] pb-2">Technical Evaluation</h3>
                 
-                {questions.map((q) => (
-                  <div key={q.id} className="flex flex-col gap-2">
-                    <label className="font-mono text-[10px] text-[#bfa8a2] uppercase tracking-[0.2em]">
-                      {q.question} {q.required && <span className="text-[#ac120c]">*</span>}
-                    </label>
-                    
-                    {q.type === "TEXT" && (
-                      <Input 
-                        value={dynamicAnswers[q.id] || ""} 
-                        onChange={(e) => handleDynamicChange(q.id.toString(), e.target.value)} 
-                        required={q.required} 
-                      />
-                    )}
-                    
-                    {q.type === "PARAGRAPH" && (
-                      <textarea 
-                        value={dynamicAnswers[q.id] || ""} 
-                        onChange={(e) => handleDynamicChange(q.id.toString(), e.target.value)} 
-                        required={q.required}
-                        className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors min-h-[100px]"
-                      />
-                    )}
+                {questions.map((q) => {
+                  const qKey = String(q.id);
+                  return (
+                    <div key={q.id} className="flex flex-col gap-2">
+                      <label className="font-mono text-[10px] text-[#bfa8a2] uppercase tracking-[0.2em]">
+                        {q.question} {q.required && <span className="text-[#ac120c]">*</span>}
+                      </label>
+                      
+                      {q.type === "TEXT" && (
+                        <Input 
+                          value={dynamicAnswers[qKey] || ""} 
+                          onChange={(e) => handleDynamicChange(qKey, e.target.value)} 
+                          required={q.required} 
+                        />
+                      )}
+                      
+                      {q.type === "PARAGRAPH" && (
+                        <textarea 
+                          value={dynamicAnswers[qKey] || ""} 
+                          onChange={(e) => handleDynamicChange(qKey, e.target.value)} 
+                          required={q.required}
+                          className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors min-h-[100px]"
+                        />
+                      )}
 
-                    {q.type === "RADIO" && q.options && (
-                      <div className="flex flex-col gap-2 mt-2">
-                        {q.options.map((opt: string, idx: number) => (
-                          <label key={idx} className="flex items-center gap-3 cursor-pointer group">
-                            <input 
-                              type="radio" 
-                              name={`question_${q.id}`} 
-                              value={opt}
-                              checked={dynamicAnswers[q.id] === opt}
-                              onChange={() => handleDynamicChange(q.id.toString(), opt)}
-                              required={q.required && !dynamicAnswers[q.id]}
-                              className="appearance-none w-4 h-4 rounded-full border border-[#d07d22] checked:bg-[#ac120c] transition-all"
-                            />
-                            <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-
-                    {q.type === "DROPDOWN" && q.options && (
-                      <select
-                        value={dynamicAnswers[q.id] || ""}
-                        onChange={(e) => handleDynamicChange(q.id.toString(), e.target.value)}
-                        required={q.required}
-                        className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
-                      >
-                        <option value="" disabled>Select an option...</option>
-                        {q.options.map((opt: string, idx: number) => (
-                          <option key={idx} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    )}
-
-                    {q.type === "CHECKBOX" && q.options && (
-                      <div className="flex flex-col gap-2 mt-2">
-                        {q.options.map((opt: string, idx: number) => {
-                          const currentAnswers = (dynamicAnswers[q.id] as unknown as string[]) || [];
-                          return (
-                            <label key={idx} className="flex items-center gap-3 cursor-pointer group">
+                      {q.type === "RADIO" && q.options && (
+                        <div className="flex flex-col gap-2.5 mt-2">
+                          {q.options.map((opt: string, idx: number) => (
+                            <label key={idx} className="flex items-center gap-3 cursor-pointer group select-none">
                               <input 
-                                type="checkbox" 
+                                type="radio" 
                                 name={`question_${q.id}`} 
                                 value={opt}
-                                checked={currentAnswers.includes(opt)}
-                                onChange={(e) => handleCheckboxChange(q.id.toString(), opt, e.target.checked)}
-                                className="appearance-none w-4 h-4 border border-[#d07d22] checked:bg-[#ac120c] transition-all rounded-sm"
+                                checked={dynamicAnswers[qKey] === opt}
+                                onChange={() => handleDynamicChange(qKey, opt)}
+                                required={q.required && !dynamicAnswers[qKey]}
+                                className="w-4 h-4 accent-[#ac120c] cursor-pointer"
                               />
                               <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
                             </label>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          ))}
+                        </div>
+                      )}
+
+                      {q.type === "DROPDOWN" && q.options && (
+                        <select
+                          value={dynamicAnswers[qKey] || ""}
+                          onChange={(e) => handleDynamicChange(qKey, e.target.value)}
+                          required={q.required}
+                          className="w-full bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] p-3 rounded-none font-mono text-[13px] focus:outline-none focus:border-[#d07d22] transition-colors"
+                        >
+                          <option value="" disabled>Select an option...</option>
+                          {q.options.map((opt: string, idx: number) => (
+                            <option key={idx} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {q.type === "CHECKBOX" && q.options && (
+                        <div className="flex flex-col gap-2.5 mt-2">
+                          {q.options.map((opt: string, idx: number) => {
+                            const currentAnswers: string[] = Array.isArray(dynamicAnswers[qKey]) 
+                              ? dynamicAnswers[qKey] 
+                              : [];
+                            return (
+                              <label key={idx} className="flex items-center gap-3 cursor-pointer group select-none">
+                                <input 
+                                  type="checkbox" 
+                                  name={`question_${q.id}`} 
+                                  value={opt}
+                                  checked={currentAnswers.includes(opt)}
+                                  onChange={(e) => handleCheckboxChange(qKey, opt, e.target.checked)}
+                                  className="w-4 h-4 accent-[#ac120c] cursor-pointer rounded-sm"
+                                />
+                                <span className="font-mono text-[12px] text-[#bfa8a2] group-hover:text-[#f4ede4] transition-colors">{opt}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
