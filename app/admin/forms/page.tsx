@@ -41,28 +41,44 @@ export default function FormsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await fetchApi(`/api/forms`, {  
+      const res = await fetchApi(`/api/forms`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          title: formData.title.trim(),
+          description: formData.description?.trim() || ""
+        })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to create form (${res.status})`);
+        return;
+      }
       setIsModalOpen(false)
+      setFormData({ title: "", description: "" })
       fetchForms()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to create form");
     }
   }
 
   const handleStatusChange = async (id: number, status: string) => {
     try {
-      await fetchApi(`/api/forms/${id}`, {  
+      const res = await fetchApi(`/api/forms/${id}`, {  
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to update status (${res.status})`);
+        return;
+      }
       fetchForms()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to update form status");
     }
   }
 
@@ -78,7 +94,7 @@ export default function FormsPage() {
             Recruitment Forms
           </h1>
         </div>
-        <Button variant="cta" onClick={() => setIsModalOpen(true)}>CREATE FORM</Button>
+        <Button variant="cta" onClick={() => { setFormData({ title: "", description: "" }); setIsModalOpen(true); }}>CREATE FORM</Button>
       </header>
 
       <Card className="p-0 overflow-hidden">

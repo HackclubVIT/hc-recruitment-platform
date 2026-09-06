@@ -52,33 +52,45 @@ function FormDetailsPageContent() {
     try {
       const optionsArray = qData.options.split(",").map(s => s.trim()).filter(Boolean)
       
-      await fetchApi(`/api/forms/${id}/questions`, {  
+      const res = await fetchApi(`/api/forms/${id}/questions`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question: qData.question,
+          question: qData.question.trim(),
           type: qData.type,
           required: qData.required,
           options: (qData.type === 'RADIO' || qData.type === 'DROPDOWN' || qData.type === 'CHECKBOX') ? optionsArray : []
         })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to add question (${res.status})`);
+        return;
+      }
       setIsQuestionModalOpen(false)
       setQData({ question: "", type: "TEXT", required: true, options: "" })
       fetchForm()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to add question");
     }
   }
 
   const handleDeleteQuestion = async (qId: number) => {
     if (!confirm("Delete this question?")) return
     try {
-      await fetchApi(`/api/forms/${id}/questions/${qId}`, {  
+      const res = await fetchApi(`/api/forms/${id}/questions/${qId}`, {  
         method: "DELETE"
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to delete question (${res.status})`);
+        return;
+      }
       fetchForm()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to delete question");
     }
   }
 

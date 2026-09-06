@@ -51,43 +51,65 @@ export default function PanelsPage() {
     e.preventDefault()
     try {
       const method = formData.id ? "PUT" : "POST"
-      await fetchApi(`/api/panels`, {  
+      const res = await fetchApi(`/api/panels`, {  
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          description: formData.description || ""
+        })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to save panel (${res.status})`);
+        return;
+      }
       setIsModalOpen(false)
+      setFormData({ name: "", description: "" })
       fetchPanels()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to save panel");
     }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this panel?")) return
     try {
-      await fetchApi(`/api/panels`, {  
+      const res = await fetchApi(`/api/panels`, {  
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to delete panel (${res.status})`);
+        return;
+      }
       fetchPanels()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to delete panel");
     }
   }
 
-  const handleToggleStatus = async (panel: { id: number, status: string, name: string, description: string }) => {
+  const handleToggleStatus = async (panel: { id: number, status: string, name: string, description: string | null }) => {
     try {
       const newStatus = panel.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"
-      await fetchApi(`/api/panels`, {  
+      const res = await fetchApi(`/api/panels`, {  
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: panel.id, name: panel.name, description: panel.description, status: newStatus })
+        body: JSON.stringify({ id: panel.id, name: panel.name, description: panel.description || "", status: newStatus })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to update status (${res.status})`);
+        return;
+      }
       fetchPanels()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to update status");
     }
   }
 
@@ -99,29 +121,42 @@ export default function PanelsPage() {
   const handleAddMember = async (panel_id: number) => {
     if (!selectedUser) return
     try {
-      await fetchApi(`/api/panels/members`, {  
+      const res = await fetchApi(`/api/panels/members`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ panel_id, user_id: selectedUser })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to add member (${res.status})`);
+        return;
+      }
       setSelectedUser("")
       setActivePanel(null)
       fetchPanels()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to add member");
     }
   }
 
-  const handleRemoveMember = async (panel_id: number, user_id: string) => {
+  const handleRemoveMember = async (panel_id: number, user_id: string | number) => {
+    if (!confirm("Are you sure you want to remove this member from the panel?")) return
     try {
-      await fetchApi(`/api/panels/members`, {  
+      const res = await fetchApi(`/api/panels/members`, {  
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ panel_id, user_id })
+        body: JSON.stringify({ panel_id, user_id: String(user_id) })
       })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Failed to remove member (${res.status})`);
+        return;
+      }
       fetchPanels()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(err.message || "Failed to remove member");
     }
   }
 
@@ -151,7 +186,15 @@ export default function PanelsPage() {
                   <h3 className="font-display font-bold text-[20px] text-[#f4ede4] flex items-center gap-2">
                     {panel.name}
                     <button 
-                      onClick={() => { setFormData({ id: panel.id, name: panel.name, description: panel.description, status: panel.status }); setIsModalOpen(true); }}
+                      onClick={() => { 
+                        setFormData({ 
+                          id: panel.id, 
+                          name: panel.name, 
+                          description: panel.description || "", 
+                          status: panel.status 
+                        }); 
+                        setIsModalOpen(true); 
+                      }}
                       className="text-[#d07d22] hover:text-[#f4ede4] transition-colors"
                       title="Edit Panel"
                     >
@@ -165,10 +208,10 @@ export default function PanelsPage() {
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                   </h3>
-                  <p className="text-[#bfa8a2] text-sm mt-1">{panel.description}</p>
+                  <p className="text-[#bfa8a2] text-sm mt-1">{panel.description || "No description provided."}</p>
                 </div>
                 <button onClick={() => handleToggleStatus(panel)} className="hover:opacity-80 transition-opacity">
-                  <StatusPill status={panel.status.toLowerCase()}>{panel.status}</StatusPill>
+                  <StatusPill status={panel.status?.toLowerCase() || 'active'}>{panel.status}</StatusPill>
                 </button>
               </div>
               <div className="mt-4 pt-4 border-t border-[#2a0d0d]">
@@ -201,17 +244,21 @@ export default function PanelsPage() {
                   <p className="text-[#bfa8a2] text-xs font-mono">NO MEMBERS ASSIGNED</p>
                 ) : (
                   <ul className="text-[#f4ede4] text-sm font-medium flex flex-col gap-2">
-                    {panel.members?.map((m: HCUser) => (
-                      <li key={m.id} className="flex justify-between items-center group">
-                        <span>- {m.name}</span>
-                        <button 
-                          onClick={() => handleRemoveMember(panel.id, m.id)}
-                          className="text-[#ac120c] font-mono text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          REMOVE
-                        </button>
-                      </li>
-                    ))}
+                    {panel.members?.map((m: any) => {
+                      const memberId = m.user_id || m.user?.id || m.id;
+                      const memberName = m.user?.name || m.name || `User #${memberId}`;
+                      return (
+                        <li key={m.id || memberId} className="flex justify-between items-center group">
+                          <span>- {memberName}</span>
+                          <button 
+                            onClick={() => handleRemoveMember(panel.id, memberId)}
+                            className="text-[#ac120c] font-mono text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            REMOVE
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -221,7 +268,9 @@ export default function PanelsPage() {
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <h2 className="font-display font-bold text-[24px] text-[#f4ede4] mb-6">Create New Panel</h2>
+        <h2 className="font-display font-bold text-[24px] text-[#f4ede4] mb-6">
+          {formData.id ? "Edit Panel" : "Create New Panel"}
+        </h2>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <label className="font-mono text-[11px] text-[#bfa8a2] uppercase tracking-widest">Panel Name</label>
@@ -240,7 +289,7 @@ export default function PanelsPage() {
           </div>
           <div className="mt-4 flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>CANCEL</Button>
-            <Button type="submit" variant="primary">CREATE</Button>
+            <Button type="submit" variant="primary">{formData.id ? "SAVE" : "CREATE"}</Button>
           </div>
         </form>
       </Modal>
