@@ -14,7 +14,15 @@ async function main() {
 
   // Define target roles by keyword / email fragment
   const adminKeywords = ['ojas', 'ivan', 'harleen', 'atul'];
-  const recruiterKeywords = ['prachi', 'kushagra', 'jesta', 'arya', 'vijayendra', 'manan'];
+  const recruiterDeptMap: Record<string, string[]> = {
+    'manan': ["Research and Development"],
+    'vijayendra': ["Finance"],
+    'vijyendra': ["Finance"],
+    'prachi': ["Projects"],
+    'arya': ["Operations"],
+    'kushagra': ["Design & Social Media"],
+    'jesta': ["Technical"]
+  };
 
   const allUsers = await prisma.user.findMany({
     include: { recruitmentRole: true }
@@ -22,7 +30,7 @@ async function main() {
   console.log(`Found ${allUsers.length} total users in database.`);
 
   const adminUserIds: bigint[] = [];
-  const recruiterUserIds: bigint[] = [];
+  const recruiterUserIds: { id: bigint; depts: string[] }[] = [];
   const memberUserIds: bigint[] = [];
 
   for (const user of allUsers) {
@@ -31,13 +39,19 @@ async function main() {
 
     // Check if matches admin
     const isAdmin = adminKeywords.some(kw => lowerName.includes(kw) || lowerEmail.includes(kw));
-    // Check if matches recruiter
-    const isRecruiter = recruiterKeywords.some(kw => lowerName.includes(kw) || lowerEmail.includes(kw));
+    
+    let matchedDepts: string[] | null = null;
+    for (const [kw, depts] of Object.entries(recruiterDeptMap)) {
+      if (lowerName.includes(kw) || lowerEmail.includes(kw)) {
+        matchedDepts = depts;
+        break;
+      }
+    }
 
     if (isAdmin) {
       adminUserIds.push(user.id);
-    } else if (isRecruiter) {
-      recruiterUserIds.push(user.id);
+    } else if (matchedDepts) {
+      recruiterUserIds.push({ id: user.id, depts: matchedDepts });
     } else {
       memberUserIds.push(user.id);
     }
@@ -54,13 +68,12 @@ async function main() {
     });
   }
 
-  // Update Recruiters
-  const allDepartments = ["Projects", "Operations", "Technical", "Finance", "Research and Development", "Design & Social Media", "*"];
-  for (const id of recruiterUserIds) {
+  // Update Recruiters with specific department access
+  for (const item of recruiterUserIds) {
     await prisma.recruitmentRoleAssignment.upsert({
-      where: { user_id: id },
-      update: { role: 'RECRUITER', active: true, departments: allDepartments },
-      create: { user_id: id, role: 'RECRUITER', active: true, departments: allDepartments }
+      where: { user_id: item.id },
+      update: { role: 'RECRUITER', active: true, departments: item.depts },
+      create: { user_id: item.id, role: 'RECRUITER', active: true, departments: item.depts }
     });
   }
 
