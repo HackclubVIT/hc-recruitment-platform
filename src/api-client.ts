@@ -137,6 +137,9 @@ export const api = {
 
   // Users
   getUsers: async () => fetchApi("/api/users").then(res => res.json()),
+  createUser: async (userData: unknown) => fetchApi("/api/users", { method: "POST", body: JSON.stringify(userData) }),
+  updateUser: async (userData: unknown) => fetchApi("/api/users", { method: "PUT", body: JSON.stringify(userData) }),
+  deleteUser: async (id: string) => fetchApi("/api/users", { method: "DELETE", body: JSON.stringify({ id }) }),
   
   // Applications / Candidates
   getApplications: async () => fetchApi("/api/applications").then(res => res.json()),
