@@ -28,10 +28,10 @@ export default function NotFound() {
       path = path.slice(cleanBasePath.length) || "/"
     }
 
-    const candMatch = path.match(/^\/(admin|recruiter)\/candidates\/([^/?#]+)/)
-    if (candMatch && candMatch[2] !== "view") {
+    const candMatch = path.match(/^\/(admin|recruiter)\/(candidates|applications)\/([^/?#]+)/)
+    if (candMatch && candMatch[3] !== "view") {
       setRedirecting(true)
-      router.replace(`/${candMatch[1]}/candidates/view?id=${candMatch[2]}`)
+      router.replace(`/${candMatch[1]}/candidates/view?id=${candMatch[3]}`)
       return
     }
 

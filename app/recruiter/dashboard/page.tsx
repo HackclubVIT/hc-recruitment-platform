@@ -124,7 +124,7 @@ export default function RecruiterDashboard() {
                         </StatusPill>
                       </td>
                       <td className="p-4">
-                        <Button variant="primary" className="py-2 px-4 text-xs" onClick={() => router.push(`/recruiter/applications/${app.id}`)}>REVIEW</Button>
+                        <Button variant="primary" className="py-2 px-4 text-xs" onClick={() => router.push(`/recruiter/candidates/view?id=${app.id}`)}>REVIEW</Button>
                       </td>
                     </tr>
                   ))
