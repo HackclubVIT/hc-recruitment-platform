@@ -109,7 +109,10 @@ if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== "undefined") {
 
 export const fetchApi = async (path: string, options: RequestInit = {}) => {
   const base = API_BASE.replace(/\/$/, "");
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  let cleanPath = path.startsWith("/") ? path : `/${path}`;
+  if (!cleanPath.startsWith("/api/") && cleanPath !== "/api") {
+    cleanPath = `/api${cleanPath}`;
+  }
   const url = `${base}${cleanPath}`;
   
   const token = typeof window !== "undefined" ? localStorage.getItem("hc_session_token") : null;

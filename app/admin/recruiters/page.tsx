@@ -34,20 +34,25 @@ export default function AdminRecruitersPage() {
     setSavingId(rec.id)
     setMsg("")
     try {
-      const resp = await api.put("/users", {
+      const payload = {
         id: rec.id,
         role: "RECRUITER",
         departments: patch.departments !== undefined ? patch.departments : rec.departments,
         active: patch.active !== undefined ? patch.active : rec.active
-      })
-      const res = await resp.json()
+      }
+      const resp = await api.updateUser(payload)
+      const res = await resp.json().catch(() => ({}))
+      if (!resp.ok) {
+        setMsg(res.error || "Update failed.")
+        return
+      }
       if (res && res.user) {
         setRecruiters(prev => prev.map((r: any) => r.id === rec.id ? { ...r, ...patch } : r))
       } else {
         setMsg("Update failed.")
       }
-    } catch {
-      setMsg("Update failed.")
+    } catch (err: any) {
+      setMsg(err?.message || "Update failed.")
     } finally {
       setSavingId(null)
     }
