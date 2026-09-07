@@ -4,6 +4,31 @@ import React, { useRef } from "react"
 import Image from "next/image"
 import { ScrollReveal } from "@/components/ui/ScrollReveal"
 
+function getAssetPath(src: string): string {
+  if (!src) return "";
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+
+  const envBasePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  let basePath = envBasePath;
+  if (basePath.startsWith("http://") || basePath.startsWith("https://")) {
+    try {
+      basePath = new URL(basePath).pathname;
+    } catch {}
+  }
+  basePath = basePath.replace(/\/$/, "");
+
+  // If in browser on github.io with a subpath and envBasePath was empty
+  if (!basePath && typeof window !== "undefined") {
+    const segments = window.location.pathname.split("/").filter(Boolean);
+    if (window.location.hostname.endsWith("github.io") && segments.length > 0) {
+      basePath = `/${segments[0]}`;
+    }
+  }
+
+  const cleanSrc = src.startsWith("/") ? src : `/${src}`;
+  return `${basePath}${cleanSrc}`;
+}
+
 const EVENTS = [
   {
     id: "hacknight",
@@ -118,10 +143,12 @@ export function MemorableEvents() {
                   {ev.image ? (
                     <div className="absolute inset-0 z-0 bg-[#070101]">
                       <Image 
-                        src={ev.image} 
+                        src={getAssetPath(ev.image)} 
                         alt={ev.name} 
                         fill 
                         sizes="(max-width: 640px) 300px, 380px"
+                        priority={i < 4}
+                        unoptimized
                         className="object-cover opacity-50 group-hover/card:opacity-100 group-hover/card:scale-110 transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]" 
                       />
                     </div>
@@ -170,10 +197,11 @@ export function MemorableEvents() {
                   {ev.image ? (
                     <div className="absolute inset-0 z-0 bg-[#070101]">
                       <Image 
-                        src={ev.image} 
+                        src={getAssetPath(ev.image)} 
                         alt={ev.name} 
                         fill 
                         sizes="(max-width: 640px) 300px, 380px"
+                        unoptimized
                         className="object-cover opacity-50 group-hover/card:opacity-100 group-hover/card:scale-110 transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]" 
                       />
                     </div>
