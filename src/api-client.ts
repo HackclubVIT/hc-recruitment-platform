@@ -101,14 +101,21 @@ export function clearToken() {
   }
 }
 
-const rawBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_BASE = rawBase.replace(/\/api\/?$/, "").replace(/\/$/, "");
-if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== "undefined") {
-  console.warn("NEXT_PUBLIC_API_URL is not defined! Defaulting to http://localhost:3001.");
+export function getApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "").replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined" && window.location.hostname.includes("onrender.com")) {
+    return "https://hc-recruitment-api.onrender.com";
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "https://hc-recruitment-api.onrender.com";
+  }
+  return "http://localhost:3001";
 }
 
 export const fetchApi = async (path: string, options: RequestInit = {}) => {
-  const base = API_BASE.replace(/\/$/, "");
+  const base = getApiBase();
   let cleanPath = path.startsWith("/") ? path : `/${path}`;
   if (!cleanPath.startsWith("/api/") && cleanPath !== "/api") {
     cleanPath = `/api${cleanPath}`;

@@ -66,13 +66,14 @@ app.use(cookieParser());
 
 const allowedOrigins = process.env.ALLOWED_ORIGIN 
   ? process.env.ALLOWED_ORIGIN.split(',') 
-  : ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://recruitment.hackclubvit.co'];
+  : ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://recruitment.hackclubvit.co', 'https://hc-recruitment-website.onrender.com'];
 
 app.use(cors({
   origin: function (origin, callback) {
     if (
       !origin || 
       allowedOrigins.includes(origin) || 
+      origin.endsWith('.onrender.com') ||
       (process.env.NODE_ENV !== 'production' && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')))
     ) {
       callback(null, true);

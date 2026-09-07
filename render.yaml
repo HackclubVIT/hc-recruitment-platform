@@ -12,7 +12,7 @@ services:
       - key: NODE_VERSION
         value: "22"
       - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: "https://hc-recruitment-api.onrender.com"
       - key: JWT_SECRET
         sync: false
 
