@@ -61,6 +61,29 @@ export interface BackendInterview {
   }>;
 }
 
+export interface AuditLogEntry {
+  id: number;
+  user_id: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  timestamp: string;
+  user?: {
+    name: string;
+    email: string | null;
+    role: string;
+  } | null;
+}
+
+export interface AuditLogResponse {
+  items: AuditLogEntry[];
+  logs?: AuditLogEntry[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("hc_session_token");
@@ -165,5 +188,14 @@ export const api = {
   getAnalytics: async () => fetchApi("/api/analytics").then(res => res.json()),
   
   // Audit Logs
-  getAuditLogs: async () => fetchApi("/api/audit-logs").then(res => res.json()),
+  getAuditLogs: async (params?: { page?: number; limit?: number; q?: string; action?: string; entity?: string }): Promise<AuditLogResponse> => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", params.page.toString());
+    if (params?.limit) query.set("limit", params.limit.toString());
+    if (params?.q) query.set("q", params.q);
+    if (params?.action) query.set("action", params.action);
+    if (params?.entity) query.set("entity", params.entity);
+    const qs = query.toString();
+    return fetchApi(`/api/audit-logs${qs ? `?${qs}` : ""}`).then(res => res.json());
+  },
 };
