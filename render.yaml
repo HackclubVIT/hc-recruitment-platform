@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     buildCommand: corepack enable && pnpm install --no-frozen-lockfile --prod=false && pnpm build
-    startCommand: npx next start
+    startCommand: npx serve out -s -l $PORT
     envVars:
       - key: NODE_ENV
         value: production
