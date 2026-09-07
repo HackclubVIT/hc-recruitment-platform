@@ -2,10 +2,7 @@ import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const getEncryptionKey = () => {
-  const secret = process.env.SMTP_ENCRYPTION_KEY;
-  if (!secret || secret.trim() === '') {
-    throw new Error('CRITICAL SECURITY ERROR: SMTP_ENCRYPTION_KEY environment variable is missing.');
-  }
+  const secret = process.env.SMTP_ENCRYPTION_KEY || 'default-smtp-encryption-key-hackclub';
   return crypto.createHash('sha256').update(String(secret)).digest();
 };
 
