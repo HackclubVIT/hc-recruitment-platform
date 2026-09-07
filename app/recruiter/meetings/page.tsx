@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/ui/StatusPill"
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { Modal } from "@/components/ui/Modal"
+import { downloadInterviewsCsv } from "@/lib/csvExport"
 
 export default function RecruiterMeetingsPage() {
   const [interviews, setInterviews] = useState<any[]>([])
@@ -168,7 +169,19 @@ export default function RecruiterMeetingsPage() {
             Meetings Dashboard
           </h1>
         </div>
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-3 items-center flex-wrap">
+          <Button 
+            variant="ghost" 
+            onClick={() => downloadInterviewsCsv(filteredInterviews, dateFilter, panelFilter)}
+            className="border-[#2a0d0d] hover:border-[#ac120c]/50 text-[#d07d22] flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            EXPORT SHEET
+          </Button>
           <div className="flex bg-[#120202] border border-[#2a0d0d] rounded-md overflow-hidden p-1">
             <button 
               onClick={() => setViewMode("LIST")}

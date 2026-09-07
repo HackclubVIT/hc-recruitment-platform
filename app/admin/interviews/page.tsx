@@ -8,11 +8,19 @@ import { StatusPill } from "@/components/ui/StatusPill"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Modal } from "@/components/ui/Modal"
+import { downloadInterviewsCsv } from "@/lib/csvExport"
 import Link from "next/link"
 
 export default function AdminInterviewsPage() {
   const [interviews, setInterviews] = useState<any[]>([])
+  const [panels, setPanels] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Filters
+  const [search, setSearch] = useState("")
+  const [dateFilter, setDateFilter] = useState("")
+  const [panelFilter, setPanelFilter] = useState("ALL")
+  const [statusFilter, setStatusFilter] = useState("ALL")
 
   // Reschedule Modal State
   const [rescheduleData, setRescheduleData] = useState<{ id: number, panel_id: number, date: string, start_time: string } | null>(null)
@@ -21,6 +29,7 @@ export default function AdminInterviewsPage() {
 
   useEffect(() => {
     fetchInterviews()
+    fetchPanels()
   }, [])
 
   const fetchInterviews = async () => {
@@ -35,6 +44,16 @@ export default function AdminInterviewsPage() {
     }
   }
 
+  const fetchPanels = async () => {
+    try {
+      const res = await fetchApi(`/api/panels`)
+      const data = await res.json()
+      setPanels(data.panels || [])
+    } catch (err) {
+      console.error("Failed to load panels:", err)
+    }
+  }
+
   const formatTime = (dateStr: string) => {
     return new Date(dateStr).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", 
       hour: "2-digit", minute: "2-digit"
@@ -46,6 +65,37 @@ export default function AdminInterviewsPage() {
       month: "short", day: "numeric", year: "numeric"
     })
   }
+
+  // Derive unique panels from both fetched panels and loaded interviews
+  const panelNamesSet = new Set<string>()
+  panels.forEach(p => p.name && panelNamesSet.add(p.name))
+  interviews.forEach(inv => inv.panel?.name && panelNamesSet.add(inv.panel.name))
+  const uniquePanels = Array.from(panelNamesSet).sort()
+
+  const filteredInterviews = interviews.filter((inv) => {
+    const searchMatch = !search ||
+      inv.application?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      inv.application?.registerNumber?.toLowerCase().includes(search.toLowerCase()) ||
+      inv.application?.domain?.toLowerCase().includes(search.toLowerCase());
+
+    let dateMatch = true;
+    if (dateFilter) {
+      const invDate = new Date(inv.date).toISOString().split('T')[0];
+      dateMatch = invDate === dateFilter;
+    }
+
+    let panelMatch = true;
+    if (panelFilter !== "ALL") {
+      panelMatch = inv.panel?.name === panelFilter;
+    }
+
+    let statusMatch = true;
+    if (statusFilter !== "ALL") {
+      statusMatch = inv.status === statusFilter;
+    }
+
+    return searchMatch && dateMatch && panelMatch && statusMatch;
+  });
 
   const handleReschedule = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,7 +142,6 @@ export default function AdminInterviewsPage() {
     
     const occupied = new Set()
     interviews.forEach(inv => {
-      // Don't block the slot of the interview being rescheduled
       if (inv.id === rescheduleData.id) return
       
       if (inv.panel_id === rescheduleData.panel_id) {
@@ -123,8 +172,8 @@ export default function AdminInterviewsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out] pb-10">
-      <header className="flex items-end justify-between">
+    <div className="flex flex-col gap-6 animate-[fadeIn_0.5s_ease-out] pb-10">
+      <header className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3 text-[#d07d22] font-mono text-[11.5px] uppercase tracking-[0.2em]">
             <DiamondIcon />
@@ -134,10 +183,93 @@ export default function AdminInterviewsPage() {
             All Interviews
           </h1>
         </div>
-        <Link href="/admin/interviews/schedule">
-          <Button variant="cta">SCHEDULE</Button>
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button 
+            variant="ghost" 
+            onClick={() => downloadInterviewsCsv(filteredInterviews, dateFilter, panelFilter)}
+            className="border-[#2a0d0d] hover:border-[#ac120c]/50 text-[#d07d22] flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            EXPORT SHEET
+          </Button>
+          <Link href="/admin/interviews/schedule">
+            <Button variant="cta">SCHEDULE</Button>
+          </Link>
+        </div>
       </header>
+
+      {/* Filters Bar */}
+      <Card className="p-4 bg-[#120202] border-[#2a0d0d] flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[200px]">
+          <Input 
+            placeholder="Search candidate, domain, reg no..." 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-[#1a0606] border-[#2a0d0d] text-sm"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-[#bfa8a2] uppercase">Date:</span>
+          <input 
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] px-3 py-2 text-xs font-mono rounded-none focus:outline-none focus:border-[#d07d22]"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-[#bfa8a2] uppercase">Panel:</span>
+          <select 
+            value={panelFilter}
+            onChange={(e) => setPanelFilter(e.target.value)}
+            className="bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] px-3 py-2 text-xs font-mono rounded-none focus:outline-none focus:border-[#d07d22]"
+          >
+            <option value="ALL">All Panels</option>
+            {uniquePanels.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-[#bfa8a2] uppercase">Status:</span>
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-[#1a0606] border border-[#2a0d0d] text-[#f4ede4] px-3 py-2 text-xs font-mono rounded-none focus:outline-none focus:border-[#d07d22]"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="SCHEDULED">Scheduled</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+        </div>
+
+        {(search || dateFilter || panelFilter !== "ALL" || statusFilter !== "ALL") && (
+          <button 
+            onClick={() => {
+              setSearch("");
+              setDateFilter("");
+              setPanelFilter("ALL");
+              setStatusFilter("ALL");
+            }}
+            className="text-xs font-mono text-[#ac120c] hover:underline"
+          >
+            CLEAR FILTERS
+          </button>
+        )}
+
+        <div className="ml-auto font-mono text-[11px] text-[#bfa8a2]">
+          Showing {filteredInterviews.length} of {interviews.length}
+        </div>
+      </Card>
 
       <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
@@ -155,10 +287,10 @@ export default function AdminInterviewsPage() {
             <tbody className="divide-y divide-[#2a0d0d]">
               {loading ? (
                 <tr><td colSpan={6} className="p-8 text-center text-[#bfa8a2] font-mono">LOADING DATA...</td></tr>
-              ) : interviews.length === 0 ? (
-                <tr><td colSpan={6} className="p-8 text-center text-[#bfa8a2] font-mono">NO INTERVIEWS FOUND.</td></tr>
+              ) : filteredInterviews.length === 0 ? (
+                <tr><td colSpan={6} className="p-8 text-center text-[#bfa8a2] font-mono">NO INTERVIEWS MATCHING CURRENT FILTERS.</td></tr>
               ) : (
-                interviews.map((interview) => (
+                filteredInterviews.map((interview) => (
                   <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
                     <td className="p-4">
                       <p className="text-[#f4ede4] font-medium">{formatDate(interview.date)}</p>
@@ -171,7 +303,12 @@ export default function AdminInterviewsPage() {
                       <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.application?.domain}</p>
                     </td>
                     <td className="p-4 text-[#f4ede4] font-medium">
-                      {interview.panel?.name}
+                      <p>{interview.panel?.name}</p>
+                      {interview.assigned_members && interview.assigned_members.length > 0 && (
+                        <p className="text-[#bfa8a2] font-mono text-[10px] mt-0.5 font-normal truncate max-w-[200px]" title={interview.assigned_members.map((m: any) => m.user?.name).filter(Boolean).join(", ")}>
+                          {interview.assigned_members.map((m: any) => m.user?.name).filter(Boolean).join(", ")}
+                        </p>
+                      )}
                     </td>
                     <td className="p-4">
                       <StatusPill status={interview.status.toLowerCase().includes('cancel') ? 'rejected' : interview.status.toLowerCase().includes('complete') ? 'completed' : 'active'}>
