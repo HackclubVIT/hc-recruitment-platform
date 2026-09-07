@@ -4,7 +4,7 @@ services:
     name: hc-recruitment-website
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install && pnpm build
+    buildCommand: corepack enable && pnpm install --prod=false && pnpm build
     startCommand: npx next start
     envVars:
       - key: NODE_ENV

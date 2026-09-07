@@ -10,22 +10,22 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4",
     "clsx": "^2.1.1",
     "jose": "^6.2.10",
     "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
-    "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5"
   },
