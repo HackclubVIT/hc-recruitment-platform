@@ -63,46 +63,58 @@ export default function PanelFeedbackPage() {
               <tr className="bg-[#370b09]/50 border-b border-[#2a0d0d]">
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">DATE & TIME</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">CANDIDATE</th>
+                <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">PANEL</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">STATUS</th>
                 <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2a0d0d]">
               {loading ? (
-                <tr><td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono">LOADING DATA...</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-[#bfa8a2] font-mono">LOADING DATA...</td></tr>
               ) : interviews.length === 0 ? (
-                <tr><td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono">NO EVALUATIONS PENDING.</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-[#bfa8a2] font-mono">NO EVALUATIONS PENDING.</td></tr>
               ) : (
-                interviews.map((interview) => (
-                  <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                    <td className="p-4">
-                      <p className="text-[#f4ede4] font-medium">{formatDate(interview.date)}</p>
-                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">
-                        {formatTime(interview.start_time)} - {formatTime(interview.end_time)}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <p className="text-[#f4ede4] font-medium">{interview.application?.name}</p>
-                      <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{interview.application?.domain}</p>
-                    </td>
-                    <td className="p-4">
-                      <StatusPill status={interview.status === 'FEEDBACK_SUBMITTED' ? 'completed' : 'pending'}>
-                        {interview.status}
-                      </StatusPill>
-                    </td>
-                    <td className="p-4 flex gap-3">
-                      {interview.status !== "FEEDBACK_SUBMITTED" ? (
-                        <Link href={`/panel/feedback/submit?id=${interview.id}`}>
-                          <Button variant="cta" className="py-2 px-4 text-xs">EVALUATE</Button>
-                        </Link>
-                      ) : (
-                        <Link href={`/panel/interview/room?id=${interview.id}`}>
-                          <Button variant="ghost" className="py-2 px-4 text-xs text-[#2e7d32]">REVIEW SUBMISSION</Button>
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                interviews.map((interview: any) => {
+                  const candidateName = interview.application?.name || interview.candidate?.name || "Unknown";
+                  const candidateDept = interview.application?.domain || interview.candidate?.department || "-";
+                  const panelName = interview.panel?.name || `Panel #${interview.panel_id}`;
+
+                  return (
+                    <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
+                      <td className="p-4">
+                        <p className="text-[#f4ede4] font-medium">{formatDate(interview.date)}</p>
+                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">
+                          {formatTime(interview.start_time)} - {formatTime(interview.end_time)}
+                        </p>
+                      </td>
+                      <td className="p-4">
+                        <p className="text-[#f4ede4] font-medium">{candidateName}</p>
+                        <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{candidateDept}</p>
+                      </td>
+                      <td className="p-4">
+                        <span className="font-mono text-[#d07d22] text-xs font-semibold bg-[#2a0d0d]/60 px-2.5 py-1 rounded">
+                          {panelName}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <StatusPill status={interview.status === 'FEEDBACK_SUBMITTED' ? 'completed' : 'pending'}>
+                          {interview.status}
+                        </StatusPill>
+                      </td>
+                      <td className="p-4 flex gap-3">
+                        {interview.status !== "FEEDBACK_SUBMITTED" ? (
+                          <Link href={`/panel/feedback/submit?id=${interview.id}`}>
+                            <Button variant="cta" className="py-2 px-4 text-xs">EVALUATE</Button>
+                          </Link>
+                        ) : (
+                          <Link href={`/panel/interview/room?id=${interview.id}`}>
+                            <Button variant="ghost" className="py-2 px-4 text-xs text-[#2e7d32]">REVIEW SUBMISSION</Button>
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

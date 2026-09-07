@@ -74,6 +74,10 @@ function SingleInterviewPageContent() {
                 <p className="text-[#f4ede4] text-lg font-medium">{formatDate(interview.date)}</p>
               </div>
               <div>
+                <p className="font-mono text-[#d07d22] text-[10px] tracking-widest mb-1">PANEL</p>
+                <p className="text-[#f4ede4] text-lg font-medium">{interview.panel?.name || `Panel #${interview.panel_id}`}</p>
+              </div>
+              <div>
                 <p className="font-mono text-[#d07d22] text-[10px] tracking-widest mb-1">TIME</p>
                 <p className="text-[#f4ede4] text-lg font-medium">
                   {formatTime(interview.start_time)} - {formatTime(interview.end_time)}

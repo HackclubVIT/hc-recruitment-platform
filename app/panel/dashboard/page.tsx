@@ -84,6 +84,7 @@ export default function PanelDashboard() {
                 <tr className="bg-[#370b09]/50 border-b border-[#2a0d0d]">
                   <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">TIME</th>
                   <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">CANDIDATE</th>
+                  <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">PANEL</th>
                   <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">STATUS</th>
                   <th className="p-4 font-mono text-[12px] text-[#bfa8a2] font-normal tracking-[0.06em]">MEETING</th>
                 </tr>
@@ -91,27 +92,37 @@ export default function PanelDashboard() {
               <tbody className="divide-y divide-[#2a0d0d]">
                 {todaySchedule.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-[#bfa8a2] font-mono">NO INTERVIEWS SCHEDULED TODAY.</td>
+                    <td colSpan={5} className="p-8 text-center text-[#bfa8a2] font-mono">NO INTERVIEWS SCHEDULED TODAY.</td>
                   </tr>
                 ) : (
-                  todaySchedule.map((interview: any) => (
-                    <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                      <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">
-                        {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata',  hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="p-4 text-[#f4ede4] font-medium">{interview.candidate.name}</td>
-                      <td className="p-4">
-                        <StatusPill status={interview.status.toLowerCase()}>{interview.status}</StatusPill>
-                      </td>
-                      <td className="p-4">
-                        {interview.meeting_link ? (
-                          <Button variant="ghost" className="py-2 px-4 text-xs tracking-wider border-[#2e7d32]/50 text-[#2e7d32] hover:bg-[#2e7d32]/10" onClick={() => window.open(interview.meeting_link, '_blank')}>JOIN</Button>
-                        ) : (
-                          <span className="text-[#bfa8a2] font-mono text-xs">No Link</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                  todaySchedule.map((interview: any) => {
+                    const candidateName = interview.candidate?.name || interview.application?.name || "Unknown";
+                    const panelName = interview.panel?.name || `Panel #${interview.panel_id}`;
+
+                    return (
+                      <tr key={interview.id} className="hover:bg-[#1a0606] transition-colors duration-200">
+                        <td className="p-4 text-[#d07d22] font-mono text-[13px] font-bold">
+                          {new Date(interview.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata',  hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="p-4 text-[#f4ede4] font-medium">{candidateName}</td>
+                        <td className="p-4">
+                          <span className="font-mono text-[#d07d22] text-xs font-semibold bg-[#2a0d0d]/60 px-2.5 py-1 rounded">
+                            {panelName}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <StatusPill status={interview.status?.toLowerCase() || 'scheduled'}>{interview.status}</StatusPill>
+                        </td>
+                        <td className="p-4">
+                          {interview.meeting_link ? (
+                            <Button variant="ghost" className="py-2 px-4 text-xs tracking-wider border-[#2e7d32]/50 text-[#2e7d32] hover:bg-[#2e7d32]/10" onClick={() => window.open(interview.meeting_link, '_blank')}>JOIN</Button>
+                          ) : (
+                            <span className="text-[#bfa8a2] font-mono text-xs">No Link</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
