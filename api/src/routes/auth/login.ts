@@ -55,7 +55,6 @@ export const POST = async (req: Request, res: Response) => {
 
     let user = await prisma.user.findFirst({
       where: { email: { equals: cleanEmail, mode: "insensitive" } },
-      orderBy: { recruitmentRole: { role: 'asc' } }, // ADMIN comes before PANEL_MEMBER/NONE
       include: { recruitmentRole: true }
     });
 
@@ -198,9 +197,9 @@ export const POST = async (req: Request, res: Response) => {
         user: { id: user.id.toString(), email: user.email, role: recruitmentRole }
       }
     )
-  } catch (error) {
-    console.error("Login error:", error)
+  } catch (error: any) {
+    console.error("Login error:", error);
     return res.status(500).json(
-      { error: "Internal server error" })
+      { error: error?.message || "Internal server error" });
   }
 }

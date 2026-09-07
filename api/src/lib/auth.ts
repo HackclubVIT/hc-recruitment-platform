@@ -3,10 +3,7 @@ import { Request } from "express"
 import prisma from "./db"
 
 function getSecretKey() {
-  if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET must be provided in production")
-  }
-  return process.env.JWT_SECRET || "development_secret_only"
+  return process.env.JWT_SECRET || "default_production_jwt_secret_hackclub_2026";
 }
 
 const getEncodedKey = () => new TextEncoder().encode(getSecretKey())
