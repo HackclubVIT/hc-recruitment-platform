@@ -52,7 +52,7 @@ export function OpenRoles() {
           {forms.map((form, i) => (
             <ScrollReveal key={form.id} delay={300 + i * 150}>
               <Link 
-                href={`/recruitment/${form.id}`} 
+                href={`/recruitment/apply?formId=${form.id}`} 
                 className="group relative flex flex-col p-8 rounded-[20px] bg-[#120202] border border-[#2a0d0d] transition-all duration-400 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:-translate-y-2 hover:border-[#ac120c]/40 overflow-hidden"
                 style={{ textDecoration: "none" }}
               >

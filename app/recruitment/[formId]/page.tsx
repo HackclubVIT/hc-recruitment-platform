@@ -72,6 +72,7 @@ export default function DynamicRecruitmentPage() {
         if (cancelled) return;
         setFormInfo(data.form);
         setQuestions(data.form?.questions || []);
+        setDynamicAnswers({});
       } catch (err: any) {
         if (cancelled) return;
         setError(err.message || "Failed to load form questions");
@@ -113,10 +114,29 @@ export default function DynamicRecruitmentPage() {
 
     try {
       const activeFormId = formId || 1;
+
+      let formattedResume = formData.resume_url?.trim() || "";
+      if (formattedResume && !/^https?:\/\//i.test(formattedResume)) {
+        formattedResume = `https://${formattedResume}`;
+      }
+
+      const validQIds = new Set((questions || []).map((q) => String(q.id)));
+      const cleanAnswers: Record<string, any> = {};
+      for (const [k, v] of Object.entries(dynamicAnswers)) {
+        if (validQIds.has(k) && v !== "" && v !== undefined && v !== null) {
+          cleanAnswers[k] = v;
+        }
+      }
+
       const payload = {
-        ...formData,
-        form_id: activeFormId,
-        answers: dynamicAnswers
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        registration_number: formData.registration_number.trim(),
+        department: formData.department.trim(),
+        resume_url: formattedResume,
+        form_id: Number(activeFormId),
+        answers: cleanAnswers
       };
 
       const res = await fetchApi(`/api/applications`, {  
@@ -125,15 +145,20 @@ export default function DynamicRecruitmentPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to submit application");
+        const errorMsg = data.error || (data.details ? JSON.stringify(data.details) : "Failed to submit application");
+        throw new Error(errorMsg);
       }
 
       router.push("/application-success");
     } catch (err: any) {
+      console.error("Submission failed:", err);
       setError(err.message || "Failed to submit application");
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -331,9 +356,16 @@ export default function DynamicRecruitmentPage() {
               </div>
             )}
 
+            {error && (
+              <div className="bg-[#ac120c]/15 border border-[#ac120c]/50 text-[#f4ede4] p-4 rounded-sm text-sm font-mono tracking-wide flex items-center gap-2">
+                <span className="text-[#ac120c] font-bold">ERROR:</span>
+                <span>{error}</span>
+              </div>
+            )}
+
             <div className="mt-8 pt-6 border-t border-[#2a0d0d] flex justify-end">
               <Button type="submit" disabled={submitting} className="w-full sm:w-auto px-10 bg-[#ac120c] hover:bg-[#8a0e0a] text-[#f4ede4] font-display uppercase tracking-widest text-sm h-12 rounded-none border-none relative overflow-hidden group">
-                <span className="relative z-10">{submitting ? "UPLOADING..." : "TRANSMIT"}</span>
+                <span className="relative z-10">{submitting ? "SUBMITTING..." : "TRANSMIT"}</span>
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]" />
               </Button>
             </div>
