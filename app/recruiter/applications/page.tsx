@@ -134,22 +134,27 @@ export default function RecruiterApplicationsPage() {
                 <tr><td colSpan={6} className="p-8 text-center text-[#bfa8a2] font-mono">NO APPLICATIONS FOUND.</td></tr>
               ) : (
                 applications.map((app) => {
-                  const c = app.candidate
+                  const candidateName = app.name || app.candidate?.name || "Unknown"
+                  const candidateEmail = app.email || app.candidate?.email || "-"
+                  const candidateDept = app.domain || app.department || app.firstPreference || app.candidate?.department || "-"
+                  const appDate = app.appliedDate || app.submitted_at
+                  const appId = app.id || app.candidate?.id
+
                   return (
                     <tr key={app.id} className="hover:bg-[#1a0606] transition-colors duration-200">
-                      <td className="p-4 text-[#f4ede4] font-medium">{c?.name || "Unknown"}</td>
-                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">{c?.email || "-"}</td>
-                      <td className="p-4 text-[#bfa8a2]">{c?.department || "-"}</td>
+                      <td className="p-4 text-[#f4ede4] font-medium">{candidateName}</td>
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">{candidateEmail}</td>
+                      <td className="p-4 text-[#bfa8a2]">{candidateDept}</td>
                       <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
-                        {app.submitted_at ? formatDate(app.submitted_at) : "-"}
+                        {appDate ? formatDate(appDate) : "-"}
                       </td>
                       <td className="p-4">
-                        <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
+                        <StatusPill status={app.status?.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
                           {app.status || "APPLIED"}
                         </StatusPill>
                       </td>
                       <td className="p-4 text-right">
-                        <Link href={`/recruiter/candidates/view?id=${c?.id}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
+                        <Link href={`/recruiter/candidates/view?id=${appId}`} className="text-[#d07d22] font-mono text-[10px] uppercase hover:underline">
                           VIEW PROFILE
                         </Link>
                       </td>
