@@ -100,18 +100,25 @@ export default function EmailSettings() {
     setSuccess(null)
 
     try {
+      const effectiveFromEmail = formData.fromEmail.trim() || (formData.user.includes('@') ? formData.user.trim() : "")
       const res = await fetchApi("/api/settings/email/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, testRecipient: testEmail })
+        body: JSON.stringify({ 
+          ...formData, 
+          fromEmail: effectiveFromEmail,
+          testRecipient: testEmail.trim() 
+        })
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(`${data.error} ${data.details || ""}`.trim())
+        const detailMsg = typeof data.details === 'string' ? data.details : (data.details ? JSON.stringify(data.details) : "")
+        const errMsg = data.error || detailMsg || "Failed to send test email"
+        throw new Error(errMsg)
       }
       
-      setSuccess("Test email sent successfully! Please check the inbox.")
+      setSuccess("Test email sent successfully! Please check the recipient inbox.")
       
       // Refresh logs
       fetchApi("/api/settings/email/logs")
@@ -220,6 +227,11 @@ export default function EmailSettings() {
               <label htmlFor="secure" className="text-xs uppercase tracking-wider text-[#bfa8a2] font-mono cursor-pointer">
                 Use Secure (true for 465, false for 587/STARTTLS)
               </label>
+            </div>
+
+            <div className="p-3.5 bg-[#1a0606] border border-[#2a0d0d] rounded text-[11px] font-mono text-[#bfa8a2] leading-relaxed">
+              <span className="text-[#d07d22] font-bold mr-1.5">TIP FOR GMAIL:</span>
+              Use <strong className="text-[#f4ede4]">Port 465</strong> with <strong className="text-[#f4ede4]">Use Secure checked</strong>. Always use a 16-character <strong className="text-[#f4ede4]">Google App Password</strong> (Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords), not your regular password.
             </div>
 
             <h2 className="text-[#f4e4df] font-medium border-b border-[#2a2a2a] pb-2 mt-4">AUTHENTICATION</h2>
