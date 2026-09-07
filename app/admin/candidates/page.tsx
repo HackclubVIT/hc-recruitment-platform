@@ -52,6 +52,18 @@ export default function AdminCandidatesPage() {
     }
   }
 
+  function mapAppStatus(status: string): "active" | "pending" | "inactive" | "scheduled" | "completed" | "cancelled" | "rejected" | "selected" {
+    const s = status.toUpperCase()
+    if (s === "SELECTED") return "selected"
+    if (s === "SHORTLISTED" || s === "FURTHER_ROUND") return "active"
+    if (s === "INTERVIEW_SCHEDULED" || s === "INTERVIEW_COMPLETED" || s === "FEEDBACK_PENDING" || s === "FEEDBACK_SUBMITTED") return "scheduled"
+    if (s === "UNDER_REVIEW") return "pending"
+    if (s === "APPLIED" || s === "PENDING") return "pending"
+    if (s === "WAITLISTED") return "inactive"
+    if (s.includes("REJECT")) return "rejected"
+    return "pending"
+  }
+
   return (
     <div className="flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out] pb-10">
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -156,7 +168,7 @@ export default function AdminCandidatesPage() {
                       </td>
                       <td className="p-4 text-[#bfa8a2]">{candidate.department}</td>
                       <td className="p-4">
-                        <StatusPill status={appStatus.toLowerCase().includes('reject') ? 'rejected' : 'pending'}>
+                        <StatusPill status={mapAppStatus(appStatus)}>
                           {appStatus}
                         </StatusPill>
                       </td>

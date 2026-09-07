@@ -39,6 +39,23 @@ export default function RecruiterDashboard() {
     return <div className="p-8 text-[#bfa8a2] font-mono">LOADING RECRUITER DASHBOARD...</div>
   }
 
+  function mapAppStatus(status: string): "active" | "pending" | "inactive" | "scheduled" | "completed" | "cancelled" | "rejected" | "selected" {
+    const s = status.toUpperCase()
+    if (s === "SELECTED") return "selected"
+    if (s === "SHORTLISTED" || s === "FURTHER_ROUND") return "active"
+    if (s === "INTERVIEW_SCHEDULED" || s === "INTERVIEW_COMPLETED" || s === "FEEDBACK_PENDING" || s === "FEEDBACK_SUBMITTED") return "scheduled"
+    if (s === "UNDER_REVIEW") return "pending"
+    if (s === "APPLIED" || s === "PENDING") return "pending"
+    if (s === "WAITLISTED") return "inactive"
+    if (s.includes("REJECT")) return "rejected"
+    return "pending"
+  }
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-US", { timeZone: "Asia/Kolkata",
+      month: "short", day: "numeric", year: "numeric"
+    })
+
   const { stats, recentApplications, departments } = data || { stats: { pendingReviewsCount: 0, shortlistedCount: 0, selectedCount: 0, interviewsTodayCount: 0 }, recentApplications: [], departments: [] }
 
   return (
@@ -115,11 +132,11 @@ export default function RecruiterDashboard() {
                         <p className="text-[#f4ede4] font-medium">{app.name}</p>
                         <p className="text-[#bfa8a2] font-mono text-[11px] mt-1">{app.domain}</p>
                       </td>
-                      <td className="p-4 text-[#f4ede4] font-medium">
-                        {app.registerNumber}
+                      <td className="p-4 text-[#bfa8a2] font-mono text-[11px]">
+                        {app.appliedDate ? formatDate(app.appliedDate) : "-"}
                       </td>
                       <td className="p-4">
-                        <StatusPill status={app.status.toLowerCase().includes('reject') ? 'rejected' : app.status.toLowerCase().includes('select') ? 'active' : 'pending'}>
+                        <StatusPill status={mapAppStatus(app.status)}>
                           {app.status}
                         </StatusPill>
                       </td>

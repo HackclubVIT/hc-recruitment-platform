@@ -1,0 +1,35 @@
+services:
+  # Next.js Web Frontend
+  - type: web
+    name: hc-recruitment-website
+    runtime: node
+    plan: free
+    buildCommand: npm install -g pnpm && pnpm install && pnpm build
+    startCommand: npm install -g pnpm && pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+
+  # Express + Prisma API Backend
+  - type: web
+    name: hc-recruitment-api
+    runtime: node
+    plan: free
+    rootDir: api
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: ALLOW_USER_CREATION
+        value: "true"

@@ -101,10 +101,10 @@ export function clearToken() {
   }
 }
 
-const rawBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const rawBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const API_BASE = rawBase.replace(/\/api\/?$/, "").replace(/\/$/, "");
 if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== "undefined") {
-  console.warn("NEXT_PUBLIC_API_URL is not defined! Defaulting to http://localhost:5000.");
+  console.warn("NEXT_PUBLIC_API_URL is not defined! Defaulting to http://localhost:3001.");
 }
 
 export const fetchApi = async (path: string, options: RequestInit = {}) => {
@@ -180,9 +180,6 @@ export const api = {
   
   // Interviews
   getInterviews: async () => fetchApi("/api/interviews").then(res => res.json()),
-  
-  // Feedback
-  getFeedback: async () => fetchApi("/api/feedback").then(res => res.json()),
   
   // Notifications
   getNotifications: async () => fetchApi("/api/notifications").then(res => res.json()),
